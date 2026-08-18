@@ -135,6 +135,53 @@ async function inChunks<T extends { restaurant_id: string }>(
   return parts.flat();
 }
 
+/**
+ * Rows per page. PostgREST caps responses at ~1,000 rows by default and a
+ * larger request is SILENTLY truncated rather than rejected — the batched
+ * catalogue queries must page so no venue's rows are ever dropped.
+ */
+const PAGE_SIZE = 1000;
+
+/**
+ * Fetch every row matching an `.in(id, …)` filter, paging past PostgREST's
+ * ~1,000-row response cap with `.range()`. Stops when a page returns fewer
+ * than `PAGE_SIZE` rows (the final page). `orderBy` is the primary sort; the
+ * row `id` is appended as a deterministic tie-breaker so page boundaries never
+ * split or drop rows that share the same sort key (import timestamps are not
+ * unique).
+ */
+async function inPages<T extends { id: string }>(
+  table: 'menu_items' | 'price_observations',
+  column: 'menu_id' | 'menu_item_id',
+  ids: string[],
+  orderBy: string,
+): Promise<T[]> {
+  if (ids.length === 0) return [];
+  const parts = await Promise.all(
+    chunkIds(ids).map(async (chunk) => {
+      const supabase = await requireSupabase();
+      const rows: T[] = [];
+      let from = 0;
+      for (;;) {
+        const { data, error } = await supabase
+          .from(table)
+          .select('*')
+          .in(column, chunk)
+          .order(orderBy, { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        const page = (data ?? []) as unknown as T[];
+        rows.push(...page);
+        if (page.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      return rows;
+    }),
+  );
+  return parts.flat();
+}
+
 /** All sources for many restaurants in a handful of batched requests. */
 export async function selectSourcesForRestaurants(restaurantIds: string[]): Promise<RestaurantSourcesRow[]> {
   return inChunks<RestaurantSourcesRow>('restaurant_sources', restaurantIds);
@@ -238,35 +285,11 @@ export async function selectMenusForRestaurants(restaurantIds: string[]): Promis
 
 /** All items for many menus (batched — catalogue path, no N+1). */
 export async function selectMenuItemsForMenus(menuIds: string[]): Promise<MenuItemsRow[]> {
-  if (menuIds.length === 0) return [];
-  const parts = await Promise.all(
-    chunkIds(menuIds).map(async (chunk) => {
-      const { data, error } = await (await requireSupabase())
-        .from('menu_items')
-        .select('*')
-        .in('menu_id', chunk)
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    }),
-  );
-  return parts.flat();
+  return inPages<MenuItemsRow>('menu_items', 'menu_id', menuIds, 'created_at');
 }
 
 export async function selectPriceObservationsForItems(itemIds: string[]): Promise<PriceObservationsRow[]> {
-  if (itemIds.length === 0) return [];
-  const parts = await Promise.all(
-    chunkIds(itemIds).map(async (chunk) => {
-      const { data, error } = await (await requireSupabase())
-        .from('price_observations')
-        .select('*')
-        .in('menu_item_id', chunk)
-        .order('observed_at', { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    }),
-  );
-  return parts.flat();
+  return inPages<PriceObservationsRow>('price_observations', 'menu_item_id', itemIds, 'observed_at');
 }
 
 /* ------------------------------------------------------------------ */
