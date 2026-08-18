@@ -8,14 +8,14 @@ The approved Khabo Kothay Database Foundation v1.1 documents are the source of t
 
 ## Reference Files
 
-1. KHABO_KOTHAY_DATABASE_FOUNDATION_v1.1_TECHNICAL_SPECIFICATION.docx
+1. KHABO_KOTHAY_DATABASE_FOUNDATION_v1.1_TECHNICAL_SPECIFICATION.docx (in this folder)
 
 Purpose:
 - Understand approved database concepts
 - Understand entities and relationships
 - Understand future data shapes
 
-2. KHABO_KOTHAY_DATABASE_FOUNDATION_v1.1_FINAL_MIGRATION.sql
+2. ../schema/migrations/KHABO_KOTHAY_DATABASE_FOUNDATION_v1_1_FINAL_MIGRATION.sql
 
 Purpose:
 - Reference approved SQL structure

@@ -26,8 +26,9 @@ import { fileURLToPath } from 'node:url';
 import XLSX from 'xlsx';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
-const XLSX_PATH = path.join(ROOT, 'Restaurants_Data_Dhaka_Banani_Gulshan_Clean.xlsx');
+// database/pipelines/generators/ → repo root is three levels up.
+const ROOT = path.resolve(__dirname, '..', '..', '..');
+const XLSX_PATH = path.join(ROOT, 'database', 'imports', 'source', 'Restaurants_Data_Dhaka_Banani_Gulshan_Clean.xlsx');
 
 const wb = XLSX.readFile(XLSX_PATH);
 const sheet = wb.Sheets['Restaurants'];
