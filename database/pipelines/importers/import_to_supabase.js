@@ -16,7 +16,23 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const BATCH_SIZE = 500;
-const IMPORT_DIR = path.join(__dirname, '..', '..', 'imports', 'pilot');
+
+// Import directory is configurable:
+//   --import-dir <rel-dir>   (relative to database/)  e.g. --import-dir imports/KHABO_KOTHAY_FULL_IMPORT_v2
+//   KK_IMPORT_DIR env
+// Default: imports/pilot (unchanged behavior).
+function resolveImportDir() {
+  const argIdx = process.argv.indexOf('--import-dir');
+  if (argIdx !== -1 && process.argv[argIdx + 1]) {
+    return path.resolve(__dirname, '..', '..', process.argv[argIdx + 1]);
+  }
+  if (process.env.KK_IMPORT_DIR) {
+    return path.resolve(__dirname, '..', '..', process.env.KK_IMPORT_DIR);
+  }
+  return path.join(__dirname, '..', '..', 'imports', 'pilot');
+}
+const IMPORT_DIR = resolveImportDir();
+const DRY_RUN = true; // this script is a validation/dry-run tool only — it never writes
 
 // Import order defined by dependency hierarchy
 const ENTITIES = [
@@ -53,6 +69,22 @@ function cleanRecord(record) {
   return cleaned;
 }
 
+// Fetch all existing ids of a table (paged; PostgREST caps a page at 1000 rows).
+async function fetchExistingIds(table) {
+  const ids = [];
+  const PAGE = 1000;
+  for (let offset = 0; ; offset += PAGE) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('id')
+      .range(offset, offset + PAGE - 1);
+    if (error) throw new Error(`Failed to read existing ids from ${table}: ${error.message}`);
+    ids.push(...(data || []).map(r => r.id));
+    if (!data || data.length < PAGE) break;
+  }
+  return new Set(ids);
+}
+
 // Validates and imports a single entity
 async function validateAndImportEntity(entity) {
   const filePath = path.join(IMPORT_DIR, entity.file);
@@ -61,15 +93,15 @@ async function validateAndImportEntity(entity) {
   // PRE-INSERT VALIDATION 1: Confirm file exists
   if (!fs.existsSync(filePath)) {
     console.error(`❌ Validation Failed: File not found -> ${filePath}`);
-    return false;
+    return { success: false, table: entity.table, error: 'File not found' };
   }
 
   const records = await parseCsv(filePath);
   console.log(`Found ${records.length} records in ${entity.file}.`);
 
   if (records.length === 0) {
-    console.log(`⚠️ No records to insert for '${entity.table}'. Skipping insert.`);
-    return true; 
+    console.log(`⚠️ No records for '${entity.table}'. Skipping.`);
+    return { success: true, table: entity.table, toInsert: 0, toUpdate: 0, current: undefined };
   }
 
   // PRE-INSERT VALIDATION 2: Confirm required columns
@@ -77,52 +109,52 @@ async function validateAndImportEntity(entity) {
   for (const col of entity.requiredCols) {
     if (!(col in firstRecord)) {
       console.error(`❌ Validation Failed: Required column missing -> '${col}' in ${entity.file}`);
-      return false;
+      return { success: false, table: entity.table, error: `Required column missing: ${col}` };
     }
   }
   console.log(`✅ Validation Passed: File exists and required columns are present.`);
 
   const cleanedRecords = records.map(cleanRecord);
 
-  // SUPABASE INSERT LOGIC (Disabled for safety, replace logging with actual call when ready)
-  let totalInserted = 0;
-  for (let i = 0; i < cleanedRecords.length; i += BATCH_SIZE) {
-    const batch = cleanedRecords.slice(i, i + BATCH_SIZE);
-    
-    /* === UNCOMMENT TO EXECUTE ACTUAL IMPORT ===
-    const { data, error } = await supabase
-      .from(entity.table)
-      .insert(batch)
-      .select('id');
-
-    if (error) {
-      console.error(`❌ Insert Error in ${entity.table}:`, error.message);
-      return false;
-    }
-    totalInserted += (data ? data.length : batch.length);
-    */
-    
-    // Dry-run simulation counting
-    totalInserted += batch.length; 
+  // Classify every row against the live table's existing ids (read-only):
+  //   new id      -> would INSERT
+  //   existing id -> would UPDATE (upsert onConflict 'id'; pilot rows preserved, no deletes)
+  const existing = await fetchExistingIds(entity.table);
+  let toInsert = 0;
+  let toUpdate = 0;
+  for (const r of cleanedRecords) {
+    if (r.id && existing.has(r.id)) toUpdate++;
+    else toInsert++;
   }
 
-  // POST-INSERT: Report inserted counts
-  console.log(`✅ [DRY RUN] Would insert ${totalInserted} records into '${entity.table}'.`);
-  return true;
+  console.log(`✅ [DRY RUN] ${records.length} rows | insert ${toInsert} | update (conflict, upserted) ${toUpdate} | conflicts ${toUpdate}`);
+  return { success: true, table: entity.table, toInsert, toUpdate, current: existing.size };
 }
 
 async function main() {
-  console.log("=== KHABO KOTHAY: SUPABASE IMPORT ===");
+  console.log("=== KHABO KOTHAY: SUPABASE IMPORT VALIDATION (DRY RUN — no writes) ===");
+  console.log(`Import dir: ${IMPORT_DIR}`);
 
+  const results = [];
   for (const entity of ENTITIES) {
-    const success = await validateAndImportEntity(entity);
-    if (!success) {
-      console.error(`\n🚨 Import halted at '${entity.table}' due to validation/insert failure. Dependency chain preserved.`);
+    const res = await validateAndImportEntity(entity);
+    if (!res.success) {
+      console.error(`\n🚨 Validation halted at '${entity.table}' due to validation/insert failure. Dependency chain preserved.`);
       process.exit(1);
+    }
+    results.push(res);
+  }
+
+  console.log("\n=== Final Expected Counts (current + inserts; updates are in-place) ===");
+  for (const res of results) {
+    if (typeof res.current === 'number') {
+      console.log(`  ${res.table}: ${res.current} -> ${res.current + res.toInsert}`);
+    } else {
+      console.log(`  ${res.table}: (no rows in package)`);
     }
   }
 
-  console.log("\n✅ Supabase import script finished executing (Dry Run).");
+  console.log("\n✅ Validation complete (Dry Run). No data was written.");
 }
 
 main().catch(err => {

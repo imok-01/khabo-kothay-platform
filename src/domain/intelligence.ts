@@ -140,9 +140,11 @@ export interface RestaurantIntelligence {
   /**
    * Provenance of the current metadata. 'seed' = curated by Khabo Kothay;
    * 'suggested' = a restaurant-admin suggestion merged after executive
-   * approval. Kept so the UI can be honest about who defined the attributes.
+   * approval; 'verified' = derived on the frontend from verified database
+   * attributes (cuisines / mealTypes / signatureDishes). Kept so the UI can
+   * be honest about who defined the attributes.
    */
-  provenance: 'seed' | 'suggested';
+  provenance: 'seed' | 'suggested' | 'verified';
 }
 
 /** A pending restaurant-admin request to change recommendation attributes. */

@@ -24,6 +24,10 @@ const SUPABASE_ANON_KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | un
 
 /** True when both URL and anon key are configured. */
 export function isSupabaseConfigured(): boolean {
+  // Unit tests always exercise the mock repositories — a developer's local
+  // .env must not flip the app into Supabase mode during the test run
+  // (repository seams select on this flag at module load).
+  if (import.meta.env.MODE === 'test') return false;
   return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 }
 

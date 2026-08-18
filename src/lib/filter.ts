@@ -50,7 +50,7 @@ export function filterRestaurants(
     // unpriced restaurant is never claimed to be (or not to be) a tier.
     if (criteria.budget && (r.priceForTwo <= 0 || r.budget !== criteria.budget)) return false;
     if (criteria.cuisine && !r.cuisines.includes(criteria.cuisine)) return false;
-    if (criteria.specialty && !(r.intelligence ?? getEffectiveIntelligence(r.id)).specialties.includes(criteria.specialty as never)) return false;
+    if (criteria.specialty && !(r.intelligence ?? getEffectiveIntelligence(r)).specialties.includes(criteria.specialty as never)) return false;
     if (criteria.mealType && !r.mealTypes.includes(criteria.mealType as MealType)) return false;
     if (criteria.vegOnly && (!r.isVeg || r.vegUnknown)) return false;
     if (criteria.nonVegOnly && (r.isVeg || r.vegUnknown)) return false;

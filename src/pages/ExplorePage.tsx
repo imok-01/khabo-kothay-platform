@@ -569,7 +569,17 @@ export default function ExplorePage() {
                 <button
                   type="button"
                   className="btn btn--ghost explore__map-toggle"
-                  onClick={() => setMapMode(mapMode === 'list' ? 'map' : 'list')}
+                  onClick={() => {
+                    const next = mapMode === 'list' ? 'map' : 'list';
+                    setMapMode(next);
+                    // The map panel replaces the list in the layout, so bring
+                    // it into view when toggling from a scrolled position.
+                    if (next === 'map') {
+                      requestAnimationFrame(() => {
+                        document.querySelector('.explore__map-view')?.scrollIntoView({ block: 'start' });
+                      });
+                    }
+                  }}
                   aria-pressed={mapMode === 'map'}
                 >
                   {mapMode === 'list' ? <MapIcon size={15} aria-hidden="true" /> : <List size={15} aria-hidden="true" />}
@@ -644,6 +654,28 @@ export default function ExplorePage() {
           </div>
 
           <div className={`explore__map-view ${mapMode === 'map' ? 'explore__map-view--active' : ''}`}>
+            {/* Mobile: the toolbar lives inside the list view, which is
+                hidden in map mode — so the map view carries its own
+                floating actions to return to the list / open filters. */}
+            <div className="explore__map-actions">
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => setMapMode('list')}
+                aria-pressed={mapMode === 'list'}
+              >
+                <List size={15} aria-hidden="true" />
+                List
+              </button>
+              <button
+                type="button"
+                className="btn btn--ghost"
+                onClick={() => setFiltersOpen(true)}
+              >
+                <SlidersHorizontal size={15} aria-hidden="true" />
+                Filters
+              </button>
+            </div>
             <div className="map-panel">
               {status === 'error' ? (
                 <div className="map-unavailable">

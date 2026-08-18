@@ -34,7 +34,12 @@ export type VerificationStatus =
   | 'RESTAURANT_CONFIRMED'
   | 'KK_VERIFIED'
   | 'STALE'
-  | 'CONFLICTING';
+  | 'CONFLICTING'
+  // Added by migration v1.2 (PROPOSED_1_2_price_verification_contract.sql):
+  // machine-extracted price awaiting review, and ambiguous price flagged for
+  // review. Live enum verified as 8 values.
+  | 'UNVERIFIED'
+  | 'NEEDS_REVIEW';
 
 export type LifecycleStatus = 'ACTIVE' | 'ARCHIVED' | 'REMOVED';
 
@@ -131,6 +136,11 @@ export type PriceObservationsRow = {
   currency: string | null;
   source_id: string | null;
   observed_at: string | null;
+  // Migration v1.2 — provenance fields: the raw source string is preserved
+  // verbatim (e.g. "Tk 494 / Tk 549") and the machine-extraction is marked
+  // UNVERIFIED until reviewed; ambiguous extracts are NEEDS_REVIEW.
+  raw_price: string | null;
+  verification_status: VerificationStatus;
 }
 
 export type ImageReferencesRow = {

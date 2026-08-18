@@ -1487,7 +1487,11 @@ button {
 
 .explore__layout {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  /* minmax(0, …) on both tracks lets the layout survive narrow desktop
+     widths: a fixed 300px filter column + fixed 420px map would shrink the
+     results below the card-grid minimum (~272px) and spill cards into the
+     map column at ~1081–1240px. */
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
   gap: var(--s5);
   align-items: start;
 }
@@ -1728,9 +1732,24 @@ button {
 /* Map / list split */
 .map-split {
   display: grid;
+  /* Wide desktops keep a full 420px map; a dedicated band below narrows it
+     so results never get crushed below the card-grid minimum (~272px). */
   grid-template-columns: minmax(0, 1fr) 420px;
   gap: var(--s5);
   align-items: stretch;
+}
+
+/* Narrow desktop (1081–1199): 420px map would squeeze the results below the
+   card minimum, so the map yields to 340px until there is room again. */
+@media (min-width: 1081px) and (max-width: 1199px) {
+  .map-split { grid-template-columns: minmax(0, 1fr) 340px; }
+}
+
+/* Grid items must be allowed to shrink below their content width, otherwise
+   the card grid (min track ~272px) overflows into the map column. */
+.explore__layout > *,
+.map-split > * {
+  min-width: 0;
 }
 
 .map-panel {
@@ -1739,6 +1758,7 @@ button {
   align-self: start;
   height: calc(100vh - var(--nav-h) - var(--s6));
   min-height: 420px;
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -1903,6 +1923,11 @@ button {
 }
 
 .explore__map-toggle { display: none; }
+
+/* Floating actions inside the map view — mobile-only (shown in the ≤768px
+   band, where the toolbar hides with the list in map mode). Hidden on
+   tablet/desktop where the map sits side-by-side with the results. */
+.explore__map-actions { display: none; }
 
 /* ============================================================
    DETAIL PAGE
@@ -2822,12 +2847,62 @@ button {
    RESPONSIVE
    ============================================================ */
 @media (max-width: 1080px) {
-  .explore__layout { grid-template-columns: 280px minmax(0, 1fr); }
-  .map-split { grid-template-columns: 1fr; }
-  .map-panel {
-    position: static;
-    height: 380px;
+  /* Tablet band (769–1080): the filter sidebar no longer fits beside a
+     usable results+map pair, so filters become a bottom-sheet drawer (same
+     pattern as mobile) and the map stays side-by-side with the results —
+     it never drops below the whole list. */
+  .explore__layout { grid-template-columns: 1fr; }
+
+  .filters {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    border-radius: 0;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform var(--dur-med) var(--ease);
+    top: auto;
+    /* Keep the base max-height (100vh − nav) so the sheet is bounded to
+       the viewport and scrolls internally instead of growing past the
+       top edge. */
+    padding-bottom: calc(var(--s8) + env(safe-area-inset-bottom));
   }
+
+  .filters--open { transform: translateY(0); }
+  .filters__head { border-radius: 0; }
+  .filters__close {
+    display: block;
+    background: var(--surface);
+    z-index: 2;
+    border-radius: var(--r-full);
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+  }
+  .filters__close:hover { background: var(--surface-2); }
+
+  .filters__scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 17, 12, 0.45);
+    z-index: 55;
+  }
+
+  .explore__filters-btn { display: inline-flex; }
+
+  .map-split { grid-template-columns: minmax(0, 1fr) 340px; }
+  .map-panel {
+    position: sticky;
+    top: calc(var(--nav-h) + var(--s3));
+    height: calc(100vh - var(--nav-h) - var(--s6));
+    min-height: 380px;
+  }
+
+  /* Tablet shows list + map side-by-side (no toggle), so a map mode carried
+     over from mobile must not hide the list with no way back. */
+  .explore__list-view--hidden { display: block; }
 }
 
 @media (max-width: 900px) {
@@ -2858,46 +2933,56 @@ button {
 
   .explore__layout { grid-template-columns: 1fr; }
 
-  .filters {
-    position: fixed;
-    inset: 0;
-    z-index: 60;
-    border-radius: 0;
-    overflow-y: auto;
-    transform: translateY(100%);
-    transition: transform var(--dur-med) var(--ease);
-    top: auto;
-    padding-bottom: calc(var(--s8) + env(safe-area-inset-bottom));
+  /* Mobile: the map becomes a toggleable full-width panel (List ⇄ Map).
+     Its height must clear both the fixed header and the fixed bottom nav
+     (otherwise the map's lower edge hides behind the nav). */
+  .map-split { grid-template-columns: 1fr; }
+  .map-panel {
+    position: static;
+    height: calc(100vh - var(--nav-h) - var(--bottom-nav-h) - var(--s4));
+    min-height: 60vh;
   }
-
-  .filters--open { transform: translateY(0); }
-  .filters__head { border-radius: 0; }
-  .filters__close {
-    display: block;
-    background: var(--surface);
-    z-index: 2;
-    border-radius: var(--r-full);
-    width: 32px;
-    height: 32px;
-    display: grid;
-    place-items: center;
-  }
-  .filters__close:hover { background: var(--surface-2); }
-
-  .filters__scrim {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(20, 17, 12, 0.45);
-    z-index: 55;
-  }
-
-  .explore__filters-btn { display: inline-flex; }
-  .explore__map-toggle { display: inline-flex; }
 
   .explore__map-view { display: none; }
   .explore__map-view--active { display: block; }
   .explore__list-view--hidden { display: none; }
+
+  /* When the map is toggled from a scrolled position, land it below the
+     fixed header (and the sticky toolbar) instead of at the viewport top. */
+  .explore__map-view { scroll-margin-top: calc(var(--nav-h) + var(--s2)); }
+
+  /* The toolbar is hidden with the list in map mode, so the map view gets
+     its own floating actions (back to list, open filters). */
+  .explore__map-actions {
+    position: fixed;
+    top: calc(var(--nav-h) + var(--s2));
+    left: var(--gutter);
+    z-index: 45;
+    display: flex;
+    gap: var(--s2);
+  }
+  .explore__map-actions .btn {
+    background: var(--surface);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border);
+  }
+
+  /* The map is a toggleable full-width panel on mobile — keep the toggle
+     visible (the tablet band hides it because the map sits side-by-side). */
+  .explore__map-toggle { display: inline-flex; }
+
+  /* Keep the Map/Filters actions reachable while browsing results: the
+     toolbar sticks below the fixed header instead of scrolling away with
+     the cards. Below the nav (50) and the filters drawer/scrim (55/60). */
+  .explore__toolbar {
+    position: sticky;
+    top: var(--nav-h);
+    z-index: 30;
+    background: var(--bg);
+    padding-block: var(--s2);
+    margin-bottom: var(--s2);
+    border-bottom: 1px solid var(--border);
+  }
 
   .detail__gallery { grid-template-columns: 1fr; }
   .detail__gallery-thumbs { grid-template-rows: none; grid-template-columns: repeat(3, 1fr); aspect-ratio: auto; }

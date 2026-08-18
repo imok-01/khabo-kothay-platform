@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getEffectiveIntelligence, attachIntelligence, attachIntelligenceToAll } from '../intelligence';
+import { getEffectiveIntelligence, deriveIntelligence, attachIntelligence, attachIntelligenceToAll } from '../intelligence';
 import { getSuggestions, saveSuggestions, upsertSuggestion, resolveSuggestion } from '../../store/demoDb';
 // Stable fixture dataset — the pre-migration demo set (see data/demo).
 import { restaurants } from '../../data/demo/demo-restaurants';
 import type { IntelligenceSuggestion } from '../../domain/intelligence';
+import type { Restaurant } from '../../types';
 
 beforeEach(() => {
   localStorage.clear();
@@ -84,5 +85,117 @@ describe('attachIntelligence', () => {
     expect(all.every((r) => r.intelligence)).toBe(true);
     expect(getSuggestions()).toEqual([]);
     expect(saveSuggestions).toBeDefined();
+  });
+});
+
+describe('deriveIntelligence', () => {
+  const base: Restaurant = {
+    id: 'derived-fixture',
+    name: 'Derived Fixture',
+    tagline: '',
+    description: '',
+    cuisines: [],
+    mealTypes: [],
+    budget: 'Mid-range',
+    priceForTwo: 0,
+    location: 'Banani',
+    address: '',
+    openingHours: '',
+    isVeg: false,
+    vegUnknown: true,
+    hasDelivery: false,
+    hasOutdoorSeating: false,
+    isFamilyFriendly: false,
+    vibes: [],
+    lat: 0,
+    lng: 0,
+    signatureDishes: [],
+    google: { placeId: 'p', mapsUri: '', rating: 0, reviewCount: 0, reviews: [], photos: [] },
+    khabo: { rating: 0, reviewCount: 0, reviews: [], photos: [], tags: [], highlights: [], signals: [], visitCount: 0, featured: false },
+  };
+
+  it('maps verified cuisines/mealTypes/signatureDishes into controlled vocabulary terms', () => {
+    const eff = deriveIntelligence({
+      ...base,
+      cuisines: ['South Indian', 'Pizza'],
+      mealTypes: ['Breakfast', 'Lunch'],
+      signatureDishes: ['Mysore Masala Dosa', 'Chicken Biryani', 'Fried Prawns'],
+      hasDelivery: true,
+      isFamilyFriendly: true,
+    });
+    expect(eff.specialties).toContain('Pizza'); // cuisine
+    expect(eff.specialties).toContain('Breakfast'); // mealType
+    expect(eff.specialties).toContain('Dosa'); // dish token
+    expect(eff.specialties).toContain('Biryani'); // dish token
+    expect(eff.specialties).toContain('Seafood'); // prawns token
+    expect(eff.specialties).not.toContain('Rolls'); // nothing claimed
+    expect(eff.bestFor).toEqual(['Breakfast', 'Lunch']);
+    expect(eff.diningFeatures).toContain('Delivery');
+    expect(eff.diningFeatures).toContain('Family friendly');
+    expect(eff.diningFeatures).not.toContain('Outdoor seating');
+    expect(eff.provenance).toBe('verified');
+  });
+
+  it('never invents claims for unmatched attributes', () => {
+    const eff = deriveIntelligence({
+      ...base,
+      cuisines: ['Bangladeshi'],
+      mealTypes: ['Dinner'],
+      signatureDishes: ['Grilled Chicken', 'Mixed Vegetable Curry & Rice'],
+    });
+    expect(eff.specialties).toContain('Curry'); // explicit dish token
+    expect(eff.specialties).not.toContain('Bangladeshi');
+    expect(eff.bestFor).toEqual(['Dinner', 'Late night']);
+    expect(eff.foodCharacteristics).toEqual([]);
+  });
+
+  it('returns an all-empty object when there is nothing verified to derive', () => {
+    const eff = deriveIntelligence(base);
+    expect(eff.specialties).toEqual([]);
+    expect(eff.bestFor).toEqual([]);
+    expect(eff.foodCharacteristics).toEqual([]);
+    expect(eff.diningFeatures).toEqual([]);
+    expect(eff.provenance).toBe('verified');
+  });
+});
+
+describe('getEffectiveIntelligence with a Restaurant object', () => {
+  it('falls back to verified derivation for venues without a curated seed', () => {
+    const dhaka: Restaurant = {
+      id: 'dhaka-venue',
+      name: 'Dhaka Venue',
+      tagline: '',
+      description: '',
+      cuisines: ['Seafood'],
+      mealTypes: ['Dessert'],
+      budget: 'Mid-range' as const,
+      priceForTwo: 0,
+      location: 'Gulshan',
+      address: '',
+      openingHours: '',
+      isVeg: false,
+      vegUnknown: true,
+      hasDelivery: false,
+      hasOutdoorSeating: false,
+      isFamilyFriendly: false,
+      vibes: [],
+      lat: 0,
+      lng: 0,
+      signatureDishes: ['Shahi Saffron Firni'],
+      google: { placeId: 'p', mapsUri: '', rating: 4.6, reviewCount: 900, reviews: [], photos: [] },
+      khabo: { rating: 0, reviewCount: 0, reviews: [], photos: [], tags: [], highlights: [], signals: [], visitCount: 0, featured: false },
+    };
+    const eff = getEffectiveIntelligence(dhaka);
+    expect(eff.specialties).toContain('Seafood');
+    expect(eff.specialties).toContain('Desserts');
+    expect(eff.foodCharacteristics).toContain('Dessert-focused');
+    expect(eff.provenance).toBe('verified');
+  });
+
+  it('keeps the curated seed authoritative when one exists', () => {
+    const arsalan = restaurants.find((r) => r.id === 'arsalan')!;
+    const eff = getEffectiveIntelligence(arsalan);
+    expect(eff.provenance).toBe('seed');
+    expect(eff.specialties).toContain('Biryani');
   });
 });

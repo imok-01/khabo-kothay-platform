@@ -210,7 +210,7 @@ export default function DiscoveryBuilder({ restaurants, initial = {}, geo }: Dis
         options: SPECIALTIES.map((s) => ({
           value: s,
           label: s,
-          count: restaurants.filter((r) => (r.intelligence ?? getEffectiveIntelligence(r.id)).specialties.includes(s)).length,
+          count: restaurants.filter((r) => (r.intelligence ?? getEffectiveIntelligence(r)).specialties.includes(s)).length,
         })),
       },
       {

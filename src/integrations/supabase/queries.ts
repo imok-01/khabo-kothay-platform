@@ -36,11 +36,26 @@ import type {
 /* Restaurants + identity                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * All restaurants, optionally filtered by lifecycle status. The FULL_IMPORT_v2
+ * pipeline marks every venue `UNKNOWN` (lifecycle not yet classified) — that
+ * must NOT hide a restaurant from discovery, so callers should omit the
+ * status filter unless they explicitly want a lifecycle subset.
+ */
 export async function selectRestaurants(status?: RestaurantsRow['status']): Promise<RestaurantsRow[]> {
   const supabase = await requireSupabase();
   let q = supabase.from('restaurants').select('*').order('name');
   if (status) q = q.eq('status', status);
   const { data, error } = await q;
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Lightweight id + name pairs — used to resolve a route slug to a UUID. */
+export async function selectRestaurantIds(): Promise<Array<{ id: string; name: string }>> {
+  const { data, error } = await (await requireSupabase())
+    .from('restaurants')
+    .select('id, name');
   if (error) throw error;
   return data ?? [];
 }
@@ -92,6 +107,95 @@ export async function selectTagsForRestaurant(restaurantId: string): Promise<Res
 }
 
 /* ------------------------------------------------------------------ */
+/* Batched variants — used by the catalogue path to avoid N+1 queries  */
+/* ------------------------------------------------------------------ */
+
+/** Split an id list into chunks that stay safely under PostgREST's URL-length limits. */
+function chunkIds(ids: string[], size = 80): string[][] {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += size) chunks.push(ids.slice(i, i + size));
+  return chunks;
+}
+
+async function inChunks<T extends { restaurant_id: string }>(
+  table: 'restaurant_sources' | 'restaurant_aliases' | 'restaurant_attributes' | 'restaurant_tags' | 'review_signals',
+  ids: string[],
+): Promise<T[]> {
+  if (ids.length === 0) return [];
+  const parts = await Promise.all(
+    chunkIds(ids).map(async (chunk) => {
+      const { data, error } = await (await requireSupabase())
+        .from(table)
+        .select('*')
+        .in('restaurant_id', chunk);
+      if (error) throw error;
+      return (data ?? []) as unknown as T[];
+    }),
+  );
+  return parts.flat();
+}
+
+/** All sources for many restaurants in a handful of batched requests. */
+export async function selectSourcesForRestaurants(restaurantIds: string[]): Promise<RestaurantSourcesRow[]> {
+  return inChunks<RestaurantSourcesRow>('restaurant_sources', restaurantIds);
+}
+
+export async function selectRestaurantAliasesForRestaurants(restaurantIds: string[]): Promise<RestaurantAliasesRow[]> {
+  return inChunks<RestaurantAliasesRow>('restaurant_aliases', restaurantIds);
+}
+
+export async function selectAttributesForRestaurants(restaurantIds: string[]): Promise<RestaurantAttributesRow[]> {
+  return inChunks<RestaurantAttributesRow>('restaurant_attributes', restaurantIds);
+}
+
+export async function selectTagsForRestaurants(restaurantIds: string[]): Promise<RestaurantTagsRow[]> {
+  return inChunks<RestaurantTagsRow>('restaurant_tags', restaurantIds);
+}
+
+export async function selectReviewSignalsForRestaurants(restaurantIds: string[]): Promise<ReviewSignalsRow[]> {
+  return inChunks<ReviewSignalsRow>('review_signals', restaurantIds);
+}
+
+/** Images for many restaurants (status filter preserved). */
+export async function selectImagesForRestaurants(
+  restaurantIds: string[],
+  statuses: ImageReferencesRow['status'][] = ['ACTIVE', 'PENDING'],
+): Promise<ImageReferencesRow[]> {
+  if (restaurantIds.length === 0) return [];
+  const parts = await Promise.all(
+    chunkIds(restaurantIds).map(async (chunk) => {
+      let q = (await requireSupabase())
+        .from('image_references')
+        .select('*')
+        .in('restaurant_id', chunk)
+        .in('status', statuses)
+        .order('created_at', { ascending: true });
+      const { data, error } = await q;
+      if (error) throw error;
+      return data ?? [];
+    }),
+  );
+  return parts.flat();
+}
+
+/** KK user reviews for many restaurants. */
+export async function selectUserReviewsForRestaurants(restaurantIds: string[]): Promise<UserReviewsRow[]> {
+  if (restaurantIds.length === 0) return [];
+  const parts = await Promise.all(
+    chunkIds(restaurantIds).map(async (chunk) => {
+      const { data, error } = await (await requireSupabase())
+        .from('user_reviews')
+        .select('*')
+        .in('restaurant_id', chunk)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    }),
+  );
+  return parts.flat();
+}
+
+/* ------------------------------------------------------------------ */
 /* Menus + pricing                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -132,14 +236,20 @@ export async function selectPriceObservationsForItems(itemIds: string[]): Promis
 
 export async function selectImagesForRestaurant(
   restaurantId: string,
-  status: ImageReferencesRow['status'] = 'ACTIVE',
+  statuses: ImageReferencesRow['status'][] = ['ACTIVE', 'PENDING'],
 ): Promise<ImageReferencesRow[]> {
-  const { data, error } = await (await requireSupabase())
+  // Status handling decision (approved): ACTIVE + PENDING images are displayed.
+  // PENDING means "available, not yet verified" — the UI may show the image but
+  // must never claim it is verified. Imported references are PENDING by design;
+  // filtering only ACTIVE would hide every available photo. REJECTED/ARCHIVED
+  // images are never shown.
+  let q = (await requireSupabase())
     .from('image_references')
     .select('*')
     .eq('restaurant_id', restaurantId)
-    .eq('status', status)
+    .in('status', statuses)
     .order('created_at', { ascending: true });
+  const { data, error } = await q;
   if (error) throw error;
   return data ?? [];
 }

@@ -694,7 +694,7 @@ function AttributesTab({ restaurantId, restaurantName }: { restaurantId: string;
         ))}
       </div>
       <p className="t-xs" style={{ color: 'var(--ink-faint)' }}>
-        Provenance: {effective.provenance === 'seed' ? 'curated by Khabo Kothay' : 'seed + approved restaurant suggestions'}.
+        Provenance: {effective.provenance === 'seed' ? 'curated by Khabo Kothay' : effective.provenance === 'verified' ? 'derived from verified database attributes' : 'seed + approved restaurant suggestions'}.
       </p>
 
       <h3 style={{ marginTop: 'var(--s5)' }}>Suggest a change</h3>

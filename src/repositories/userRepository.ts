@@ -42,26 +42,29 @@ export const mockUserRepository: UserRepository = {
 };
 
 class SupabaseUserRepository implements UserRepository {
-  // Sync paths have no backend equivalent until Supabase Auth is wired —
-  // throwing keeps a misconfiguration loud.
+  // Auth migration is a SEPARATE approved step. Until Supabase Auth is wired,
+  // the sync (demo) paths keep serving the localStorage store — the same D2
+  // pattern the menu repository uses. This keeps login/signup/profile/rewards
+  // working while Supabase is configured for restaurant discovery; throwing
+  // here would crash the whole app tree via AuthContext at startup.
   getUsers(): StoredUsers {
-    throw new Error('SupabaseUserRepository has no sync path — use the mock repository or wire Supabase Auth.');
+    return demoGetUsers();
   }
 
   getAllUsers(): DemoUser[] {
-    throw new Error('SupabaseUserRepository has no sync path.');
+    return demoGetAllUsers();
   }
 
-  saveUser(_user: DemoUser): void {
-    throw new Error('SupabaseUserRepository has no sync path.');
+  saveUser(user: DemoUser): void {
+    demoSaveUser(user);
   }
 
   getSession(): SessionUser | null {
-    return null;
+    return demoGetSession();
   }
 
-  setSession(_session: SessionUser | null): void {
-    // Supabase Auth owns sessions; nothing to persist here.
+  setSession(session: SessionUser | null): void {
+    demoSetSession(session);
   }
 
   async fetchProfileForUser(userId: string): Promise<MappedKkUser | null> {

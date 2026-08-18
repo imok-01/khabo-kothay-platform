@@ -2,6 +2,11 @@
  * Test setup: the demo store persists to localStorage, which the Node vitest
  * environment doesn't provide. Polyfill it with an in-memory implementation
  * so store-backed logic (rewards, menus, reviews) is testable.
+ *
+ * Supabase-mode gating for tests lives in isSupabaseConfigured() (client.ts),
+ * which returns false when import.meta.env.MODE === 'test' — unit tests run
+ * against the mock repositories deterministically, independent of any local
+ * .env.
  */
 
 class MemoryStorage {

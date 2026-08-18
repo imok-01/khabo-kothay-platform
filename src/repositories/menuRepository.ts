@@ -1,49 +1,65 @@
 import type { Menu } from '../domain/menu';
 import type { Restaurant } from '../types';
+import { restaurants as seedRestaurants } from '../data/restaurants';
 import { getMenuForRestaurant } from '../data/menus';
 import { getMenuOverride } from '../store/demoDb';
 import { isSupabaseConfigured } from '../integrations/supabase/client';
 import * as queries from '../integrations/supabase/queries';
 import { mapMenuRows } from '../transformers/menu';
+import { resolveRestaurantUuid } from './restaurantRepository';
 
 /**
  * MenuRepository — the seam between menu data and the UI.
  *
  *   MenuSection/pages → menuService → menuRepository → data source
  *
- * The current UI path is synchronous (`getEffectiveMenu`), which the mock
- * implementation serves from the seed + demo admin overrides. A future
- * Supabase backend is async, so the interface also exposes an optional async
- * `fetchMenuForRestaurant` — wiring it in later must not change the sync path
- * that the prerenderer depends on.
+ * Two accessors exist:
+ *
+ *  - `getEffectiveMenu(restaurant)` — the DEMO-STORE accessor (seed +
+ *    admin-authored localStorage overrides). It ALWAYS serves the demo store,
+ *    even when Supabase is configured, because its consumers are the demo
+ *    admin surfaces (Executive dashboard, Restaurant admin) that manage that
+ *    store, plus the build-time prerender snapshot (approved D2). It never
+ *    throws.
+ *
+ *  - `fetchMenuForRestaurant(restaurantId)` — the ASYNC path. Supabase when
+ *    configured (menus → menu_items → price_observations through the
+ *    transformer), the demo store otherwise. Public pages use this path so
+ *    they render real data when the backend is live.
  */
-
 export interface MenuRepository {
-  /** Sync effective menu (mock-backed today; used by UI + prerender). */
+  /** Demo-store accessor (seed + localStorage overrides) — never throws. */
   getEffectiveMenu(restaurant: Restaurant): Menu;
-  /** Future async path for a real backend (optional). */
-  fetchMenuForRestaurant?(restaurantId: string): Promise<Menu | null>;
+  /** Async menu load — Supabase when configured, demo store otherwise. */
+  fetchMenuForRestaurant(restaurantId: string): Promise<Menu | null>;
 }
 
-/** Mock implementation: admin-authored override wins over the seeded menu. */
+/** Demo store implementation: admin-authored override wins over the seed. */
 export const mockMenuRepository: MenuRepository = {
   getEffectiveMenu: (restaurant) => getMenuOverride(restaurant.id) ?? getMenuForRestaurant(restaurant),
+  async fetchMenuForRestaurant(restaurantId: string): Promise<Menu | null> {
+    const restaurant = seedRestaurants.find((r) => r.id === restaurantId);
+    if (!restaurant) return null;
+    return getMenuOverride(restaurant.id) ?? getMenuForRestaurant(restaurant);
+  },
 };
 
 /** Supabase implementation — reads menus/menu_items/price_observations. */
 class SupabaseMenuRepository implements MenuRepository {
-  getEffectiveMenu(_restaurant: Restaurant): Menu {
-    // The sync path has no backend equivalent; Supabase menus must be loaded
-    // through the async path and attached before render.
-    throw new Error(
-      'SupabaseMenuRepository has no sync getEffectiveMenu — load menus via fetchMenuForRestaurant first.',
-    );
+  // Sync accessor = the demo store (see class doc). Supabase has no sync
+  // path; the demo admin surfaces and the build snapshot keep using the demo
+  // store regardless of which backend is active.
+  getEffectiveMenu(restaurant: Restaurant): Menu {
+    return mockMenuRepository.getEffectiveMenu(restaurant);
   }
 
   async fetchMenuForRestaurant(restaurantId: string): Promise<Menu | null> {
+    // Route ids are slugs, but the DB keys menus by the restaurant UUID.
+    const uuid = await resolveRestaurantUuid(restaurantId);
+    if (!uuid) return null;
     const [menus, sources] = await Promise.all([
-      queries.selectMenusForRestaurant(restaurantId),
-      queries.selectSourcesForRestaurant(restaurantId),
+      queries.selectMenusForRestaurant(uuid),
+      queries.selectSourcesForRestaurant(uuid),
     ]);
     if (menus.length === 0) return null;
 

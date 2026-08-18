@@ -65,7 +65,7 @@ const INTEREST_SIGNALS: Record<string, string[]> = {
 };
 
 function intelligence(r: Restaurant) {
-  return r.intelligence ?? getEffectiveIntelligence(r.id);
+  return r.intelligence ?? getEffectiveIntelligence(r);
 }
 
 /** Structured occasion/time signals a vibe maps onto (bestFor vocabulary). */

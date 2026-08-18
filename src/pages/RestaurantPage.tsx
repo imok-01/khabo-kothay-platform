@@ -26,6 +26,7 @@ import { usePageTitle } from '../lib/usePageTitle';
 import { useFavorites } from '../context/FavoritesContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { useRestaurant } from '../hooks/useRestaurants';
+import { useRestaurantMenu } from '../hooks/useRestaurantMenu';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { selectRestaurantPhotos } from '../lib/photos';
 import { getOffersForRestaurant } from '../hooks/useOffers';
@@ -44,7 +45,7 @@ import FetchError from '../components/FetchError';
 import { SkeletonDetail } from '../components/Skeleton';
 import MenuSection from '../components/MenuSection';
 import DishPriceHistory from '../components/DishPriceHistory';
-import { getEffectiveMenu, priceChange } from '../lib/menu';
+import { priceChange } from '../lib/menu';
 import type { MenuItem } from '../domain/menu';
 import WriteReview from '../components/WriteReview';
 import { useRestaurantDrafts } from '../hooks/useDrafts';
@@ -56,6 +57,7 @@ import { businessStatusLabel, liveOpenNowLabel, mergeLiveGoogle } from '../lib/l
 export default function RestaurantPage() {
   const { id } = useParams<{ id: string }>();
   const { status, data: restaurant, reload } = useRestaurant(id);
+  const menuState = useRestaurantMenu(restaurant ?? undefined);
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addRecent } = useRecentlyViewed();
   const geo = useGeolocation();
@@ -115,15 +117,15 @@ export default function RestaurantPage() {
     [imageCount],
   );
 
-  // Menu dishes used to connect offers to dish price context. Runs before any
-  // early return so the hook order stays stable.
+  // Menu dishes used to connect offers to dish price context. Loaded through
+  // the same async menu path as MenuSection (Supabase when configured).
   const menuDishes = useMemo(() => {
-    if (!restaurant) return new Map<string, MenuItem>();
-    const menu = getEffectiveMenu(restaurant);
     const byName = new Map<string, MenuItem>();
-    for (const c of menu.categories) for (const d of c.dishes) byName.set(d.name.toLowerCase(), d);
+    if (menuState.menu) {
+      for (const c of menuState.menu.categories) for (const d of c.dishes) byName.set(d.name.toLowerCase(), d);
+    }
     return byName;
-  }, [restaurant]);
+  }, [menuState.menu]);
 
   // "Directions with my location": request the location explicitly, then open
   // navigation with it as the origin once the browser answers. If location is
@@ -455,7 +457,15 @@ export default function RestaurantPage() {
               )}
             </section>
 
-            <MenuSection restaurant={restaurant} priceDish={priceDish} onPriceDish={setPriceDish} website={websiteUrl} />
+            <MenuSection
+              restaurant={restaurant}
+              menu={menuState.menu}
+              menuStatus={menuState.status}
+              onRetryMenu={menuState.reload}
+              priceDish={priceDish}
+              onPriceDish={setPriceDish}
+              website={websiteUrl}
+            />
 
             <section className="detail__section">
               <div className="detail__section-head">

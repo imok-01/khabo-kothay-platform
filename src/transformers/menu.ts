@@ -38,13 +38,26 @@ function sourceLabel(sourceId: string | null, sources: RestaurantSourcesRow[]): 
   return 'other';
 }
 
+/**
+ * Price observations that may be shown as a price. UNVERIFIED is the honest
+ * machine-extraction default; the verified grades are displayable too.
+ * NEEDS_REVIEW / CONFLICTING / STALE / UNKNOWN observations are NEVER shown
+ * as a price — an ambiguous extract must not look like a fact.
+ */
+const DISPLAYABLE_STATUSES = new Set([
+  'UNVERIFIED',
+  'SOURCE_VERIFIED',
+  'RESTAURANT_CONFIRMED',
+  'KK_VERIFIED',
+]);
+
 function mapPriceSnapshots(
   observations: PriceObservationsRow[],
   sourceLabelFor: (sourceId: string | null) => MenuSource,
 ): PriceSnapshot[] {
-  const sorted = [...observations].sort((a, b) =>
-    (a.observed_at ?? '').localeCompare(b.observed_at ?? ''),
-  );
+  const sorted = observations
+    .filter((o) => DISPLAYABLE_STATUSES.has(o.verification_status))
+    .sort((a, b) => (a.observed_at ?? '').localeCompare(b.observed_at ?? ''));
   return sorted.map((o) => ({
     id: o.id,
     price: o.price ?? 0,

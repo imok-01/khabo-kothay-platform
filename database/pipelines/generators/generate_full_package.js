@@ -22,7 +22,22 @@ const { v5: uuidv5 } = require('uuid');
 // CONFIG — IDENTICAL TO PILOT
 // ============================================================
 const NAMESPACE = 'ce5cb46e-302f-4e0c-b938-1a7faf364718';
-const OUTPUT_DIR = path.join(__dirname, '..', '..', 'imports', 'full');
+
+// Output directory — default preserves the v1 layout (imports/full). Override
+// with `--output <rel-dir>` (relative to database/) or KK_OUTPUT_DIR so a new
+// package version (e.g. KHABO_KOTHAY_FULL_IMPORT_v2) can be generated without
+// overwriting the previous one.
+function resolveOutputDir() {
+  const argIdx = process.argv.indexOf('--output');
+  if (argIdx !== -1 && process.argv[argIdx + 1]) {
+    return path.resolve(__dirname, '..', '..', process.argv[argIdx + 1]);
+  }
+  if (process.env.KK_OUTPUT_DIR) {
+    return path.resolve(__dirname, '..', '..', process.env.KK_OUTPUT_DIR);
+  }
+  return path.join(__dirname, '..', '..', 'imports', 'full');
+}
+const OUTPUT_DIR = resolveOutputDir();
 
 // ============================================================
 // UTILITY FUNCTIONS — IDENTICAL TO PILOT
@@ -74,6 +89,27 @@ function writeCsvFile(filePath, headers, rows) {
     lines.push(headers.map(h => csvEscape(row[h])).join(','));
   }
   fs.writeFileSync(filePath, lines.join('\r\n'), 'utf8');
+}
+
+// Minimal CSV line parser (handles quoted fields with commas) — used for the
+// approved alias mapping file.
+function parseCsvLine(line) {
+  const out = [];
+  let cur = '';
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { cur += '"'; i++; }
+        else inQ = false;
+      } else cur += ch;
+    } else if (ch === '"') inQ = true;
+    else if (ch === ',') { out.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
 }
 
 // ============================================================
@@ -235,8 +271,43 @@ async function run() {
   }
 
   // ============================================================
-  // MENU MAPPING
+  // MENU MAPPING (with approved alias recovery)
   // ============================================================
+  // Approved alias mapping source of truth:
+  // imports/source/restaurant_menu_aliases.csv
+  // Exact normalized match only — NO fuzzy matching that could create wrong
+  // restaurant links. Fail loudly if an alias target is not a known identity.
+  const aliasFile = path.join(__dirname, '..', '..', 'imports', 'source', 'restaurant_menu_aliases.csv');
+  const aliasRows = [];
+  if (fs.existsSync(aliasFile)) {
+    const lines = fs.readFileSync(aliasFile, 'utf8').split(/\r?\n/).filter(l => l.trim().length > 0);
+    for (let i = 1; i < lines.length; i++) {
+      const f = parseCsvLine(lines[i]);
+      if (f.length < 4) throw new Error(`Malformed alias row in ${aliasFile}: ${lines[i]}`);
+      aliasRows.push({
+        restaurant_id: f[0].trim(),
+        restaurant_name: f[1].trim(),
+        source_alias: f[2].trim(),
+        confidence: f[3].trim()
+      });
+    }
+  }
+  const aliasByNorm = new Map();
+  for (const a of aliasRows) aliasByNorm.set(normalizeName(a.source_alias), a);
+
+  // Fail loudly: every alias target must resolve to an existing identity
+  const aliasErrors = [];
+  for (const a of aliasRows) {
+    if (!selectedNames.has(normalizeName(a.restaurant_name))) {
+      aliasErrors.push(`'${a.source_alias}' -> '${a.restaurant_name}'`);
+    }
+  }
+  if (aliasErrors.length > 0) {
+    throw new Error(`ALIAS FAILURE — target restaurant identity not found for: ${aliasErrors.join('; ')}`);
+  }
+
+  const aliasRecovered = new Map(); // target restaurant name -> recovered row count
+  const aliasNoOp = [];
   const menuGroups = new Map();
   for (const mRow of menuRows) {
     const sourceRestaurant = cleanStr(mRow['Restaurant Name']);
@@ -244,7 +315,22 @@ async function run() {
     if (selectedNames.has(norm)) {
       if (!menuGroups.has(norm)) menuGroups.set(norm, []);
       menuGroups.get(norm).push(mRow);
+      continue;
     }
+    // Unmatched by name — try the approved alias map (exact normalized match only)
+    const alias = aliasByNorm.get(norm);
+    if (alias) {
+      const targetNorm = normalizeName(alias.restaurant_name);
+      if (!menuGroups.has(targetNorm)) menuGroups.set(targetNorm, []);
+      menuGroups.get(targetNorm).push(mRow);
+      aliasRecovered.set(alias.restaurant_name, (aliasRecovered.get(alias.restaurant_name) || 0) + 1);
+      continue;
+    }
+    // Still unmatched → intentionally excluded (ambiguous / no evidence)
+  }
+  // Aliases whose source name was ALREADY matched are no-ops — never reassign
+  for (const a of aliasRows) {
+    if (selectedNames.has(normalizeName(a.source_alias))) aliasNoOp.push(a.source_alias);
   }
 
   const menusRows = [];
@@ -438,12 +524,23 @@ async function run() {
   console.log('\n--- 6. Ambiguous Prices (NEEDS_REVIEW) ---');
   console.log(`  ${ambiguousPriceEntries.length} price observation(s) stored with price=NULL, verification_status=NEEDS_REVIEW.`);
 
-  // 7. Missing values summary
+  // 7. Alias recovery report
+  console.log('\n--- 7. Alias Recovery ---');
+  for (const a of aliasRows) {
+    const rec = aliasRecovered.get(a.restaurant_name) || 0;
+    const status = aliasNoOp.includes(a.source_alias)
+      ? 'NO-OP (source name already matched — no reassignment)'
+      : (rec > 0 ? `RECOVERED ${rec} row(s)` : '0 rows');
+    console.log(`  ${a.source_alias} → ${a.restaurant_name}: ${status}`);
+  }
+  console.log(`  Total recovered rows via aliases: ${[...aliasRecovered.values()].reduce((s, n) => s + n, 0)}`);
+
+  // 8. Missing values summary
   const missingByField = {};
   for (const m of missingValues) {
     missingByField[m.field] = (missingByField[m.field] || 0) + 1;
   }
-  console.log('\n--- 7. Missing Source Values ---');
+  console.log('\n--- 8. Missing Source Values ---');
   for (const [field, count] of Object.entries(missingByField)) {
     console.log(`  ${field}: ${count} restaurants missing`);
   }

@@ -39,22 +39,25 @@ export const mockReviewRepository: ReviewRepository = {
 };
 
 class SupabaseReviewRepository implements ReviewRepository {
-  // Sync paths have no backend equivalent; Supabase reviews flow through the
-  // async methods below. Throwing keeps a misconfiguration loud.
-  getForRestaurant(_restaurantId: string): UserReview[] {
-    throw new Error('SupabaseReviewRepository has no sync path — use fetchUserReviewsForRestaurant.');
+  // KK user reviews are part of the demo auth system until Supabase Auth is
+  // wired (a separate approved step). The sync paths keep serving the demo
+  // store — same D2 pattern as the user repository — so the detail page's
+  // review section never crashes while Supabase serves restaurant data.
+  // The async paths below are the Supabase future paths.
+  getForRestaurant(restaurantId: string): UserReview[] {
+    return getUserReviews().filter((r) => r.restaurantId === restaurantId);
   }
 
   getAll(): UserReview[] {
-    throw new Error('SupabaseReviewRepository has no sync path.');
+    return getUserReviews();
   }
 
-  upsert(_review: UserReview): void {
-    throw new Error('SupabaseReviewRepository has no sync path — use insertForUser.');
+  upsert(review: UserReview): void {
+    upsertUserReview(review);
   }
 
-  remove(_id: string): void {
-    throw new Error('SupabaseReviewRepository has no sync path.');
+  remove(id: string): void {
+    deleteUserReview(id);
   }
 
   async fetchUserReviewsForRestaurant(restaurantId: string): Promise<KhaboReview[]> {

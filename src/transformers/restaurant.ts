@@ -48,8 +48,26 @@ export interface RestaurantDbBundle {
 /* Attribute helpers                                                   */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Attribute values are stored JSON-encoded (the generator writes
+ * `JSON.stringify(val)` into the JSONB column), so a string value arrives as
+ * `"\"Restaurant\""` — a JSON string literal. Decode it so `attrString` /
+ * `attrStringArray` / `attrNumber` / `attrBool` see real values. Non-JSON
+ * strings (e.g. a plain URL) pass through untouched.
+ */
+function decodeAttributeValue(v: unknown): unknown {
+  if (typeof v !== 'string') return v;
+  try {
+    return JSON.parse(v);
+  } catch {
+    return v;
+  }
+}
+
 function attr(bundle: RestaurantDbBundle, key: string): unknown {
-  return bundle.attributes.find((a) => a.attribute_key === key)?.attribute_value ?? null;
+  return decodeAttributeValue(
+    bundle.attributes.find((a) => a.attribute_key === key)?.attribute_value ?? null,
+  );
 }
 
 function attrString(bundle: RestaurantDbBundle, key: string): string | undefined {
@@ -77,12 +95,25 @@ function pick<T extends string>(values: string[], allowed: readonly T[]): T[] {
   return values.filter((v): v is T => (allowed as readonly string[]).includes(v));
 }
 
-/** Deterministic route slug fallback when the import stored no `slug`. */
-function slugify(name: string): string {
+/**
+ * Slugify — MUST stay byte-identical to the dataset generator's slugify
+ * (scripts/generate-dhaka-data.mjs): NFKD normalize, strip non-ASCII,
+ * collapse non-alphanumerics to '-', trim, cap at 64 chars. The mock dataset
+ * ids are generator slugify(name) (verified 206/206), so deriving the same
+ * slug from the database name keeps route ids identical between the mock and
+ * Supabase sources — no broken links, no favourites drift.
+ *
+ * Exported so the repository can resolve a route slug back to the database
+ * row (fetchById) using the same deterministic function.
+ */
+export function slugify(name: string): string {
   const slug = name
     .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^\x00-\x7f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
   return slug || 'restaurant';
 }
 
@@ -106,7 +137,9 @@ function mapGooglePhotos(rows: ImageReferencesRow[]): ExternalPhoto[] {
 }
 
 export function mapGoogleBlock(bundle: RestaurantDbBundle): ExternalPlaceData | undefined {
-  const googleSource = bundle.sources.find((s) => s.source_type.toLowerCase() === 'google');
+  // The approved import stores source_type as 'GOOGLE_PLACES'; the frontend
+  // only surfaces a google block when an actual Google source row exists.
+  const googleSource = bundle.sources.find((s) => s.source_type.toLowerCase().includes('google'));
   if (!googleSource?.source_identifier) return undefined;
 
   const googleSignal = bundle.reviewSignals.find((s) => s.source?.toLowerCase().includes('google'));
@@ -200,7 +233,9 @@ export function mapRestaurantRows(bundle: RestaurantDbBundle): Restaurant {
     priceForTwo,
     location: r.area ?? attrString(bundle, 'location') ?? '',
     address: r.address ?? '',
-    openingHours: attrString(bundle, 'openingHours') ?? '',
+    // The pipeline stores the hours under the snake_case key; accept both
+    // spellings so mock-shaped data (camelCase) keeps working too.
+    openingHours: attrString(bundle, 'opening_hours') ?? attrString(bundle, 'openingHours') ?? '',
     isVeg,
     vegUnknown: attrBool(bundle, 'vegUnknown') ?? (attr(bundle, 'isVeg') === null),
     hasDelivery: attrBool(bundle, 'hasDelivery') ?? false,

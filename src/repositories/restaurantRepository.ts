@@ -4,7 +4,7 @@ import { attachIntelligence, attachIntelligenceToAll } from '../lib/intelligence
 import { applyApprovedDraft } from '../lib/restaurantDraft';
 import { isSupabaseConfigured } from '../integrations/supabase/client';
 import * as queries from '../integrations/supabase/queries';
-import { mapRestaurantRows } from '../transformers/restaurant';
+import { mapRestaurantRows, slugify } from '../transformers/restaurant';
 
 /**
  * RestaurantRepository — the single seam between restaurant data and the
@@ -118,21 +118,91 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
   }
 
   async fetchAll(): Promise<Restaurant[]> {
-    const rows = await queries.selectRestaurants('ACTIVE');
-    return Promise.all(
-      rows.map(async (row) => {
-        const bundle = await fetchBundle(row.id);
-        return mapRestaurantRows({ ...bundle, restaurant: row });
-      }),
-    );
+    // No lifecycle-status filter: FULL_IMPORT_v2 marks every venue `UNKNOWN`
+    // (not yet classified), which must not hide restaurants from discovery.
+    const rows = await queries.selectRestaurants();
+    const ids = rows.map((r) => r.id);
+
+    // Batched fetch: one request per table (chunked) instead of an N+1
+    // fan-out per restaurant. 206 restaurants x 8 tables would otherwise
+    // fire ~1,600 parallel requests and exhaust the browser connection pool
+    // (ERR_INSUFFICIENT_RESOURCES).
+    const [sources, aliases, attributes, tags, images, reviewSignals, userReviews] = await Promise.all([
+      queries.selectSourcesForRestaurants(ids),
+      queries.selectRestaurantAliasesForRestaurants(ids),
+      queries.selectAttributesForRestaurants(ids),
+      queries.selectTagsForRestaurants(ids),
+      queries.selectImagesForRestaurants(ids),
+      queries.selectReviewSignalsForRestaurants(ids),
+      queries.selectUserReviewsForRestaurants(ids),
+    ]);
+
+    const byRestaurant = <T extends { restaurant_id: string }>(list: T[]): Map<string, T[]> => {
+      const map = new Map<string, T[]>();
+      for (const item of list) {
+        const bucket = map.get(item.restaurant_id) ?? [];
+        bucket.push(item);
+        map.set(item.restaurant_id, bucket);
+      }
+      return map;
+    };
+    const sourcesMap = byRestaurant(sources);
+    const aliasesMap = byRestaurant(aliases);
+    const attributesMap = byRestaurant(attributes);
+    const tagsMap = byRestaurant(tags);
+    const imagesMap = byRestaurant(images);
+    const signalsMap = byRestaurant(reviewSignals);
+    const reviewsMap = byRestaurant(userReviews);
+
+    return rows
+      .map((row) =>
+        attachIntelligence(
+          mapRestaurantRows({
+            restaurant: row,
+            sources: sourcesMap.get(row.id) ?? [],
+            aliases: aliasesMap.get(row.id) ?? [],
+            attributes: attributesMap.get(row.id) ?? [],
+            tags: tagsMap.get(row.id) ?? [],
+            images: imagesMap.get(row.id) ?? [],
+            reviewSignals: signalsMap.get(row.id) ?? [],
+            userReviews: reviewsMap.get(row.id) ?? [],
+          }),
+        ),
+      );
   }
 
   async fetchById(id: string): Promise<Restaurant | undefined> {
-    const restaurant = await queries.selectRestaurantById(id);
+    const uuid = await resolveRestaurantUuid(id);
+    if (!uuid) return undefined;
+    const restaurant = await queries.selectRestaurantById(uuid);
     if (!restaurant) return undefined;
-    const bundle = await fetchBundle(id);
-    return mapRestaurantRows({ ...bundle, restaurant });
+    const bundle = await fetchBundle(uuid);
+    return attachIntelligence(mapRestaurantRows({ ...bundle, restaurant }));
   }
+}
+
+/**
+ * Resolve a frontend route id to the database UUID.
+ *
+ * Route ids are slugs derived from the restaurant name (`slugify`, the same
+ * function the mock dataset uses), while the database primary key is a UUID.
+ * Try a direct UUID lookup first (cheap, and correct once slugs are ever
+ * stored explicitly); otherwise scan the id+name pairs and match the
+ * deterministic slug. If no row resolves, return null (404 path).
+ *
+ * Only hit the UUID column when the id is actually UUID-shaped — PostgREST
+ * answers 400 for any other value, which would throw instead of falling
+ * through to slug resolution.
+ */
+export async function resolveRestaurantUuid(id: string): Promise<string | null> {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  if (isUuid) {
+    const direct = await queries.selectRestaurantById(id);
+    if (direct) return direct.id;
+  }
+  const pairs = await queries.selectRestaurantIds();
+  const match = pairs.find((p) => slugify(p.name) === id);
+  return match?.id ?? null;
 }
 
 /** Active repository — Supabase when configured, the mock otherwise. */

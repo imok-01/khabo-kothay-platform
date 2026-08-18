@@ -15,7 +15,23 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const BATCH_SIZE = 500;
-const IMPORT_DIR = path.join(__dirname, '..', '..', 'imports', 'pilot');
+
+// Import directory is configurable:
+//   --import-dir <rel-dir>   (relative to database/)  e.g. --import-dir imports/KHABO_KOTHAY_FULL_IMPORT_v2
+//   KK_IMPORT_DIR env
+// Default: imports/pilot (unchanged behavior).
+function resolveImportDir() {
+  const argIdx = process.argv.indexOf('--import-dir');
+  if (argIdx !== -1 && process.argv[argIdx + 1]) {
+    return path.resolve(__dirname, '..', '..', process.argv[argIdx + 1]);
+  }
+  if (process.env.KK_IMPORT_DIR) {
+    return path.resolve(__dirname, '..', '..', process.env.KK_IMPORT_DIR);
+  }
+  return path.join(__dirname, '..', '..', 'imports', 'pilot');
+}
+const IMPORT_DIR = resolveImportDir();
+const DRY_RUN = process.argv.includes('--dry-run');
 
 const ENTITIES = [
   { table: 'restaurants', file: '01_restaurants_preview.csv' },
@@ -47,76 +63,159 @@ function cleanRecord(record) {
   return cleaned;
 }
 
-async function insertEntity(entity) {
+// Fetch all existing ids of a table (paged; PostgREST caps a page at 1000 rows).
+async function fetchExistingIds(table) {
+  const ids = [];
+  const PAGE = 1000;
+  for (let offset = 0; ; offset += PAGE) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('id')
+      .range(offset, offset + PAGE - 1);
+    if (error) throw new Error(`Failed to read existing ids from ${table}: ${error.message}`);
+    ids.push(...(data || []).map(r => r.id));
+    if (!data || data.length < PAGE) break;
+  }
+  return new Set(ids);
+}
+
+// Upsert strategy (safe, deterministic-id based):
+//   - rows whose id already exists -> UPDATE (pilot rows preserved, no deletes)
+//   - rows with a new id          -> INSERT
+//   - no data is ever removed
+async function upsertEntity(entity) {
   const filePath = path.join(IMPORT_DIR, entity.file);
   if (!fs.existsSync(filePath)) {
     return { success: false, table: entity.table, error: 'File missing' };
   }
 
   const records = await parseCsv(filePath);
-  if (records.length === 0) return { success: true, table: entity.table, count: 0 };
+  if (records.length === 0) {
+    return { success: true, table: entity.table, count: 0, inserted: 0, updated: 0 };
+  }
 
   const cleanedRecords = records.map(cleanRecord);
-  let totalInserted = 0;
+  const existing = await fetchExistingIds(entity.table);
 
+  // Classify every row first: id present live -> would UPDATE; otherwise INSERT.
+  let inserted = 0;
+  let updated = 0;
+  for (const r of cleanedRecords) {
+    if (r.id && existing.has(r.id)) updated++;
+    else inserted++;
+  }
+
+  if (DRY_RUN) {
+    return { success: true, table: entity.table, count: records.length, inserted, updated };
+  }
+
+  let total = 0;
   for (let i = 0; i < cleanedRecords.length; i += BATCH_SIZE) {
     const batch = cleanedRecords.slice(i, i + BATCH_SIZE);
     const { data, error } = await supabase
       .from(entity.table)
-      .insert(batch)
+      .upsert(batch, { onConflict: 'id' })
       .select('id');
 
     if (error) {
       return { success: false, table: entity.table, error: error.message };
     }
-    totalInserted += (data ? data.length : batch.length);
+    // Track ids as we go so later batches classify correctly.
+    for (const r of batch) if (r.id) existing.add(r.id);
+    total += (data ? data.length : batch.length);
   }
 
-  return { success: true, table: entity.table, count: totalInserted };
+  return { success: true, table: entity.table, count: total, inserted, updated };
+}
+
+async function currentCounts() {
+  const counts = {};
+  for (const entity of ENTITIES) {
+    const { count, error } = await supabase.from(entity.table).select('*', { count: 'exact', head: true });
+    counts[entity.table] = error ? -1 : (count || 0);
+  }
+  return counts;
 }
 
 async function main() {
+  console.log(`=== KHABO KOTHAY: SUPABASE IMPORT (${DRY_RUN ? 'DRY RUN — no writes' : 'LIVE UPSERT'}) ===`);
+  console.log(`Import dir: ${IMPORT_DIR}`);
+
+  const before = await currentCounts();
+  console.log('\n=== Current live row counts ===');
+  for (const [t, c] of Object.entries(before)) console.log(`  ${t}: ${c}`);
+
+  // Pre-import snapshot (LIVE mode only — before any write): counts + existing
+  // ids for rollback, saved to imports/logs/YYYY-MM-DD_FULL_IMPORT_BACKUP.json.
+  if (!DRY_RUN) {
+    const logsDir = path.join(__dirname, '..', '..', 'imports', 'logs');
+    fs.mkdirSync(logsDir, { recursive: true });
+    const ids = {};
+    for (const entity of ENTITIES) {
+      ids[entity.table] = [...(await fetchExistingIds(entity.table))];
+    }
+    const stamp = new Date().toISOString();
+    const backup = {
+      created_at: stamp,
+      import_dir: IMPORT_DIR,
+      mode: 'UPSERT (onConflict id) — no deletes',
+      counts: before,
+      existing_ids: ids
+    };
+    const backupPath = path.join(logsDir, `${stamp.slice(0, 10)}_FULL_IMPORT_BACKUP.json`);
+    fs.writeFileSync(backupPath, JSON.stringify(backup, null, 2));
+    console.log(`\n📦 Pre-import snapshot saved: ${backupPath}`);
+  }
+
   const results = [];
   let halted = false;
 
   for (const entity of ENTITIES) {
-    console.log(`Inserting into ${entity.table}...`);
-    const res = await insertEntity(entity);
+    const res = await upsertEntity(entity);
     results.push(res);
-    
+
     if (!res.success) {
-      console.error(`Error inserting into ${entity.table}: ${res.error}`);
+      console.error(`Error processing ${entity.table}: ${res.error}`);
       halted = true;
       break;
     }
+
+    const expectedFinal = before[entity.table] + res.inserted;
+    console.log(`\n${entity.table}: ${res.count} rows in CSV | insert ${res.inserted} | update (conflict, upserted) ${res.updated} | expected final ${expectedFinal}`);
   }
 
-  console.log("\n=== Import Results ===");
+  console.log('\n=== Summary ===');
   for (const res of results) {
-    console.log(`${res.table}: ${res.success ? 'SUCCESS (' + res.count + ' rows)' : 'FAILED (' + res.error + ')'}`);
+    console.log(`${res.table}: ${res.success ? 'SUCCESS' : 'FAILED (' + res.error + ')'} | insert ${res.inserted} | update ${res.updated}`);
   }
 
   if (halted) {
-    console.log("\nImport halted due to an error.");
+    console.log('\nImport halted due to an error.');
     process.exit(1);
   }
 
-  console.log("\n=== Final Database Row Verification ===");
-  for (const entity of ENTITIES) {
-    const { count, error } = await supabase.from(entity.table).select('*', { count: 'exact', head: true });
-    if (error) {
-      console.log(`${entity.table}: Error fetching count -> ${error.message}`);
-    } else {
-      console.log(`${entity.table} count: ${count}`);
+  if (DRY_RUN) {
+    console.log('\n✅ DRY RUN COMPLETE — no data was written.');
+    console.log('Final expected counts (current + inserts, updates are in-place):');
+    for (const res of results) {
+      const expectedFinal = before[res.table] + res.inserted;
+      console.log(`  ${res.table}: ${before[res.table]} -> ${expectedFinal}`);
     }
+    return;
   }
 
-  console.log("\n=== Special Verification: Handi Combo - 1 ===");
+  console.log('\n=== Final Database Row Verification ===');
+  const after = await currentCounts();
+  for (const [t, c] of Object.entries(after)) {
+    console.log(`${t} count: ${c}`);
+  }
+
+  console.log('\n=== Special Verification: Handi Combo - 1 ===');
   const { data, error } = await supabase
     .from('price_observations')
     .select('price, raw_price, verification_status')
     .eq('raw_price', 'Tk 494 / Tk 549');
-    
+
   if (error) {
     console.log("Error querying Handi Combo - 1:", error.message);
   } else if (data && data.length > 0) {
@@ -129,4 +228,7 @@ async function main() {
   }
 }
 
-main();
+main().catch(err => {
+  console.error("Fatal exception:", err);
+  process.exit(1);
+});
