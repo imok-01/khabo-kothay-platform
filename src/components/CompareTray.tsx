@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Scale, X } from 'lucide-react';
 import { getAllRestaurantsSync } from '../hooks/useRestaurantData';
 import type { Restaurant } from '../types';
-import { formatCurrency } from '../lib/format';
+import { priceForTwoDisplay } from '../lib/priceDisplay';
 import { useCompare } from '../context/CompareContext';
 import { effectiveRating, effectiveReviewCount } from '../lib/ratings';
 import RatingStars from './RatingStars';
@@ -75,7 +75,7 @@ export default function CompareTray() {
               </thead>
               <tbody>
                 <tr><th>Rating</th>{items.map((r) => <td key={r.id}><RatingStars rating={effectiveRating(r)} showValue /></td>)}</tr>
-                <tr><th>Price for two</th>{items.map((r) => <td key={r.id}>{r.priceForTwo > 0 ? formatCurrency(r.priceForTwo) : 'Not listed'}</td>)}</tr>
+                <tr><th>Price for two</th>{items.map((r) => <td key={r.id}>{priceForTwoDisplay(r).label}</td>)}</tr>
                 <tr><th>Cuisine</th>{items.map((r) => <td key={r.id}>{r.cuisines.join(', ') || '—'}</td>)}</tr>
                 <tr><th>Location</th>{items.map((r) => <td key={r.id}>{r.location || '—'}</td>)}</tr>
                 <tr><th>Hours</th>{items.map((r) => <td key={r.id}>{r.openingHours || 'Not recorded'}</td>)}</tr>

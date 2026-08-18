@@ -1,4 +1,5 @@
 import type { Budget, MealType, Restaurant, Vibe } from '../types';
+import type { CostEstimate } from '../lib/costEstimate';
 import type { ExternalPlaceData, ExternalPhoto, KhaboPlaceData, KhaboReview, PriceObservation } from '../domain/place';
 import type { RestaurantIntelligence } from '../domain/intelligence';
 import type {
@@ -42,6 +43,12 @@ export interface RestaurantDbBundle {
   /** KK user reviews — optional, detail views fetch them. */
   userReviews?: UserReviewsRow[];
   intelligence?: RestaurantIntelligence;
+  /**
+   * Menu-derived cost-for-two estimate, computed by the repository from the
+   * venue's menu rows (mapMenuRows + estimateCostForTwo). Mapped through
+   * untouched — the transformer never derives prices itself.
+   */
+  menuEstimate?: CostEstimate;
 }
 
 /* ------------------------------------------------------------------ */
@@ -264,8 +271,10 @@ export function mapRestaurantRows(bundle: RestaurantDbBundle): Restaurant {
     google: mapGoogleBlock(bundle),
     khabo: mapKhaboBlock(bundle),
     // NOTE: menus are NOT attached here — they flow through menuService →
-    // menuRepository (seed/admin-override today, Supabase menus later).
+    // menuRepository (seed/admin-override today, Supabase menus later). The
+    // repository computes the menu-derived estimate and passes it through.
     intelligence: bundle.intelligence,
+    menuEstimate: bundle.menuEstimate,
   };
 }
 

@@ -17,12 +17,12 @@ import {
   ExternalLink,
   Languages,
 } from 'lucide-react';
-import { BUDGET_LABEL, type Restaurant } from '../types';
+import type { Restaurant } from '../types';
 import { formatAddress, formatCurrency, pluralize } from '../lib/format';
-import { MARKET } from '../lib/market';
 import { recommendSimilar } from '../lib/recommendations';
 import { formatOpeningHours, openNowLabel } from '../lib/openHours';
 import { estimateCostForTwo } from '../lib/costEstimate';
+import { budgetDisplay, priceForTwoDisplay } from '../lib/priceDisplay';
 import { usePageTitle } from '../lib/usePageTitle';
 import { useFavorites } from '../context/FavoritesContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
@@ -190,9 +190,10 @@ export default function RestaurantPage() {
   const businessStatus = businessStatusLabel(liveGoogle.snapshot?.businessStatus);
   const offers = getOffersForRestaurant(effective.id);
   const myReviewsHere = userReviews.filter((r) => r.restaurantId === effective.id);
-  const budgetSymbol = MARKET.currencySymbol.repeat(
-    restaurant.budget === 'Budget' ? 1 : restaurant.budget === 'Mid-range' ? 2 : restaurant.budget === 'Premium' ? 3 : 4,
-  );
+
+  // Budget stat — verified from a curated price, menu-estimated otherwise,
+  // never a fabricated tier.
+  const budgetStat = budgetDisplay(restaurant);
 
   // Clean, source-verified address lines (street → area → city).
   const addressLines = formatAddress({
@@ -213,9 +214,9 @@ export default function RestaurantPage() {
       ? 'Hours being verified'
       : 'Not recorded';
 
-  // Estimated cost for two — derived from the loaded menu, never labelled
-  // verified. Uses the same async menu path as MenuSection.
-  const costEstimate = estimateCostForTwo(menuState.menu);
+  // Estimated cost for two — derived from the loaded menu (or the estimate
+  // already attached at the repository seam), never labelled verified.
+  const costEstimate = restaurant.menuEstimate ?? estimateCostForTwo(menuState.menu);
 
   // Directions start from the user's location only when they've shared it;
   // otherwise Google Maps prompts for a starting point — never fake an origin.
@@ -349,9 +350,8 @@ export default function RestaurantPage() {
           <div className="detail__stats">
             <div className="stat">
               <span className="stat__label">Budget</span>
-              <span className="stat__value">{restaurant.priceForTwo > 0 ? `${budgetSymbol} ${restaurant.budget}` : 'Not listed'}</span>
-              {restaurant.priceForTwo > 0 && <span className="stat__sub">{BUDGET_LABEL[restaurant.budget]}</span>}
-              {restaurant.priceForTwo <= 0 && <span className="stat__sub">No verified price data yet</span>}
+              <span className="stat__value">{budgetStat.label}</span>
+              {budgetStat.sub && <span className="stat__sub">{budgetStat.sub}</span>}
             </div>
             <div className="stat">
               <span className="stat__label">Cost for two</span>
@@ -366,7 +366,7 @@ export default function RestaurantPage() {
                 {restaurant.priceForTwo > 0
                   ? 'approx. without drinks'
                   : costEstimate
-                    ? `estimated from ${costEstimate.itemCount} menu items · not verified`
+                    ? 'Estimated from menu prices · not verified'
                     : 'no listed price range yet'}
               </span>
             </div>
@@ -678,7 +678,7 @@ export default function RestaurantPage() {
                 {googleView?.phone && (
                   <li><span>Phone</span><strong>{googleView.phone}</strong></li>
                 )}
-                <li><span>Price for two</span><strong>{restaurant.priceForTwo > 0 ? formatCurrency(restaurant.priceForTwo) : 'Not listed'}</strong></li>
+                <li><span>Price for two</span><strong>{priceForTwoDisplay(restaurant).label}</strong></li>
                 <li>
                   <span>Dining</span>
                   <strong>{[!restaurant.vegUnknown && restaurant.isVeg && 'Veg', restaurant.hasOutdoorSeating && 'Outdoor seating', restaurant.hasDelivery && 'Delivery', restaurant.isFamilyFriendly && 'Family friendly'].filter(Boolean).join(' · ') || (restaurant.hasDelivery ? 'Dine-in & delivery' : 'Dine-in')}</strong>

@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
 // Stable fixture dataset — the pre-migration demo set (see data/demo).
 import { restaurants } from '../../data/demo/demo-restaurants';
+import type { Restaurant } from '../../types';
 import { filterRestaurants, uncoveredFilters } from '../filter';
 
 const bhojohori = restaurants.find((r) => r.id === 'bhojohori-manna')!;
 const shiraz = restaurants.find((r) => r.id === 'shiraz-golden-restaurant')!;
 const balaji = restaurants.find((r) => r.id === 'havmor-dosa')!;
+
+function withEstimate(
+  r: Restaurant,
+  estimate: NonNullable<Restaurant['menuEstimate']>,
+): Restaurant {
+  return { ...r, priceForTwo: 0, menuEstimate: estimate };
+}
 
 describe('filterRestaurants', () => {
   it('returns everything with no criteria', () => {
@@ -98,6 +106,28 @@ describe('filterRestaurants', () => {
   it('combines price cap with amenity criteria (AND)', () => {
     const result = filterRestaurants(restaurants, { delivery: true, maxPriceForTwo: 500 });
     expect(result.every((r) => r.hasDelivery && r.priceForTwo <= 500)).toBe(true);
+  });
+
+  it('matches the budget filter from a menu estimate when there is no curated price', () => {
+    // median 450 → per person 450 → Mid-range (estimated).
+    const venue = withEstimate(bhojohori, { low: 900, high: 1080, median: 450, itemCount: 6, confidence: 'medium' });
+    const result = filterRestaurants([venue], { budget: 'Mid-range' });
+    expect(result.map((r) => r.id)).toEqual([bhojohori.id]);
+    // The same venue must NOT match another tier.
+    expect(filterRestaurants([venue], { budget: 'Premium' })).toHaveLength(0);
+  });
+
+  it('matches a price cap from a menu estimate when there is no curated price', () => {
+    // estimate base (low) 900 → matches "Under ৳1000", misses "Under ৳500".
+    const venue = withEstimate(bhojohori, { low: 900, high: 1080, median: 450, itemCount: 6, confidence: 'medium' });
+    expect(filterRestaurants([venue], { maxPriceForTwo: 1000 })).toHaveLength(1);
+    expect(filterRestaurants([venue], { maxPriceForTwo: 500 })).toHaveLength(0);
+  });
+
+  it('never claims a tier or a price cap for a venue with no price signal at all', () => {
+    const unpriced = { ...bhojohori, priceForTwo: 0, menuEstimate: undefined };
+    expect(filterRestaurants([unpriced], { budget: 'Budget' })).toHaveLength(0);
+    expect(filterRestaurants([unpriced], { maxPriceForTwo: 50000 })).toHaveLength(0);
   });
 
   it('filters by structured family-friendly metadata', () => {

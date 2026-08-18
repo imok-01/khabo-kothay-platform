@@ -1,5 +1,6 @@
 import type { ExternalPlaceData, KhaboPlaceData, MenuInfo, PriceObservation } from './domain/place';
 import type { RestaurantIntelligence } from './domain/intelligence';
+import type { CostEstimate } from './lib/costEstimate';
 
 export type Budget = 'Budget' | 'Mid-range' | 'Premium' | 'Luxury';
 
@@ -73,6 +74,13 @@ export interface Restaurant {
   menu?: MenuInfo;
   /** Readiness: our own timestamped price observations, if we ever record them. */
   priceObservations?: PriceObservation[];
+  /**
+   * Menu-derived cost-for-two estimate, attached at the repository seam so
+   * every surface (cards, map popups, detail) shares one source. Computed
+   * from the venue's own menu price observations via estimateCostForTwo —
+   * it is an ESTIMATE and must never be labelled "verified" in the UI.
+   */
+  menuEstimate?: CostEstimate;
   /**
    * Structured recommendation metadata — Khabo Kothay executive-approved
    * specialties, occasions, food characteristics and dining features. Populated

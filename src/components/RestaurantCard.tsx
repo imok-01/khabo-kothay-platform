@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Clock, Banknote, Scale, Heart, Bookmark } from 'lucide-react';
 import type { Restaurant } from '../types';
-import { formatCurrency } from '../lib/format';
+import { priceForTwoDisplay } from '../lib/priceDisplay';
 import { formatDistance } from '../lib/geo';
 import { openNowLabel } from '../lib/openHours';
 import { useFavorites } from '../context/FavoritesContext';
@@ -37,6 +37,7 @@ export default function RestaurantCard({ restaurant, distanceKm, match, highligh
   const openStatus = openNowLabel(restaurant.openingHours);
   const offers = getOffersForRestaurant(restaurant.id);
   const image = selectRestaurantPhotos(restaurant, 'card').photos[0];
+  const price = priceForTwoDisplay(restaurant);
 
   return (
     <article className={`card card--${variant} ${highlighted ? 'card--highlighted' : ''}`}>
@@ -76,7 +77,7 @@ export default function RestaurantCard({ restaurant, distanceKm, match, highligh
             </span>
             <span className="card__meta-item">
               <Banknote size={13} aria-hidden="true" />
-              {restaurant.priceForTwo > 0 ? `${formatCurrency(restaurant.priceForTwo)} for two` : 'Price not listed'}
+              {price.label}
             </span>
             {openStatus && (
               <span className={`open-badge ${openStatus === 'Open now' ? 'open-badge--yes' : ''}`}>

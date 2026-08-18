@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapMenuRows, type MenuDbBundle } from '../menu';
+import { mapMenuRows, menuCostEstimate, type MenuDbBundle } from '../menu';
 import type { MenuItemsRow, MenusRow, PriceObservationsRow, RestaurantSourcesRow } from '../../integrations/supabase/database.types';
 
 function bundle(): MenuDbBundle {
@@ -89,5 +89,23 @@ describe('mapMenuRows', () => {
     expect(biryani.priceHistory).toHaveLength(1);
     expect(biryani.priceHistory[0].price).toBe(280);
     expect(biryani.price).toBe(280);
+  });
+});
+
+describe('menuCostEstimate', () => {
+  it('derives the range from the venue menu prices, same as the detail page', () => {
+    // Prices: Chicken Biryani 320, Mutton Biryani unknown (0), Firni unknown.
+    // Only the 320 price counts → median 320 → low 640, high 770 (×2 × 1.2).
+    expect(menuCostEstimate(bundle())).toEqual({
+      low: 640,
+      high: 770,
+      median: 320,
+      itemCount: 1,
+      confidence: 'low',
+    });
+  });
+
+  it('returns undefined when the venue has no menu rows', () => {
+    expect(menuCostEstimate({ menus: [], itemsByMenu: {}, observationsByItem: {}, sources: [] })).toBeUndefined();
   });
 });

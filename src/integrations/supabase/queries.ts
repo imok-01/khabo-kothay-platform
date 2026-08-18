@@ -219,15 +219,54 @@ export async function selectMenuItemsForMenu(menuId: string): Promise<MenuItemsR
   return data ?? [];
 }
 
+/** All menus for many restaurants (batched — catalogue path, no N+1). */
+export async function selectMenusForRestaurants(restaurantIds: string[]): Promise<MenusRow[]> {
+  if (restaurantIds.length === 0) return [];
+  const parts = await Promise.all(
+    chunkIds(restaurantIds).map(async (chunk) => {
+      const { data, error } = await (await requireSupabase())
+        .from('menus')
+        .select('*')
+        .in('restaurant_id', chunk)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    }),
+  );
+  return parts.flat();
+}
+
+/** All items for many menus (batched — catalogue path, no N+1). */
+export async function selectMenuItemsForMenus(menuIds: string[]): Promise<MenuItemsRow[]> {
+  if (menuIds.length === 0) return [];
+  const parts = await Promise.all(
+    chunkIds(menuIds).map(async (chunk) => {
+      const { data, error } = await (await requireSupabase())
+        .from('menu_items')
+        .select('*')
+        .in('menu_id', chunk)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    }),
+  );
+  return parts.flat();
+}
+
 export async function selectPriceObservationsForItems(itemIds: string[]): Promise<PriceObservationsRow[]> {
   if (itemIds.length === 0) return [];
-  const { data, error } = await (await requireSupabase())
-    .from('price_observations')
-    .select('*')
-    .in('menu_item_id', itemIds)
-    .order('observed_at', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  const parts = await Promise.all(
+    chunkIds(itemIds).map(async (chunk) => {
+      const { data, error } = await (await requireSupabase())
+        .from('price_observations')
+        .select('*')
+        .in('menu_item_id', chunk)
+        .order('observed_at', { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    }),
+  );
+  return parts.flat();
 }
 
 /* ------------------------------------------------------------------ */

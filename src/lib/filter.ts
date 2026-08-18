@@ -5,6 +5,7 @@ import { getEffectiveIntelligence } from './intelligence';
 import { matchesCuisine } from './cuisineAliases';
 import { distanceKm } from './geo';
 import { effectiveRating } from './ratings';
+import { budgetTier, costForTwoValue } from './priceDisplay';
 
 export interface FilterCriteria {
   query?: string;
@@ -47,9 +48,10 @@ export function filterRestaurants(
   const q = (criteria.query ?? '').trim().toLowerCase();
   return list.filter((r) => {
     if (criteria.location && r.location !== criteria.location) return false;
-    // Budget filters only consider venues whose price we actually know — an
-    // unpriced restaurant is never claimed to be (or not to be) a tier.
-    if (criteria.budget && (r.priceForTwo <= 0 || r.budget !== criteria.budget)) return false;
+    // Budget filters match the tier a venue qualifies for — verified when a
+    // curated price exists, menu-estimated otherwise. A venue with no price
+    // signal at all (no curated price, no menu) never claims a tier.
+    if (criteria.budget && budgetTier(r) !== criteria.budget) return false;
     if (criteria.cuisine && !matchesCuisine(r, criteria.cuisine)) return false;
     if (criteria.specialty && !(r.intelligence ?? getEffectiveIntelligence(r)).specialties.includes(criteria.specialty as never)) return false;
     if (criteria.mealType && !r.mealTypes.includes(criteria.mealType as MealType)) return false;
@@ -65,8 +67,13 @@ export function filterRestaurants(
       const until = minutesUntilOpen(r.openingHours, now);
       if (until === null || until === 0 || until <= 60) return false;
     }
-    // Unknown price (priceForTwo <= 0) never matches a cost cap.
-    if (criteria.maxPriceForTwo !== undefined && (r.priceForTwo <= 0 || r.priceForTwo > criteria.maxPriceForTwo)) return false;
+    // Cost caps compare against the representative cost-for-two (curated price,
+    // or the menu estimate's base when there is no curated price). A venue with
+    // no price signal never matches a cap.
+    if (criteria.maxPriceForTwo !== undefined) {
+      const cap = costForTwoValue(r);
+      if (cap === undefined || cap > criteria.maxPriceForTwo) return false;
+    }
     if (criteria.outdoorSeating && !r.hasOutdoorSeating) return false;
     if (criteria.delivery && !r.hasDelivery) return false;
     if (criteria.familyFriendly && !r.isFamilyFriendly) return false;

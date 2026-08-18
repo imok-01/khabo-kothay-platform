@@ -1,4 +1,5 @@
 import type { Menu, MenuCategory, MenuItem, MenuSource, PriceSnapshot } from '../domain/menu';
+import { estimateCostForTwo, type CostEstimate } from '../lib/costEstimate';
 import type {
   MenuItemsRow,
   MenusRow,
@@ -132,4 +133,14 @@ export function mapMenuRows(bundle: MenuDbBundle): Menu | undefined {
     categories,
     updatedAt: latestAt ?? '',
   };
+}
+
+/**
+ * Menu-derived cost-for-two estimate for a restaurant, from the same raw
+ * rows the Menu mapping uses. Reuses mapMenuRows + estimateCostForTwo — the
+ * exact pipeline the detail page runs against its loaded menu — so cards,
+ * map popups and the detail page all agree on the number.
+ */
+export function menuCostEstimate(bundle: MenuDbBundle): CostEstimate | undefined {
+  return estimateCostForTwo(mapMenuRows(bundle)) ?? undefined;
 }

@@ -35,10 +35,10 @@ describe('estimateCostForTwo', () => {
   });
 
   it('computes the range from the median main-dish price × 2', () => {
-    // Median of [100, 120, 140] = 120 → low 240, high 360.
+    // Median of [100, 120, 140] = 120 → low 240, high 290 (×2 × 1.2).
     const estimate = estimateCostForTwo(menu([{ name: 'Main Courses', prices: [100, 120, 140] }]));
     expect(estimate?.low).toBe(240);
-    expect(estimate?.high).toBe(360);
+    expect(estimate?.high).toBe(290);
     expect(estimate?.median).toBe(120);
   });
 
@@ -51,6 +51,30 @@ describe('estimateCostForTwo', () => {
       ]),
     );
     expect(estimate?.itemCount).toBe(2);
+  });
+
+  it('excludes tea/coffee, sides, sauces and add-ons', () => {
+    const estimate = estimateCostForTwo(
+      menu([
+        { name: 'Main Course', prices: [300, 320, 340] },
+        { name: 'Tea & Coffee', prices: [30, 40] },
+        { name: 'Starters', prices: [80, 90] },
+        { name: 'Sides', prices: [50, 60] },
+        { name: 'Sauces & Dips', prices: [20] },
+        { name: 'Add-ons', prices: [25, 30] },
+      ]),
+    );
+    expect(estimate?.itemCount).toBe(3);
+  });
+
+  it('trims obvious price outliers before trusting the median', () => {
+    // Raw median of [300, 400, 500, 700, 2000] = 500; the 2000 family platter
+    // is >2× that and is dropped → median 450 → low 900, high 1080.
+    const estimate = estimateCostForTwo(menu([{ name: 'Mains', prices: [300, 400, 500, 700, 2000] }]));
+    expect(estimate?.median).toBe(450);
+    expect(estimate?.low).toBe(900);
+    expect(estimate?.high).toBe(1080);
+    expect(estimate?.itemCount).toBe(5);
   });
 
   it('ignores zero-priced dishes (unknown ≠ free)', () => {

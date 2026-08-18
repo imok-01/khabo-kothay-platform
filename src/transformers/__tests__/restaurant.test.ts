@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deliveryFromServiceOptions, mapRestaurantRows, type RestaurantDbBundle } from '../restaurant';
+import type { CostEstimate } from '../../lib/costEstimate';
 import type {
   ImageReferencesRow,
   RestaurantAttributesRow,
@@ -80,6 +81,17 @@ describe('mapRestaurantRows', () => {
   it('never invents price — missing priceForTwo attribute stays 0', () => {
     const bundle = baseBundle({ attributes: baseBundle().attributes.filter((a) => a.attribute_key !== 'priceForTwo') });
     expect(mapRestaurantRows(bundle).priceForTwo).toBe(0);
+  });
+
+  it('passes the repository-computed menu estimate through untouched', () => {
+    const estimate: CostEstimate = { low: 800, high: 1200, median: 500, itemCount: 6, confidence: 'medium' };
+    const r = mapRestaurantRows(baseBundle({ menuEstimate: estimate }));
+    expect(r.menuEstimate).toEqual(estimate);
+  });
+
+  it('leaves menuEstimate absent when the repository has no menu data', () => {
+    const r = mapRestaurantRows(baseBundle());
+    expect(r.menuEstimate).toBeUndefined();
   });
 
   it('keeps meal types inside the controlled vocabulary only', () => {

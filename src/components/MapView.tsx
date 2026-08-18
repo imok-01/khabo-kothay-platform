@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Crosshair, Maximize2, Navigation, X } from 'lucide-react';
 import type { Restaurant } from '../types';
-import { formatCurrency } from '../lib/format';
+import { priceForTwoDisplay } from '../lib/priceDisplay';
 import { formatDistance } from '../lib/geo';
 import { selectRestaurantPhotos } from '../lib/photos';
 import MapSurface from '../map/MapProvider';
@@ -158,7 +158,7 @@ export default function MapView({
             <div className="map-preview__meta">
               <span>{active.cuisines.slice(0, 2).join(' · ')}</span>
               <span>·</span>
-              <span>{active.priceForTwo > 0 ? `${formatCurrency(active.priceForTwo)} for two` : 'Price not listed'}</span>
+              <span>{priceForTwoDisplay(active).label}</span>
               {distances?.has(active.id) && (
                 <>
                   <span>·</span>

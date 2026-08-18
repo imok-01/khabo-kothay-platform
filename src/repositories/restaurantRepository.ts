@@ -1,10 +1,19 @@
 import type { Restaurant } from '../types';
 import { restaurants as seedRestaurants } from '../data/restaurants';
 import { attachIntelligence, attachIntelligenceToAll } from '../lib/intelligence';
+import { estimateCostForTwo, type CostEstimate } from '../lib/costEstimate';
 import { applyApprovedDraft } from '../lib/restaurantDraft';
 import { isSupabaseConfigured } from '../integrations/supabase/client';
 import * as queries from '../integrations/supabase/queries';
 import { mapRestaurantRows, slugify } from '../transformers/restaurant';
+import { menuCostEstimate } from '../transformers/menu';
+import { mockMenuRepository } from './menuRepository';
+import type {
+  MenuItemsRow,
+  MenusRow,
+  PriceObservationsRow,
+  RestaurantSourcesRow,
+} from '../integrations/supabase/database.types';
 
 /**
  * RestaurantRepository — the single seam between restaurant data and the
@@ -56,14 +65,27 @@ async function withLatency<T>(key: string, produce: () => T): Promise<T> {
 export const mockRestaurantRepository: RestaurantRepository = {
   // Executive-approved profile drafts override the base record at this seam,
   // so Explore cards, detail pages and Home all see the same published data.
-  allSync: () => attachIntelligenceToAll(seedRestaurants.map((r) => applyApprovedDraft({ ...r }))),
+  allSync: () =>
+    attachIntelligenceToAll(seedRestaurants.map((r) => withMenuEstimate(applyApprovedDraft({ ...r })))),
   byIdSync: (id) => {
     const found = seedRestaurants.find((r) => r.id === id);
-    return found ? attachIntelligence(applyApprovedDraft({ ...found })) : undefined;
+    return found ? attachIntelligence(withMenuEstimate(applyApprovedDraft({ ...found }))) : undefined;
   },
   fetchAll: () => withLatency('restaurants:all', () => mockRestaurantRepository.allSync()),
   fetchById: (id) => withLatency(`restaurants:${id}`, () => mockRestaurantRepository.byIdSync(id)),
 };
+
+/**
+ * Menu-derived cost-for-two estimate attached to the domain object at the
+ * repository seam. Uses the same demo-store menu accessor the detail page
+ * renders, so cards and detail pages agree — and it never fabricates a price:
+ * when the venue has no menu data the estimate stays absent and the UI says
+ * "Price not listed".
+ */
+function withMenuEstimate(restaurant: Restaurant): Restaurant {
+  const estimate = estimateCostForTwo(mockMenuRepository.getEffectiveMenu(restaurant));
+  return estimate ? { ...restaurant, menuEstimate: estimate } : restaurant;
+}
 
 /* ------------------------------------------------------------------ */
 /* Supabase implementation (approved v1.1 schema)                      */
@@ -127,7 +149,7 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
     // fan-out per restaurant. 206 restaurants x 8 tables would otherwise
     // fire ~1,600 parallel requests and exhaust the browser connection pool
     // (ERR_INSUFFICIENT_RESOURCES).
-    const [sources, aliases, attributes, tags, images, reviewSignals, userReviews] = await Promise.all([
+    const [sources, aliases, attributes, tags, images, reviewSignals, userReviews, menus] = await Promise.all([
       queries.selectSourcesForRestaurants(ids),
       queries.selectRestaurantAliasesForRestaurants(ids),
       queries.selectAttributesForRestaurants(ids),
@@ -135,7 +157,15 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
       queries.selectImagesForRestaurants(ids),
       queries.selectReviewSignalsForRestaurants(ids),
       queries.selectUserReviewsForRestaurants(ids),
+      queries.selectMenusForRestaurants(ids),
     ]);
+
+    // Menu price observations for the whole catalogue — used to attach the
+    // menu-derived cost estimate to every restaurant, so cards (which only
+    // ever hold the Restaurant domain object) can show a real price instead
+    // of "Price not listed".
+    const menuItems = await queries.selectMenuItemsForMenus(menus.map((m) => m.id));
+    const observations = await queries.selectPriceObservationsForItems(menuItems.map((i) => i.id));
 
     const byRestaurant = <T extends { restaurant_id: string }>(list: T[]): Map<string, T[]> => {
       const map = new Map<string, T[]>();
@@ -153,6 +183,9 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
     const imagesMap = byRestaurant(images);
     const signalsMap = byRestaurant(reviewSignals);
     const reviewsMap = byRestaurant(userReviews);
+    const menusByRestaurant = byRestaurant(menus);
+    const itemsByMenu = groupBy(menuItems, (i) => i.menu_id);
+    const observationsByItem = groupBy(observations, (o) => o.menu_item_id);
 
     return rows
       .map((row) =>
@@ -166,6 +199,7 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
             images: imagesMap.get(row.id) ?? [],
             reviewSignals: signalsMap.get(row.id) ?? [],
             userReviews: reviewsMap.get(row.id) ?? [],
+            menuEstimate: menuEstimateForRestaurant(row.id, menusByRestaurant, itemsByMenu, observationsByItem, sourcesMap.get(row.id) ?? []),
           }),
         ),
       );
@@ -177,8 +211,64 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
     const restaurant = await queries.selectRestaurantById(uuid);
     if (!restaurant) return undefined;
     const bundle = await fetchBundle(uuid);
-    return attachIntelligence(mapRestaurantRows({ ...bundle, restaurant }));
+
+    // Same menu-derived estimate as the catalogue path, so a restaurant
+    // fetched by id carries the identical price source as its card.
+    const menus = await queries.selectMenusForRestaurant(uuid);
+    const menuItems = await queries.selectMenuItemsForMenus(menus.map((m) => m.id));
+    const observations = await queries.selectPriceObservationsForItems(menuItems.map((i) => i.id));
+    const menuEstimate = menuEstimateForRestaurant(
+      uuid,
+      new Map([[uuid, menus]]),
+      groupBy(menuItems, (i) => i.menu_id),
+      groupBy(observations, (o) => o.menu_item_id),
+      bundle.sources,
+    );
+
+    return attachIntelligence(mapRestaurantRows({ ...bundle, restaurant, menuEstimate }));
   }
+}
+
+/** Group a row list by an arbitrary key (menu id, item id…). */
+function groupBy<T, K extends string>(list: T[], key: (item: T) => K): Map<K, T[]> {
+  const map = new Map<K, T[]>();
+  for (const item of list) {
+    const k = key(item);
+    const bucket = map.get(k) ?? [];
+    bucket.push(item);
+    map.set(k, bucket);
+  }
+  return map;
+}
+
+/**
+ * Menu-derived cost estimate for one restaurant from the catalogue's grouped
+ * menu rows. Reuses the same Menu mapping + estimate the detail page uses
+ * (menuCostEstimate → mapMenuRows + estimateCostForTwo) so every surface
+ * agrees on the number. Returns undefined (honest "no data") when the venue
+ * has no menu rows.
+ */
+function menuEstimateForRestaurant(
+  restaurantId: string,
+  menusByRestaurant: Map<string, MenusRow[]>,
+  itemsByMenu: Map<string, MenuItemsRow[]>,
+  observationsByItem: Map<string, PriceObservationsRow[]>,
+  sources: RestaurantSourcesRow[],
+): CostEstimate | undefined {
+  const menus = menusByRestaurant.get(restaurantId) ?? [];
+  if (menus.length === 0) return undefined;
+
+  const itemsByMenuFor: Record<string, MenuItemsRow[]> = {};
+  const observationsByItemFor: Record<string, PriceObservationsRow[]> = {};
+  for (const menu of menus) {
+    const items = itemsByMenu.get(menu.id) ?? [];
+    itemsByMenuFor[menu.id] = items;
+    for (const item of items) {
+      observationsByItemFor[item.id] = observationsByItem.get(item.id) ?? [];
+    }
+  }
+
+  return menuCostEstimate({ menus, itemsByMenu: itemsByMenuFor, observationsByItem: observationsByItemFor, sources });
 }
 
 /**
