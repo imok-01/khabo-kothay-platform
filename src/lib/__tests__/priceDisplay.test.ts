@@ -42,7 +42,7 @@ describe('priceForTwoDisplay', () => {
       venue({ menuEstimate: { low: 800, high: 1200, median: 500, itemCount: 6, confidence: 'medium' } }),
     );
     expect(display.kind).toBe('estimated');
-    expect(display.label).toBe('৳800 – ৳1,200 estimated');
+    expect(display.label).toBe('৳800 – ৳1,200 estimated for two');
     expect(display.estimate?.itemCount).toBe(6);
   });
 
@@ -51,7 +51,7 @@ describe('priceForTwoDisplay', () => {
       venue({ menuEstimate: { low: 800, high: 1200, median: 500, itemCount: 6, confidence: 'medium' } }),
     );
     expect(display.kind).not.toBe('verified');
-    expect(display.label).toMatch(/estimated$/);
+    expect(display.label).toMatch(/estimated for two$/);
   });
 
   it('says not listed only when there is neither a price nor a menu estimate', () => {

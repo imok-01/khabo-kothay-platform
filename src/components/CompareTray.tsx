@@ -4,6 +4,7 @@ import { Scale, X } from 'lucide-react';
 import { getAllRestaurantsSync } from '../hooks/useRestaurantData';
 import type { Restaurant } from '../types';
 import { priceForTwoDisplay } from '../lib/priceDisplay';
+import { formatOpeningHours } from '../lib/openHours';
 import { useCompare } from '../context/CompareContext';
 import { effectiveRating, effectiveReviewCount } from '../lib/ratings';
 import RatingStars from './RatingStars';
@@ -78,7 +79,17 @@ export default function CompareTray() {
                 <tr><th>Price for two</th>{items.map((r) => <td key={r.id}>{priceForTwoDisplay(r).label}</td>)}</tr>
                 <tr><th>Cuisine</th>{items.map((r) => <td key={r.id}>{r.cuisines.join(', ') || '—'}</td>)}</tr>
                 <tr><th>Location</th>{items.map((r) => <td key={r.id}>{r.location || '—'}</td>)}</tr>
-                <tr><th>Hours</th>{items.map((r) => <td key={r.id}>{r.openingHours || 'Not recorded'}</td>)}</tr>
+                <tr><th>Hours</th>{items.map((r) => {
+                  const rows = formatOpeningHours(r.openingHours);
+                  const label = rows
+                    ? rows.length > 1
+                      ? `${rows[0].day} ${rows[0].label} · ${rows.length} days`
+                      : `${rows[0].day}: ${rows[0].label}`
+                    : r.openingHours
+                      ? 'Hours being verified'
+                      : 'Not recorded';
+                  return <td key={r.id}>{label}</td>;
+                })}</tr>
                 <tr><th>Diet</th>{items.map((r) => <td key={r.id}>{r.vegUnknown ? 'Unknown' : r.isVeg ? 'Veg' : 'Non-veg'}</td>)}</tr>
                 <tr><th>Amenities</th>{items.map((r) => <td key={r.id}>{[r.hasDelivery && 'Delivery', r.hasOutdoorSeating && 'Outdoor', r.isFamilyFriendly && 'Family friendly'].filter(Boolean).join(' · ') || 'Dine-in'}</td>)}</tr>
                 <tr><th>Reviews</th>{items.map((r) => <td key={r.id}>{effectiveReviewCount(r).toLocaleString('en-IN')}</td>)}</tr>

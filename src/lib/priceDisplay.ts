@@ -13,13 +13,13 @@ import { MARKET } from './market';
  * Honesty ladder (never claim more than the data supports):
  *  - `verified`  — curated `priceForTwo` attribute (৳1,800 for two).
  *  - `estimated` — menu-derived range from the venue's own menu price
- *                  observations (৳800 – ৳1,200 estimated). Never labelled
- *                  "verified".
+ *                  observations (৳800 – ৳1,200 estimated for two). Never
+ *                  labelled "verified".
  *  - `notListed` — no price data at all ("Price not listed").
  */
 export interface PriceForTwoDisplay {
   kind: 'verified' | 'estimated' | 'notListed';
-  /** Human-readable label, e.g. "৳1,800 for two" / "৳800 – ৳1,200 estimated". */
+  /** Human-readable label, e.g. "৳1,800 for two" / "৳800 – ৳1,200 estimated for two". */
   label: string;
   /** The verified curated amount, when present. */
   priceForTwo?: number;
@@ -40,7 +40,7 @@ export function priceForTwoDisplay(restaurant: Restaurant): PriceForTwoDisplay {
   if (estimate) {
     return {
       kind: 'estimated',
-      label: `${formatCurrency(estimate.low)} – ${formatCurrency(estimate.high)} estimated`,
+      label: `${formatCurrency(estimate.low)} – ${formatCurrency(estimate.high)} estimated for two`,
       estimate,
     };
   }

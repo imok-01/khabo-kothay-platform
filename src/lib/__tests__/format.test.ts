@@ -44,11 +44,11 @@ describe('cleanAddressSegment', () => {
 });
 
 describe('formatAddress', () => {
-  it('builds [street, area, city] lines from stored values', () => {
+  it('builds [area, city, street] lines in preferred display order', () => {
     expect(formatAddress({ address: 'House 12/B', location: 'Gulshan', city: 'Dhaka' })).toEqual([
-      'House 12/B',
       'Gulshan',
       'Dhaka',
+      'House 12/B',
     ]);
   });
 
@@ -61,6 +61,31 @@ describe('formatAddress', () => {
     expect(formatAddress({ address: 'Gulshan', location: 'Gulshan', city: 'Dhaka' })).toEqual([
       'Gulshan',
       'Dhaka',
+    ]);
+  });
+
+  it('omits plus-code addresses in favour of area/city', () => {
+    expect(formatAddress({ address: 'QCV9+2J', city: 'Dhaka' })).toEqual(['Dhaka']);
+    expect(formatAddress({ address: 'QCGG+XMR', location: 'Gulshan', city: 'Dhaka' })).toEqual([
+      'Gulshan',
+      'Dhaka',
+    ]);
+  });
+
+  it('omits lone road fragments in favour of area/city', () => {
+    expect(formatAddress({ address: 'Rd 45', location: 'Gulshan', city: 'Dhaka' })).toEqual([
+      'Gulshan',
+      'Dhaka',
+    ]);
+    expect(formatAddress({ address: '33 Rd 45', location: 'Gulshan' })).toEqual(['Gulshan']);
+    expect(formatAddress({ address: 'Lane No 4' })).toEqual([]);
+  });
+
+  it('keeps a useful address line after area and city', () => {
+    expect(formatAddress({ address: 'Road 45, House 12/B', location: 'Gulshan', city: 'Dhaka' })).toEqual([
+      'Gulshan',
+      'Dhaka',
+      'Road 45, House 12/B',
     ]);
   });
 });
