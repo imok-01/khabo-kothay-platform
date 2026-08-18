@@ -246,7 +246,7 @@ export default function HomePage() {
                 const r = restaurants.find((x) => x.id === o.restaurantId);
                 if (!r) return null;
                 return (
-                  <Link key={o.id} to={`/restaurant/${r.id}`} className="offer-card">
+                  <Link key={o.id} to={`/restaurant/${r.id}#offers`} className="offer-card">
                     <div className="offer-card__media">
                       <RestaurantImage source={leadPhoto(r)} name={r.name} width={220} />
                     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Soup, Search, Heart, Bookmark, Menu, X, UserCircle2, ShieldCheck, Store, Info, HelpCircle, Mail, UtensilsCrossed, Compass, PenLine, LogOut, Settings, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { useFavorites } from '../context/FavoritesContext';
 import { useSaved } from '../context/SavedContext';
@@ -25,6 +25,7 @@ export default function Navbar() {
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { favoriteIds } = useFavorites();
   const { savedIds } = useSaved();
   const { session, user, logout } = useAuth();
@@ -109,7 +110,12 @@ export default function Navbar() {
     <>
       <header className="nav">
         <div className="nav__inner">
-          <Link to="/" className="nav__brand" onClick={() => setMenuOpen(false)}>
+          <Link to="/" className="nav__brand" onClick={() => {
+            setMenuOpen(false);
+            // Clicking the brand while already on the homepage should scroll to
+            // the top — the router only scrolls when the pathname changes.
+            if (location.pathname === '/') window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}>
             <span className="nav__logo" aria-hidden="true"><Soup size={20} /></span>
             <span className="nav__wordmark">
               <strong>Khabo Kothay BD</strong>

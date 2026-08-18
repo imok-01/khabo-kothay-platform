@@ -90,6 +90,18 @@ function attrStringArray(bundle: RestaurantDbBundle, key: string): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
 }
 
+/**
+ * True only when the venue's stored `service_options` literally mention
+ * home delivery ("Delivery" / "No-contact delivery"). The import never
+ * records a delivery boolean — service_options is the verified source, so
+ * the Delivery filter derives from it instead of staying permanently empty.
+ * "Takeaway" / "In-store pick-up" are NOT delivery and never count.
+ */
+export function deliveryFromServiceOptions(value: string | undefined): boolean {
+  if (!value) return false;
+  return /delivery/i.test(value);
+}
+
 /** Keep only members of a controlled vocabulary — never free text. */
 function pick<T extends string>(values: string[], allowed: readonly T[]): T[] {
   return values.filter((v): v is T => (allowed as readonly string[]).includes(v));
@@ -221,6 +233,7 @@ export function mapRestaurantRows(bundle: RestaurantDbBundle): Restaurant {
   ] satisfies Vibe[]);
 
   const isVeg = attrBool(bundle, 'isVeg') ?? false;
+  const serviceOptions = attrString(bundle, 'service_options');
 
   return {
     id: resolveSlug(bundle),
@@ -233,12 +246,15 @@ export function mapRestaurantRows(bundle: RestaurantDbBundle): Restaurant {
     priceForTwo,
     location: r.area ?? attrString(bundle, 'location') ?? '',
     address: r.address ?? '',
+    city: r.city ?? undefined,
     // The pipeline stores the hours under the snake_case key; accept both
     // spellings so mock-shaped data (camelCase) keeps working too.
     openingHours: attrString(bundle, 'opening_hours') ?? attrString(bundle, 'openingHours') ?? '',
     isVeg,
     vegUnknown: attrBool(bundle, 'vegUnknown') ?? (attr(bundle, 'isVeg') === null),
-    hasDelivery: attrBool(bundle, 'hasDelivery') ?? false,
+    // A recorded delivery boolean wins; otherwise derive it from the verified
+    // service_options attribute ("Delivery" / "No-contact delivery").
+    hasDelivery: attrBool(bundle, 'hasDelivery') ?? deliveryFromServiceOptions(serviceOptions),
     hasOutdoorSeating: attrBool(bundle, 'hasOutdoorSeating') ?? false,
     isFamilyFriendly: attrBool(bundle, 'isFamilyFriendly') ?? false,
     vibes,

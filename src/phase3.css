@@ -59,6 +59,7 @@
 }
 .field textarea { resize: vertical; }
 .form-error { color: var(--error); font-size: var(--fs-sm); }
+.field__error { color: var(--error); font-size: var(--fs-sm); }
 
 .auth-card__demo {
   margin-top: var(--s5);
@@ -269,6 +270,8 @@
 }
 .offer-admin-row > div:first-child { flex: 1; display: flex; flex-direction: column; }
 .offer-admin-row--draft { border-style: dashed; }
+.offer-admin-row--detail { align-items: flex-start; }
+.offer-admin-row--detail > div:first-child { min-width: 0; }
 
 .settings-list { display: flex; flex-direction: column; gap: 8px; margin-top: var(--s3); }
 .settings-row { display: grid; grid-template-columns: 180px 1fr; gap: var(--s3); font-size: var(--fs-sm); padding-bottom: 8px; border-bottom: 1px dashed var(--border); }

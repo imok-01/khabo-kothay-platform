@@ -18,10 +18,11 @@ import {
   Languages,
 } from 'lucide-react';
 import { BUDGET_LABEL, type Restaurant } from '../types';
-import { formatCurrency, pluralize } from '../lib/format';
+import { formatAddress, formatCurrency, pluralize } from '../lib/format';
 import { MARKET } from '../lib/market';
 import { recommendSimilar } from '../lib/recommendations';
-import { openNowLabel } from '../lib/openHours';
+import { formatOpeningHours, openNowLabel } from '../lib/openHours';
+import { estimateCostForTwo } from '../lib/costEstimate';
 import { usePageTitle } from '../lib/usePageTitle';
 import { useFavorites } from '../context/FavoritesContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
@@ -31,7 +32,7 @@ import { useGeolocation } from '../hooks/useGeolocation';
 import { selectRestaurantPhotos } from '../lib/photos';
 import { getOffersForRestaurant } from '../hooks/useOffers';
 import { distanceKm } from '../lib/geo';
-import { googleMapsDirectionsUrl, googleMapsEmbedUrl, googleMapsPlaceUrl } from '../lib/maps';
+import { googleMapsDirectionsUrl, googleMapsEmbedUrl, googleMapsPlaceUrl, googleMapsReviewsUrl } from '../lib/maps';
 import { effectiveRating, effectiveReviewCount } from '../lib/ratings';
 import { imageProvider } from '../hooks/useImages';
 import RatingStars from '../components/RatingStars';
@@ -193,6 +194,29 @@ export default function RestaurantPage() {
     restaurant.budget === 'Budget' ? 1 : restaurant.budget === 'Mid-range' ? 2 : restaurant.budget === 'Premium' ? 3 : 4,
   );
 
+  // Clean, source-verified address lines (street → area → city).
+  const addressLines = formatAddress({
+    address: googleView?.address || displayRestaurant.address,
+    location: displayRestaurant.location,
+    city: displayRestaurant.city,
+  });
+
+  // Graceful hours display: weekly maps render per-day, single ranges render
+  // one neutral row, and unparseable strings say "Hours being verified".
+  const rawHours = googleView?.openingHours || displayRestaurant.openingHours;
+  const hoursRows = formatOpeningHours(rawHours);
+  const hoursValue = hoursRows
+    ? hoursRows.length > 1
+      ? `${hoursRows[0].day} ${hoursRows[0].label} · ${hoursRows.length} days`
+      : `${hoursRows[0].day}: ${hoursRows[0].label}`
+    : rawHours
+      ? 'Hours being verified'
+      : 'Not recorded';
+
+  // Estimated cost for two — derived from the loaded menu, never labelled
+  // verified. Uses the same async menu path as MenuSection.
+  const costEstimate = estimateCostForTwo(menuState.menu);
+
   // Directions start from the user's location only when they've shared it;
   // otherwise Google Maps prompts for a starting point — never fake an origin.
   const directionsUrl = googleMapsDirectionsUrl(restaurant, geo.status === 'ready' ? geo.reference : undefined);
@@ -331,20 +355,32 @@ export default function RestaurantPage() {
             </div>
             <div className="stat">
               <span className="stat__label">Cost for two</span>
-              <span className="stat__value">{restaurant.priceForTwo > 0 ? formatCurrency(restaurant.priceForTwo) : 'Not listed'}</span>
-              <span className="stat__sub">{restaurant.priceForTwo > 0 ? 'approx. without drinks' : 'no listed price range yet'}</span>
+              <span className="stat__value">
+                {restaurant.priceForTwo > 0
+                  ? formatCurrency(restaurant.priceForTwo)
+                  : costEstimate
+                    ? `${formatCurrency(costEstimate.low)} – ${formatCurrency(costEstimate.high)}`
+                    : 'Not listed'}
+              </span>
+              <span className="stat__sub">
+                {restaurant.priceForTwo > 0
+                  ? 'approx. without drinks'
+                  : costEstimate
+                    ? `estimated from ${costEstimate.itemCount} menu items · not verified`
+                    : 'no listed price range yet'}
+              </span>
             </div>
             <div className="stat">
               <span className="stat__label">Location</span>
-              <span className="stat__value"><MapPin size={14} style={{ verticalAlign: '-2px' }} aria-hidden="true" /> {restaurant.location || 'Dhaka'}</span>
-              <span className="stat__sub">{restaurant.address || 'Address to be verified'}</span>
+              <span className="stat__value"><MapPin size={14} style={{ verticalAlign: '-2px' }} aria-hidden="true" /> {addressLines[1] ?? (displayRestaurant.location || 'Dhaka')}</span>
+              <span className="stat__sub">{addressLines[0] || 'Address to be verified'}</span>
             </div>
             <div className="stat">
               <span className="stat__label">Hours</span>
-              <span className="stat__value">{googleView?.openingHours || restaurant.openingHours || 'Not recorded'}</span>
+              <span className="stat__value">{hoursValue}</span>
               <span className="stat__sub">
                 {businessStatus && businessStatus !== 'Operational' ? `${businessStatus} · ` : ''}
-                {openStatus ?? (restaurant.openingHours ? (restaurant.hasDelivery ? 'Delivery available' : 'Dine-in only') : 'Hours being verified')}
+                {openStatus ?? (rawHours ? (displayRestaurant.hasDelivery ? 'Delivery available' : 'Dine-in only') : 'Hours being verified')}
               </span>
             </div>
           </div>
@@ -409,7 +445,7 @@ export default function RestaurantPage() {
               )}
             </section>
 
-            <section className="detail__section">
+            <section id="offers" className="detail__section">
               <h2>Offers</h2>
               {offers.length > 0 ? (
                 <div className="offers-strip offers-strip--stack">
@@ -607,7 +643,7 @@ export default function RestaurantPage() {
                     ) : (
                       <>Only a limited set of Google reviews is returned by the Places API.{' '}</>
                     )}
-                    <a href={googleMapsPlaceUrl(restaurant)} target="_blank" rel="noopener noreferrer" className="review__source">
+                    <a href={googleMapsReviewsUrl(restaurant)} target="_blank" rel="noopener noreferrer" className="review__source">
                       View Google reviews <ExternalLink size={11} aria-hidden="true" />
                     </a>
                   </p>
@@ -620,9 +656,22 @@ export default function RestaurantPage() {
             <div className="info-card">
               <h3>Know before you go</h3>
               <ul className="info-card__list">
-                <li><span><MapPin size={12} aria-hidden="true" /> Neighbourhood</span><strong>{restaurant.location || 'Dhaka'}</strong></li>
-                <li><span>Address</span><strong>{googleView?.address || restaurant.address || 'To be verified'}</strong></li>
-                <li><span>Hours</span><strong>{googleView?.openingHours || restaurant.openingHours || 'Not recorded'}</strong></li>
+                <li><span><MapPin size={12} aria-hidden="true" /> Neighbourhood</span><strong>{displayRestaurant.location || 'Dhaka'}</strong></li>
+                <li><span>Address</span><strong>{addressLines.join(', ') || 'To be verified'}</strong></li>
+                <li><span>Hours</span><strong>
+                  {hoursRows ? (
+                    hoursRows.length > 1 ? (
+                      <span className="hours-week">
+                        {hoursRows.map((row) => (
+                          <span key={row.day} className="hours-week__row">
+                            <span className="hours-week__day">{row.day}</span>
+                            <span className={`hours-week__value${row.closed ? ' hours-week__value--closed' : ''}`}>{row.label}</span>
+                          </span>
+                        ))}
+                      </span>
+                    ) : hoursRows[0].label
+                  ) : rawHours ? 'Hours being verified' : 'Not recorded'}
+                </strong></li>
                 {businessStatus && businessStatus !== 'Operational' && (
                   <li><span>Status</span><strong>{businessStatus}</strong></li>
                 )}
@@ -665,7 +714,7 @@ export default function RestaurantPage() {
               />
               <div className="detail-map__bar">
                 <span className="detail-map__address">
-                  <MapPin size={13} aria-hidden="true" /> {restaurant.address || `${restaurant.name}, Dhaka`}
+                  <MapPin size={13} aria-hidden="true" /> {addressLines[0] || `${displayRestaurant.name}, Dhaka`}
                 </span>
                 <div className="detail-map__actions">
                   <a

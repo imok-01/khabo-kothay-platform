@@ -2421,6 +2421,14 @@ button {
 
 .info-card__list strong { font-size: var(--fs-md); font-weight: 600; }
 
+/* Weekly hours inside the info card — the base span rule uppercase-styles
+   every span, so these reset typography for the hours rows. */
+.info-card__list .hours-week { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-sm); font-weight: 500; text-transform: none; letter-spacing: normal; color: var(--ink); }
+.info-card__list .hours-week__row { display: flex; justify-content: space-between; gap: var(--s3); align-items: baseline; }
+.info-card__list .hours-week__day { display: inline; color: var(--ink-soft); font-weight: 600; text-transform: none; letter-spacing: normal; font-size: var(--fs-sm); }
+.info-card__list .hours-week__value { display: inline; text-transform: none; letter-spacing: normal; font-size: var(--fs-sm); }
+.info-card__list .hours-week__value--closed { color: var(--ink-faint); }
+
 .info-card__note { margin-top: var(--s4); font-size: var(--fs-xs); color: var(--ink-faint); text-align: center; }
 
 .booking-confirm {

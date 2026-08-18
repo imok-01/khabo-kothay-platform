@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapRestaurantRows, type RestaurantDbBundle } from '../restaurant';
+import { deliveryFromServiceOptions, mapRestaurantRows, type RestaurantDbBundle } from '../restaurant';
 import type {
   ImageReferencesRow,
   RestaurantAttributesRow,
@@ -101,6 +101,56 @@ describe('mapRestaurantRows', () => {
     });
     expect(mapRestaurantRows(bundle).khabo.rating).toBe(4.2);
     expect(mapRestaurantRows(bundle).khabo.reviewCount).toBe(12);
+  });
+
+  it('maps the city for the address formatter', () => {
+    expect(mapRestaurantRows(baseBundle()).city).toBe('Dhaka');
+  });
+
+  it('stays false for delivery when nothing is recorded', () => {
+    expect(mapRestaurantRows(baseBundle()).hasDelivery).toBe(false);
+  });
+
+  it('derives hasDelivery from verified service_options when no boolean exists', () => {
+    const bundle = baseBundle({
+      attributes: [
+        ...baseBundle().attributes,
+        { id: 'a7', restaurant_id: bundleRestaurantId(), attribute_key: 'service_options', attribute_value: 'Dine-in, Delivery', created_at: null },
+      ],
+    });
+    expect(mapRestaurantRows(bundle).hasDelivery).toBe(true);
+  });
+
+  it('does not treat takeaway as home delivery', () => {
+    const bundle = baseBundle({
+      attributes: [
+        ...baseBundle().attributes,
+        { id: 'a8', restaurant_id: bundleRestaurantId(), attribute_key: 'service_options', attribute_value: 'Dine-in, Takeaway', created_at: null },
+      ],
+    });
+    expect(mapRestaurantRows(bundle).hasDelivery).toBe(false);
+  });
+
+  it('lets an explicit delivery boolean win over service_options', () => {
+    const bundle = baseBundle({
+      attributes: [
+        ...baseBundle().attributes,
+        { id: 'a9', restaurant_id: bundleRestaurantId(), attribute_key: 'service_options', attribute_value: 'Dine-in, Delivery', created_at: null },
+        { id: 'a10', restaurant_id: bundleRestaurantId(), attribute_key: 'hasDelivery', attribute_value: false, created_at: null },
+      ],
+    });
+    expect(mapRestaurantRows(bundle).hasDelivery).toBe(false);
+  });
+});
+
+describe('deliveryFromServiceOptions', () => {
+  it('is true only for literal delivery wording', () => {
+    expect(deliveryFromServiceOptions('Dine-in, Delivery')).toBe(true);
+    expect(deliveryFromServiceOptions('No-contact delivery')).toBe(true);
+    expect(deliveryFromServiceOptions('Dine-in')).toBe(false);
+    expect(deliveryFromServiceOptions('In-store pick-up, Takeaway')).toBe(false);
+    expect(deliveryFromServiceOptions(undefined)).toBe(false);
+    expect(deliveryFromServiceOptions('')).toBe(false);
   });
 });
 

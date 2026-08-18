@@ -406,10 +406,15 @@ function OffersTab() {
       <div className="panel__head"><h2>Offer approvals</h2><span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{pending.length} awaiting decision</span></div>
       <div className="offer-admin-list">
         {pending.map((o) => (
-          <div key={o.id} className="offer-admin-row">
+          <div key={o.id} className="offer-admin-row offer-admin-row--detail">
             <div>
               <strong>{o.title}</strong>
-              <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{o.discountLabel} · {o.validity} · {restaurants.find((r) => r.id === o.restaurantId)?.name}</span>
+              <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>
+                {o.discountLabel} · {o.value} · {o.validity} · {restaurants.find((r) => r.id === o.restaurantId)?.name}
+              </span>
+              <p className="t-sm" style={{ color: 'var(--ink-soft)', marginTop: 'var(--s1)' }}>
+                Terms: {o.terms}
+              </p>
             </div>
             <button type="button" className="btn btn--primary btn--sm" onClick={() => decide(o.id, true)}><Check size={12} aria-hidden="true" /> Approve</button>
             <button type="button" className="btn btn--subtle btn--sm" onClick={() => decide(o.id, false)}><X size={12} aria-hidden="true" /> Reject</button>

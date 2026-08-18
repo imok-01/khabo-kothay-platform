@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { CUISINES, NEIGHBORHOODS } from '../hooks/useTaxonomy';
 import { BUDGET_LABEL, VIBES, type Budget, type MealType } from '../types';
-import { filterRestaurants, type FilterCriteria } from '../lib/filter';
+import { filterRestaurants, uncoveredFilters, type FilterCriteria } from '../lib/filter';
 import { sortRestaurants } from '../lib/recommendations';
 import { parseNaturalLanguage } from '../lib/nlSearch';
 import { distanceKm } from '../lib/geo';
@@ -308,6 +308,11 @@ export default function ExplorePage() {
       { label: 'Browse everything', to: '/explore' },
     ].slice(0, 4);
   }, [data, query]);
+
+  // Structured filters that exclude everything on their own — surfaced so an
+  // empty result explains WHY (e.g. a vibe no venue has yet) rather than a
+  // vague "no matches".
+  const uncovered = useMemo(() => (data ? uncoveredFilters(data, criteria) : []), [data, criteria]);
 
   return (
     <main className="explore">
@@ -642,9 +647,11 @@ export default function ExplorePage() {
                 icon={<Search size={34} />}
                 title="No matches found"
                 message={
-                  activeFilters.length > 0
-                    ? 'Nothing fits that combination right now. Try loosening a filter or two.'
-                    : 'Try a different search or neighbourhood.'
+                  uncovered.length > 0
+                    ? `These filters aren't covered by the catalogue yet: ${uncovered.join(', ')}. Remove them to see results.`
+                    : activeFilters.length > 0
+                      ? 'Nothing fits that combination right now. Try loosening a filter or two.'
+                      : 'Try a different search or neighbourhood.'
                 }
                 actionLabel="Clear filters"
                 actionTo="/explore"

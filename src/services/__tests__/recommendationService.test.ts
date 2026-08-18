@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 // Stable fixture dataset — the pre-migration demo set (see data/demo).
 import { restaurants } from '../../data/demo/demo-restaurants';
+import { matchesCuisine } from '../../lib/cuisineAliases';
 import { filterRestaurants } from '../../lib/filter';
 import { matchScore, topMatches, hasPersonalizationSignals } from '../recommendationService';
 import type { DiningIntent, RecommendationContext } from '../../domain/recommendation';
@@ -154,7 +155,7 @@ describe('intent ranking (guest)', () => {
   it('CASE 7 — filters refine the set without destroying ranking', () => {
     const filtered = filterRestaurants(restaurants, { cuisine: 'Biryani' });
     expect(filtered.length).toBeGreaterThan(0);
-    expect(filtered.every((r) => r.cuisines.includes('Biryani'))).toBe(true);
+    expect(filtered.every((r) => matchesCuisine(r, 'Biryani'))).toBe(true);
 
     const ranked = topMatches(filtered, ctx({ cuisine: 'Biryani', location: 'College Street', budget: 'Budget' }), filtered.length);
     expect(ranked[0].restaurant.id).toBe('shiraz-golden-restaurant');

@@ -30,6 +30,18 @@ export function googleMapsPlaceUrl(restaurant: Restaurant): string {
 }
 
 /**
+ * Deep link to the venue's reviews on Google. Uses the stable Google Place ID
+ * via the reviews endpoint (which lands on the reviews tab rather than the
+ * place profile); falls back to the plain place URL when no Place ID exists.
+ */
+export function googleMapsReviewsUrl(restaurant: Restaurant): string {
+  if (restaurant.google?.placeId) {
+    return `https://search.google.com/local/reviews?placeid=${encodeURIComponent(restaurant.google.placeId)}`;
+  }
+  return googleMapsPlaceUrl(restaurant);
+}
+
+/**
  * Navigation deep link: Google Maps with the restaurant as destination and
  * (when provided) the user's device location as origin. When no origin is
  * passed, Google Maps prompts for a starting point — never fabricate one.

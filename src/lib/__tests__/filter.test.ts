@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 // Stable fixture dataset — the pre-migration demo set (see data/demo).
 import { restaurants } from '../../data/demo/demo-restaurants';
-import { filterRestaurants } from '../filter';
+import { filterRestaurants, uncoveredFilters } from '../filter';
 
 const bhojohori = restaurants.find((r) => r.id === 'bhojohori-manna')!;
 const shiraz = restaurants.find((r) => r.id === 'shiraz-golden-restaurant')!;
@@ -132,5 +132,26 @@ describe('filterRestaurants', () => {
 
   it('returns an empty list when nothing matches', () => {
     expect(filterRestaurants(restaurants, { query: 'zzzz-no-such-restaurant' })).toHaveLength(0);
+  });
+});
+
+describe('uncoveredFilters', () => {
+  it('flags a cuisine filter that matches nothing', () => {
+    expect(uncoveredFilters(restaurants, { cuisine: 'Fusion-Salad' })).toEqual(['Cuisine: Fusion-Salad']);
+  });
+
+  it('does not flag a filter the catalogue supports', () => {
+    // The fixture contains delivery venues (e.g. Bhojohori Manna).
+    expect(uncoveredFilters(restaurants, { delivery: true })).toEqual([]);
+  });
+
+  it('flags a vibe with no matching venue', () => {
+    expect(uncoveredFilters(restaurants, { vibe: 'Skydiving' })).toEqual(['Vibe: Skydiving']);
+  });
+
+  it('returns nothing when every individual filter is supported', () => {
+    // Budget and the price cap each match venues on their own, so neither is
+    // "uncovered" — an empty result here would be a combination problem.
+    expect(uncoveredFilters(restaurants, { budget: 'Budget', maxPriceForTwo: 300 })).toEqual([]);
   });
 });

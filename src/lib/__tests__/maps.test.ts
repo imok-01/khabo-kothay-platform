@@ -4,6 +4,7 @@ import {
   googleMapsDirectionsUrl,
   googleMapsEmbedUrl,
   googleMapsPlaceUrl,
+  googleMapsReviewsUrl,
   googleMapsSearchUrl,
 } from '../maps';
 
@@ -110,5 +111,26 @@ describe('googleMapsEmbedUrl', () => {
 describe('googleMapsSearchUrl', () => {
   it('encodes the query', () => {
     expect(googleMapsSearchUrl('Park Street biryani')).toContain('Park%20Street%20biryani');
+  });
+});
+
+describe('googleMapsReviewsUrl', () => {
+  it('targets the reviews tab via the Place ID', () => {
+    const withPlace = {
+      ...base,
+      google: {
+        placeId: 'ChIJabc123',
+        mapsUri: '',
+        rating: 4.4,
+        reviewCount: 2000,
+        reviews: [],
+        photos: [],
+      },
+    };
+    expect(googleMapsReviewsUrl(withPlace)).toBe('https://search.google.com/local/reviews?placeid=ChIJabc123');
+  });
+
+  it('falls back to the place URL without a Place ID', () => {
+    expect(googleMapsReviewsUrl(base)).toBe(googleMapsPlaceUrl(base));
   });
 });

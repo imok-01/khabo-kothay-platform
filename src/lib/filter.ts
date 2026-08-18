@@ -2,6 +2,7 @@ import type { MealType, Restaurant, Vibe } from '../types';
 import type { GeoPoint } from './geo';
 import { isOpenNow, minutesUntilOpen } from './openHours';
 import { getEffectiveIntelligence } from './intelligence';
+import { matchesCuisine } from './cuisineAliases';
 import { distanceKm } from './geo';
 import { effectiveRating } from './ratings';
 
@@ -49,7 +50,7 @@ export function filterRestaurants(
     // Budget filters only consider venues whose price we actually know — an
     // unpriced restaurant is never claimed to be (or not to be) a tier.
     if (criteria.budget && (r.priceForTwo <= 0 || r.budget !== criteria.budget)) return false;
-    if (criteria.cuisine && !r.cuisines.includes(criteria.cuisine)) return false;
+    if (criteria.cuisine && !matchesCuisine(r, criteria.cuisine)) return false;
     if (criteria.specialty && !(r.intelligence ?? getEffectiveIntelligence(r)).specialties.includes(criteria.specialty as never)) return false;
     if (criteria.mealType && !r.mealTypes.includes(criteria.mealType as MealType)) return false;
     if (criteria.vegOnly && (!r.isVeg || r.vegUnknown)) return false;
@@ -90,4 +91,39 @@ export function filterRestaurants(
     }
     return true;
   });
+}
+
+/**
+ * Structured filters that match NOTHING in the catalogue on their own.
+ *
+ * Used to explain an empty result honestly: when the user combined filters
+ * and got zero matches, this tells us which individual filter is unsupported
+ * by the data (e.g. a vibe or a price cap with no venues behind it) so the UI
+ * can say "X isn't recorded for the current catalogue yet" instead of a vague
+ * "no results". Each filter is evaluated in isolation — the query text is
+ * intentionally excluded.
+ */
+export function uncoveredFilters(
+  list: Restaurant[],
+  criteria: FilterCriteria,
+  now: Date = new Date(),
+): string[] {
+  const labels: string[] = [];
+  const single = (partial: FilterCriteria) => filterRestaurants(list, partial, now).length;
+
+  if (criteria.delivery && single({ delivery: true }) === 0) labels.push('Delivery');
+  if (criteria.outdoorSeating && single({ outdoorSeating: true }) === 0) labels.push('Outdoor seating');
+  if (criteria.openNow && single({ openNow: true }) === 0) labels.push('Open now');
+  if (criteria.budget && single({ budget: criteria.budget }) === 0) labels.push(`Budget: ${criteria.budget}`);
+  if (criteria.maxPriceForTwo !== undefined && single({ maxPriceForTwo: criteria.maxPriceForTwo }) === 0) labels.push('Max cost for two');
+  if (criteria.vibe && single({ vibe: criteria.vibe }) === 0) labels.push(`Vibe: ${criteria.vibe}`);
+  if (criteria.vegOnly && single({ vegOnly: true }) === 0) labels.push('Pure veg');
+  if (criteria.nonVegOnly && single({ nonVegOnly: true }) === 0) labels.push('Non-veg');
+  if (criteria.familyFriendly && single({ familyFriendly: true }) === 0) labels.push('Family friendly');
+  if (criteria.quiet && single({ quiet: true }) === 0) labels.push('Quiet');
+  if (criteria.location && single({ location: criteria.location }) === 0) labels.push(`Location: ${criteria.location}`);
+  if (criteria.mealType && single({ mealType: criteria.mealType }) === 0) labels.push(`Meal: ${criteria.mealType}`);
+  if (criteria.cuisine && single({ cuisine: criteria.cuisine }) === 0) labels.push(`Cuisine: ${criteria.cuisine}`);
+
+  return labels;
 }

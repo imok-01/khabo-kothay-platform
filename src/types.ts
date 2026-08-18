@@ -48,6 +48,8 @@ export interface Restaurant {
   priceForTwo: number; // in BDT
   location: string; // neighborhood
   address: string;
+  /** City (e.g. "Dhaka"). Absent in mock data — never invented when unknown. */
+  city?: string;
   /** Place facts — source-agnostic (Google and our data agree on these). */
   openingHours: string;
   isVeg: boolean;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isOpenNow, minutesUntilOpen, openNowLabel, parseOpenHours } from '../openHours';
+import { formatOpeningHours, isOpenNow, minutesUntilOpen, openNowLabel, parseOpenHours } from '../openHours';
 
 const at = (h: number, m = 0) => new Date(2026, 6, 15, h, m); // fixed Wednesday
 
@@ -86,5 +86,41 @@ describe('openNowLabel', () => {
 
   it('is undefined when hours cannot be parsed', () => {
     expect(openNowLabel('Open all day')).toBeUndefined();
+  });
+});
+
+describe('formatOpeningHours', () => {
+  it('renders a single range as one neutral row without inventing days', () => {
+    expect(formatOpeningHours('12:00 PM – 10:30 PM')).toEqual([
+      { day: 'Hours', label: '12:00 PM – 10:30 PM' },
+    ]);
+  });
+
+  it('renders a weekly map in BD week order (Saturday first)', () => {
+    const rows = formatOpeningHours(
+      'Monday: 11:00 AM – 10:00 PM; Saturday: 11:00 AM – 12:00 AM; Sunday: Closed',
+    );
+    expect(rows).toEqual([
+      { day: 'Saturday', label: '11:00 AM – 12:00 AM' },
+      { day: 'Sunday', label: 'Closed', closed: true },
+      { day: 'Monday', label: '11:00 AM – 10:00 PM' },
+    ]);
+  });
+
+  it('omits days the source did not mention (never invents a schedule)', () => {
+    const rows = formatOpeningHours('Saturday: 11:00 AM – 12:00 AM');
+    expect(rows).toHaveLength(1);
+    expect(rows![0].day).toBe('Saturday');
+  });
+
+  it('returns null for unparseable strings', () => {
+    expect(formatOpeningHours('Closes soon 12 am Opens 6:30 am S')).toBeNull();
+    expect(formatOpeningHours('Open Closes 4 am')).toBeNull();
+    expect(formatOpeningHours('')).toBeNull();
+    expect(formatOpeningHours('Open all day')).toBeNull();
+  });
+
+  it('returns null for a weekly map with any unparseable segment', () => {
+    expect(formatOpeningHours('Saturday: 11:00 AM – 12:00 AM; Sunday: unknown')).toBeNull();
   });
 });

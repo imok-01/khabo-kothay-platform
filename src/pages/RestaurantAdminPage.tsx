@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard, Store, Image, UtensilsCrossed, BadgePercent, MessageSquareQuote, Settings,
@@ -7,6 +7,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { usePageTitle } from '../lib/usePageTitle';
 import { getEffectiveMenu } from '../lib/menu';
+import { menuService } from '../services/menuService';
+import { isSupabaseConfigured } from '../integrations/supabase/client';
 import { restaurants, saveMenuOverride, useMenusVersion } from '../hooks/useRestaurantData';
 import { useUserReviews } from '../hooks/useReviews';
 import { useAdminOffers, upsertAdminOffer, deleteAdminOffer, type AdminOfferDraft } from '../hooks/useAdminOffers';
@@ -14,6 +16,7 @@ import {
   getRestaurantDraft, upsertRestaurantDraft, useRestaurantDrafts, useSuggestions, upsertSuggestion,
 } from '../hooks/useDrafts';
 import { uid } from '../lib/uid';
+import { validateOfferDraft } from '../lib/offerValidation';
 import { getEffectiveIntelligence } from '../lib/intelligence';
 import { BEST_FOR, DINING_FEATURES, FOOD_CHARACTERISTICS, SPECIALTIES, type IntelligenceSuggestion } from '../domain/intelligence';
 import { getAllOffers } from '../hooks/useOffers';
@@ -295,7 +298,81 @@ function PhotosTab({ restaurantId }: { restaurantId: string }) {
 
 /* ------------------------------------------------------------------ */
 
+function LiveMenuTab({ restaurant }: { restaurant: string }) {
+  const [liveMenu, setLiveMenu] = useState<Menu | null>(null);
+  const [liveStatus, setLiveStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
+
+  // Supabase: READ the live catalogue menu (read-only). Editing isn't
+  // migrated, so the demo editor stays disabled against real data.
+  useEffect(() => {
+    let cancelled = false;
+    setLiveStatus('loading');
+    menuService
+      .fetchMenuForRestaurant(restaurant)
+      .then((menu) => {
+        if (cancelled) return;
+        setLiveMenu(menu);
+        setLiveStatus(menu ? 'ready' : 'empty');
+      })
+      .catch(() => {
+        if (!cancelled) setLiveStatus('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurant]);
+
+  return (
+    <div className="panel">
+      <div className="panel__head">
+        <h2>Menu manager</h2>
+        <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>Live catalogue menu · read-only</span>
+      </div>
+      {liveStatus === 'loading' && <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Loading the live menu…</p>}
+      {liveStatus === 'error' && (
+        <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
+          Couldn't load the live menu right now. Try again in a moment.
+        </p>
+      )}
+      {liveStatus === 'empty' && (
+        <div className="menu-empty">
+          <UtensilsCrossed size={24} aria-hidden="true" />
+          <div>
+            <h3>No menu recorded yet</h3>
+            <p>The live catalogue has no menu rows for this venue yet.</p>
+          </div>
+        </div>
+      )}
+      {liveMenu &&
+        liveMenu.categories.map((cat) => (
+          <div key={cat.id} className="menu-cat-admin">
+            <div className="menu-cat-admin__head"><h3>{cat.name}</h3></div>
+            <ul className="menu-cat-admin__list">
+              {cat.dishes.map((d) => (
+                <li key={d.id} className="menu-dish-admin">
+                  <div className="menu-dish-admin__main">
+                    <strong>{d.name}</strong>
+                    <span className="t-sm">{d.price > 0 ? formatCurrency(d.price) : 'Price not listed'}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      <div className="admin-banner" role="status">
+        <Info size={13} aria-hidden="true" /> Editing isn't connected to the live catalogue yet. The menu above is read from the recorded
+        catalogue — updating it requires the menu migration (a future phase).
+      </div>
+    </div>
+  );
+}
+
 function MenuTab({ restaurant }: { restaurant: string }) {
+  if (isSupabaseConfigured()) return <LiveMenuTab restaurant={restaurant} />;
+  return <MenuEditorTab restaurant={restaurant} />;
+}
+
+function MenuEditorTab({ restaurant }: { restaurant: string }) {
   const menu = getEffectiveMenu(restaurants.find((r) => r.id === restaurant)!);
   const [newCat, setNewCat] = useState('');
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -505,11 +582,21 @@ function OffersTab({ restaurantId, restaurantName, myOffers, publicOffers }: {
   restaurantId: string; restaurantName: string; myOffers: AdminOfferDraft[]; publicOffers: ReturnType<typeof getAllOffers>;
 }) {
   const [form, setForm] = useState({ title: '', discountLabel: '', value: '', validity: '', terms: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { session } = useAuth();
+
+  const setField = (key: keyof typeof form, value: string) => {
+    setForm({ ...form, [key]: value });
+    if (errors[key]) setErrors((prev) => ({ ...prev, [key]: '' }));
+  };
 
   const createOffer = (e: FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.discountLabel.trim()) return;
+    const validation = validateOfferDraft(form);
+    if (!validation.isValid) {
+      setErrors(validation.errors);
+      return;
+    }
     upsertAdminOffer({
       id: uid('off'),
       restaurantId,
@@ -522,6 +609,7 @@ function OffersTab({ restaurantId, restaurantName, myOffers, publicOffers }: {
       createdAt: new Date().toISOString(),
     });
     setForm({ title: '', discountLabel: '', value: '', validity: '', terms: '' });
+    setErrors({});
   };
 
   const submitOffer = (id: string) => {
@@ -537,16 +625,36 @@ function OffersTab({ restaurantId, restaurantName, myOffers, publicOffers }: {
         <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>Offers only appear publicly after executive approval</span>
       </div>
 
-      <form className="admin-form" onSubmit={createOffer}>
+      <form className="admin-form" onSubmit={createOffer} noValidate>
         <div className="admin-form__row">
-          <label className="field"><span className="field__label">Title</span><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Weekend biryani combo" /></label>
-          <label className="field"><span className="field__label">Discount label</span><input value={form.discountLabel} onChange={(e) => setForm({ ...form, discountLabel: e.target.value })} placeholder="e.g. 20% off" /></label>
+          <label className="field">
+            <span className="field__label">Title</span>
+            <input value={form.title} onChange={(e) => setField('title', e.target.value)} placeholder="e.g. Weekend biryani combo" />
+            {errors.title && <span className="field__error" role="alert">{errors.title}</span>}
+          </label>
+          <label className="field">
+            <span className="field__label">Discount label</span>
+            <input value={form.discountLabel} onChange={(e) => setField('discountLabel', e.target.value)} placeholder="e.g. 20% off" />
+            {errors.discountLabel && <span className="field__error" role="alert">{errors.discountLabel}</span>}
+          </label>
         </div>
         <div className="admin-form__row">
-          <label className="field"><span className="field__label">Value</span><input value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} placeholder="e.g. Save up to ৳400" /></label>
-          <label className="field"><span className="field__label">Validity</span><input value={form.validity} onChange={(e) => setForm({ ...form, validity: e.target.value })} placeholder="e.g. Weekdays, 12–4 PM" /></label>
+          <label className="field">
+            <span className="field__label">Value</span>
+            <input value={form.value} onChange={(e) => setField('value', e.target.value)} placeholder="e.g. Save up to ৳400" />
+            {errors.value && <span className="field__error" role="alert">{errors.value}</span>}
+          </label>
+          <label className="field">
+            <span className="field__label">Validity</span>
+            <input value={form.validity} onChange={(e) => setField('validity', e.target.value)} placeholder="e.g. Weekdays, 12–4 PM" />
+            {errors.validity && <span className="field__error" role="alert">{errors.validity}</span>}
+          </label>
         </div>
-        <label className="field"><span className="field__label">Terms</span><input value={form.terms} onChange={(e) => setForm({ ...form, terms: e.target.value })} placeholder="Conditions of the offer" /></label>
+        <label className="field">
+          <span className="field__label">Terms</span>
+          <input value={form.terms} onChange={(e) => setField('terms', e.target.value)} placeholder="Conditions of the offer" />
+          {errors.terms && <span className="field__error" role="alert">{errors.terms}</span>}
+        </label>
         <div className="admin-form__actions">
           <button type="submit" className="btn btn--primary"><Plus size={14} aria-hidden="true" /> Create offer (draft)</button>
         </div>
