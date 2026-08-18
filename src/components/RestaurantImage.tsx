@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RestaurantImageSource } from '../domain/images';
-import { imageProvider } from '../repositories/ImageProvider';
+import { imageProvider } from '../hooks/useImages';
 import { loadImage } from '../lib/imageLoader';
 
 interface RestaurantImageProps {

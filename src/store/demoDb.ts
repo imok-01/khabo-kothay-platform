@@ -395,9 +395,10 @@ export function upsertFlag(flag: FlagEntry) {
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-export function uid(prefix: string): string {
-  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-}
+// Re-exported so existing consumers keep their import path while the
+// implementation lives in lib (components must not import the store for a
+// pure utility).
+export { uid } from '../lib/uid';
 
 export function useNowKey(): number {
   const [, setTick] = useState(0);

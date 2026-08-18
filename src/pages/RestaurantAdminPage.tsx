@@ -6,16 +6,17 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePageTitle } from '../lib/usePageTitle';
-import { restaurants } from '../data/restaurants';
 import { getEffectiveMenu } from '../lib/menu';
+import { restaurants, saveMenuOverride, useMenusVersion } from '../hooks/useRestaurantData';
+import { useUserReviews } from '../hooks/useReviews';
+import { useAdminOffers, upsertAdminOffer, deleteAdminOffer, type AdminOfferDraft } from '../hooks/useAdminOffers';
 import {
-  saveMenuOverride, useMenusVersion, useUserReviews, useAdminOffers, upsertAdminOffer, deleteAdminOffer,
-  getRestaurantDraft, upsertRestaurantDraft, useRestaurantDrafts, uid, type AdminOfferDraft,
-  useSuggestions, upsertSuggestion,
-} from '../store/demoDb';
+  getRestaurantDraft, upsertRestaurantDraft, useRestaurantDrafts, useSuggestions, upsertSuggestion,
+} from '../hooks/useDrafts';
+import { uid } from '../lib/uid';
 import { getEffectiveIntelligence } from '../lib/intelligence';
 import { BEST_FOR, DINING_FEATURES, FOOD_CHARACTERISTICS, SPECIALTIES, type IntelligenceSuggestion } from '../domain/intelligence';
-import { getAllOffers } from '../repositories/OfferProvider';
+import { getAllOffers } from '../hooks/useOffers';
 import { formatCurrency } from '../lib/format';
 import type { Menu, MenuItem } from '../domain/menu';
 

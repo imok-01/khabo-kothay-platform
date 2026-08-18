@@ -10,8 +10,10 @@ import {
 } from '../lib/profile';
 import { grantProfileCompletionReward, inviteFriend, verifyInvite } from '../lib/rewards';
 import { DEFAULT_REWARD_CONFIG } from '../domain/rewards';
-import { NEIGHBORHOODS, CUISINES } from '../services/taxonomyService';
-import { saveUser, tokenBalance, useRewards, useUserReviews } from '../store/demoDb';
+import { NEIGHBORHOODS, CUISINES } from '../hooks/useTaxonomy';
+import { saveUser } from '../hooks/useUsers';
+import { tokenBalance, useRewards } from '../hooks/useRewards';
+import { useUserReviews } from '../hooks/useReviews';
 import { useFavorites } from '../context/FavoritesContext';
 import RewardsWallet from '../components/RewardsWallet';
 import PreferencePicker, { type PickerOption } from '../components/PreferencePicker';

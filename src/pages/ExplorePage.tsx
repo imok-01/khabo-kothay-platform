@@ -9,7 +9,7 @@ import {
   Map as MapIcon,
   Sparkles,
 } from 'lucide-react';
-import { CUISINES, NEIGHBORHOODS } from '../services/taxonomyService';
+import { CUISINES, NEIGHBORHOODS } from '../hooks/useTaxonomy';
 import { BUDGET_LABEL, VIBES, type Budget, type MealType } from '../types';
 import { filterRestaurants, type FilterCriteria } from '../lib/filter';
 import { sortRestaurants } from '../lib/recommendations';
@@ -23,7 +23,7 @@ import { useGeolocation } from '../hooks/useGeolocation';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { derivePreferences, mergeProfileIntoPreferences } from '../lib/preferences';
-import { hasPersonalizationSignals, matchScore } from '../services/recommendationService';
+import { hasPersonalizationSignals, matchScore } from '../hooks/useRecommendations';
 import type { DiningIntent, RecommendationContext } from '../domain/recommendation';
 import { SPECIALTIES } from '../domain/intelligence';
 import { isWithinBounds, type MapBounds } from '../map/areas';

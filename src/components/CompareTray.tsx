@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Scale, X } from 'lucide-react';
-import { restaurantService } from '../services/restaurantService';
+import { getAllRestaurantsSync } from '../hooks/useRestaurantData';
 import type { Restaurant } from '../types';
 import { formatCurrency } from '../lib/format';
 import { useCompare } from '../context/CompareContext';
@@ -12,7 +12,7 @@ export default function CompareTray() {
   const { compareIds, toggleCompare, clearCompare } = useCompare();
   const [modalOpen, setModalOpen] = useState(false);
   const items = useMemo(() => {
-    const all = restaurantService.getAllSync();
+    const all = getAllRestaurantsSync();
     return compareIds.map((id) => all.find((r) => r.id === id)).filter((r): r is Restaurant => Boolean(r));
   }, [compareIds]);
 

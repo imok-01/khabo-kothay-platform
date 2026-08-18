@@ -2,9 +2,9 @@ import { useState, type FormEvent } from 'react';
 import { Star, Pencil, Trash2, Check } from 'lucide-react';
 import type { Restaurant } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { uid } from '../store/demoDb';
+import { uid } from '../lib/uid';
 import type { UserReview } from '../domain/review';
-import { reviewService } from '../services/reviewService';
+import { reviewService } from '../hooks/useReviews';
 import { grantFirstReviewReward } from '../lib/rewards';
 import { DEFAULT_REWARD_CONFIG } from '../domain/rewards';
 

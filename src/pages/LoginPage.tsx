@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LogIn, UserPlus, ShieldCheck, UtensilsCrossed, Store, Info } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePageTitle } from '../lib/usePageTitle';
-import { DEMO_ACCOUNT_CREDENTIALS, DEMO_PASSWORD } from '../data/demoAccounts';
+import { DEMO_ACCOUNT_CREDENTIALS, DEMO_PASSWORD } from '../hooks/useAccounts';
 
 export default function LoginPage() {
   usePageTitle('Sign in');

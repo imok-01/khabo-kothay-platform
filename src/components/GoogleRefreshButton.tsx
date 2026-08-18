@@ -5,7 +5,7 @@ import {
   getGoogleRefreshMeta,
   refreshGoogleSummary,
   subscribeGoogleRefresh,
-} from '../services/googleDataService';
+} from '../hooks/useGoogleRefresh';
 
 /** Stable idle metadata — avoids re-render loops in useSyncExternalStore. */
 const IDLE_META: GoogleRefreshMeta = { status: 'idle' };

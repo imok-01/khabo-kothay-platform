@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Bookmark } from 'lucide-react';
 import type { Restaurant } from '../types';
 import type { RecommendationContext } from '../domain/recommendation';
-import { topMatches } from '../services/recommendationService';
+import { topMatches } from '../hooks/useRecommendations';
 import { derivePreferences, mergeProfileIntoPreferences } from '../lib/preferences';
 import { usePageTitle } from '../lib/usePageTitle';
 import { useSaved } from '../context/SavedContext';

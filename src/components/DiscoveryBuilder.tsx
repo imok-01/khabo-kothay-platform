@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CUISINES, NEIGHBORHOODS } from '../services/taxonomyService';
+import { CUISINES, NEIGHBORHOODS } from '../hooks/useTaxonomy';
 import { VIBES, type Budget, type MealType } from '../types';
 import type { Restaurant } from '../types';
 import type { GeoPoint } from '../lib/geo';

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Dices, MapPin, ArrowRight, Star, Utensils, HeartHandshake, Wallet, History, BadgePercent, Sparkles, UserRound } from 'lucide-react';
-import { CUISINES, NEIGHBORHOODS } from '../services/taxonomyService';
+import { CUISINES, NEIGHBORHOODS } from '../hooks/useTaxonomy';
 import type { Restaurant } from '../types';
 import type { MatchResult, RecommendationContext, SurpriseMode } from '../domain/recommendation';
-import { topMatches, surprisePick, hiddenGems, worthTheTrip, hasPersonalizationSignals } from '../services/recommendationService';
+import { topMatches, surprisePick, hiddenGems, worthTheTrip, hasPersonalizationSignals } from '../hooks/useRecommendations';
 import { usePageTitle } from '../lib/usePageTitle';
 import { formatCurrency } from '../lib/format';
 import { useFavorites } from '../context/FavoritesContext';
@@ -15,8 +15,8 @@ import { derivePreferences, mergeProfileIntoPreferences } from '../lib/preferenc
 import { useAuth } from '../context/AuthContext';
 import { distanceKm } from '../lib/geo';
 import { isOpenNow } from '../lib/openHours';
-import { getAllOffers } from '../repositories/OfferProvider';
-import { collections } from '../data/collections';
+import { getAllOffers } from '../hooks/useOffers';
+import { collections } from '../hooks/useCollections';
 import { effectiveRating } from '../lib/ratings';
 import { selectRestaurantPhotos } from '../lib/photos';
 import RestaurantCard from '../components/RestaurantCard';

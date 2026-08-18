@@ -2,16 +2,8 @@ import { useMemo, useState } from 'react';
 import { Coins, Gift, Ticket, Lock, CheckCircle2, RotateCcw, Info, ArrowUpRight } from 'lucide-react';
 import type { Coupon, RewardDefinition } from '../domain/rewards';
 import { DEFAULT_REWARD_CONFIG, DEMO_STARTING_BALANCE } from '../domain/rewards';
-import { REWARD_CATALOGUE } from '../data/rewards';
-import {
-  effectiveCouponStatus,
-  isDemoUser,
-  markCouponUsed,
-  redeemReward,
-  resetDemoWallet,
-  type RedemptionResult,
-} from '../lib/rewards';
-import { tokenBalance, useRewards } from '../store/demoDb';
+import { effectiveCouponStatus, isDemoUser, markCouponUsed, redeemReward, resetDemoWallet, type RedemptionResult } from '../lib/rewards';
+import { REWARD_CATALOGUE, tokenBalance, useRewards } from '../hooks/useRewards';
 
 interface RewardsWalletProps {
   userId: string;

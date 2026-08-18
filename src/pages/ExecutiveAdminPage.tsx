@@ -6,24 +6,25 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePageTitle } from '../lib/usePageTitle';
-import { restaurants } from '../data/restaurants';
 import type { Restaurant } from '../types';
+import { useUsers, getAllUsers } from '../hooks/useUsers';
+import { useAdminOffers, upsertAdminOffer } from '../hooks/useAdminOffers';
+import { useUserReviews, useFlags, upsertFlag } from '../hooks/useReviews';
 import {
-  useUsers, useAdminOffers, upsertAdminOffer, useUserReviews, useFlags, upsertFlag, useRestaurantDrafts,
-  upsertRestaurantDraft, getAllUsers, getRewards, tokenBalance, useMenusVersion,
-  useSuggestions, resolveSuggestion, type RestaurantDraft,
-} from '../store/demoDb';
+  useRestaurantDrafts, upsertRestaurantDraft, useSuggestions, resolveSuggestion, type RestaurantDraft,
+} from '../hooks/useDrafts';
+import { getRewards, tokenBalance } from '../hooks/useRewards';
+import { restaurants, useMenusVersion } from '../hooks/useRestaurantData';
 import type { IntelligenceSuggestion } from '../domain/intelligence';
 import { getEffectiveMenu } from '../lib/menu';
 import { priceChange } from '../lib/menu';
-import { getAllOffers } from '../repositories/OfferProvider';
+import { getAllOffers } from '../hooks/useOffers';
 import { formatCurrency } from '../lib/format';
 import { effectiveRating } from '../lib/ratings';
-import { DEMO_ACCOUNT_CREDENTIALS } from '../data/demoAccounts';
+import { DEMO_ACCOUNT_CREDENTIALS } from '../hooks/useAccounts';
 import type { Menu } from '../domain/menu';
 import GoogleRefreshButton from '../components/GoogleRefreshButton';
-import { isGooglePlacesConfigured } from '../services/googlePlacesClient';
-import { refreshGoogleBulk } from '../services/googleDataService';
+import { isGooglePlacesConfigured, refreshGoogleBulk } from '../hooks/useGoogleRefresh';
 
 type Tab = 'dashboard' | 'restaurants' | 'users' | 'reviews' | 'offers' | 'prices' | 'intelligence';
 

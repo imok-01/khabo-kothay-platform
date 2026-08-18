@@ -7,7 +7,7 @@ import { openNowLabel } from '../lib/openHours';
 import { useFavorites } from '../context/FavoritesContext';
 import { useSaved } from '../context/SavedContext';
 import { useCompare } from '../context/CompareContext';
-import { getOffersForRestaurant } from '../repositories/OfferProvider';
+import { getOffersForRestaurant } from '../hooks/useOffers';
 import type { MatchResult } from '../domain/recommendation';
 import { selectRestaurantPhotos } from '../lib/photos';
 import RestaurantImage from './RestaurantImage';

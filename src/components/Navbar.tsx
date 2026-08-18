@@ -5,7 +5,7 @@ import { useFavorites } from '../context/FavoritesContext';
 import { useSaved } from '../context/SavedContext';
 import { useAuth } from '../context/AuthContext';
 import { roleViewOf, type RoleView } from '../domain/auth';
-import { restaurants } from '../data/restaurants';
+import { useOwnerRestaurant } from '../hooks/useOwnerRestaurant';
 
 /**
  * Role-aware primary navigation.
@@ -31,9 +31,7 @@ export default function Navbar() {
 
   const view: RoleView = roleViewOf(session?.role);
   const signedIn = Boolean(session);
-  const firstOwnedRestaurant = session?.restaurantIds?.[0]
-    ? restaurants.find((r) => r.id === session.restaurantIds[0])
-    : undefined;
+  const firstOwnedRestaurant = useOwnerRestaurant(session?.restaurantIds);
   const ownerRestaurantPath = firstOwnedRestaurant ? `/restaurant/${firstOwnedRestaurant.id}` : '/manage';
 
   // Drawer: close on Escape and lock body scroll while open.
