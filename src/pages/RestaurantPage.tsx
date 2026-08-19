@@ -28,6 +28,7 @@ import { useFavorites } from '../context/FavoritesContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { useRestaurant } from '../hooks/useRestaurants';
 import { useRestaurantMenu } from '../hooks/useRestaurantMenu';
+import { useDiscoveryFacts } from '../hooks/useDiscoveryFacts';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { selectRestaurantPhotos } from '../lib/photos';
 import { getOffersForRestaurant } from '../hooks/useOffers';
@@ -59,6 +60,7 @@ export default function RestaurantPage() {
   const { id } = useParams<{ id: string }>();
   const { status, data: restaurant, reload } = useRestaurant(id);
   const menuState = useRestaurantMenu(restaurant ?? undefined);
+  const discoveryFacts = useDiscoveryFacts(restaurant?.id);
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addRecent } = useRecentlyViewed();
   const geo = useGeolocation();
@@ -218,32 +220,10 @@ export default function RestaurantPage() {
   // already attached at the repository seam), never labelled verified.
   const costEstimate = restaurant.menuEstimate ?? estimateCostForTwo(menuState.menu);
 
-  // Verified facts for About / Good-to-know — built ONLY from stored
-  // attributes and the existing derived intelligence, never invented claims.
-  const intel = effective.intelligence;
-  const knownFor = intel?.specialties.length ? intel.specialties : effective.signatureDishes;
-  const goodFor = effective.mealTypes;
-  const available = intel?.diningFeatures ?? [];
-  const menuAvailable =
-    (menuState.menu?.categories ?? []).some((c) => c.dishes.length > 0) || effective.menuEstimate !== undefined;
-  const googleVerified = googleView && googleView.rating > 0;
-  const aboutFacts = [
-    effective.cuisines.length > 0
-      ? `${effective.cuisines.join(' · ')} venue in ${effective.location || effective.city || 'Dhaka'}`
-      : null,
-    googleVerified
-      ? `${googleView.rating.toFixed(1)}★ from ${googleView.reviewCount.toLocaleString('en-IN')} Google reviews`
-      : null,
-    effective.signatureDishes.length > 0 ? `Known for: ${effective.signatureDishes.join(', ')}` : null,
-    menuAvailable ? 'Menu available' : null,
-  ].filter((f): f is string => Boolean(f));
-  const goodToKnowFacts = [
-    knownFor.length > 0 ? `Known for: ${knownFor.join(', ')}` : null,
-    goodFor.length > 0 ? `Good for: ${goodFor.join(' · ')}` : null,
-    available.length > 0 ? `Available: ${available.join(' · ')}` : null,
-    effective.cuisines.length > 0 ? `Cuisine: ${effective.cuisines.join(' · ')}` : null,
-  ].filter((f): f is string => Boolean(f));
   const hasCommunityContent = effective.khabo.signals.length > 0 || effective.khabo.tags.length > 0;
+  // Approved discovery facts render in their own section only when present;
+  // the generic "Good to know" derivation has been replaced by this layer.
+  const hasDiscoveryFacts = discoveryFacts.status === 'ready' && discoveryFacts.facts.length > 0;
 
   // Directions start from the user's location only when they've shared it;
   // otherwise Google Maps prompts for a starting point — never fake an origin.
@@ -415,64 +395,36 @@ export default function RestaurantPage() {
 
         <div className="detail__grid">
           <div className="detail__main">
-            <section className="detail__section">
-              {hasCommunityContent ? (
-                <>
-                  <h2>Why people like it</h2>
-                  <RestaurantSignals restaurant={restaurant} />
-                  {restaurant.khabo.tags.length > 0 && (
-                    <p className="detail__tags">
-                      <span className="detail__tags-label">Community tags:</span>
-                      {restaurant.khabo.tags.map((t) => (
-                        <span key={t} className="chip">
-                          {t.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                        </span>
-                      ))}
-                    </p>
-                  )}
-                </>
-              ) : goodToKnowFacts.length > 0 ? (
-                <>
-                  <h2>Good to know</h2>
-                  <ul className="detail__highlights">
-                    {goodToKnowFacts.map((f) => (
-                      <li key={f}><Check size={14} style={{ color: 'var(--success)', verticalAlign: '-2px', marginRight: 6 }} aria-hidden="true" />{f}</li>
+            {hasCommunityContent && (
+              <section className="detail__section">
+                <h2>Why people like it</h2>
+                <RestaurantSignals restaurant={restaurant} />
+                {restaurant.khabo.tags.length > 0 && (
+                  <p className="detail__tags">
+                    <span className="detail__tags-label">Community tags:</span>
+                    {restaurant.khabo.tags.map((t) => (
+                      <span key={t} className="chip">
+                        {t.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                      </span>
                     ))}
-                  </ul>
-                </>
-              ) : (
-                <>
-                  <h2>Why people like it</h2>
-                  <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-                    Community signal data will appear here once our readers start reviewing this venue.
                   </p>
-                </>
-              )}
-            </section>
+                )}
+              </section>
+            )}
 
-            <section className="detail__section">
-              <h2>About this place</h2>
-              {effective.description ? (
-                <p className="detail__about">{effective.description}</p>
-              ) : aboutFacts.length > 0 ? (
+            {hasDiscoveryFacts && (
+              <section className="detail__section">
+                <h2>Did you know?</h2>
                 <ul className="detail__highlights">
-                  {aboutFacts.map((f) => (
-                    <li key={f}><Check size={14} style={{ color: 'var(--success)', verticalAlign: '-2px', marginRight: 6 }} aria-hidden="true" />{f}</li>
+                  {discoveryFacts.facts.map((f) => (
+                    <li key={f.id}>
+                      <Check size={14} style={{ color: 'var(--success)', verticalAlign: '-2px', marginRight: 6 }} aria-hidden="true" />
+                      {f.factText}
+                    </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-                  Restaurant details are being verified by our team.
-                </p>
-              )}
-              {effective.khabo.highlights.length > 0 && (
-                <ul className="detail__highlights">
-                  {effective.khabo.highlights.map((h) => (
-                    <li key={h}><Check size={14} style={{ color: 'var(--success)', verticalAlign: '-2px', marginRight: 6 }} aria-hidden="true" />{h}</li>
-                  ))}
-                </ul>
-              )}
-            </section>
+              </section>
+            )}
 
             <section className="detail__section">
               <h2>Signature dishes</h2>

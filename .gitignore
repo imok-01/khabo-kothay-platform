@@ -35,3 +35,6 @@ dist-ssr
 *.tsbuildinfo
 .vite
 coverage
+
+# Supabase CLI local state
+supabase/.temp

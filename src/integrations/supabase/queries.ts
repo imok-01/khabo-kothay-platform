@@ -7,6 +7,7 @@ import type {
   PriceObservationsRow,
   RestaurantAliasesRow,
   RestaurantAttributesRow,
+  RestaurantDiscoveryFactsRow,
   RestaurantSourcesRow,
   RestaurantTagsRow,
   RestaurantsRow,
@@ -312,6 +313,28 @@ export async function selectImagesForRestaurant(
     .in('status', statuses)
     .order('created_at', { ascending: true });
   const { data, error } = await q;
+  if (error) throw error;
+  return data ?? [];
+}
+
+/* ------------------------------------------------------------------ */
+/* Discovery facts                                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Approved discovery facts for one restaurant. The anon RLS policy already
+ * hides everything but APPROVED; the explicit filter keeps this query honest
+ * even if policies ever change.
+ */
+export async function selectApprovedDiscoveryFactsForRestaurant(
+  restaurantId: string,
+): Promise<RestaurantDiscoveryFactsRow[]> {
+  const { data, error } = await (await requireSupabase())
+    .from('restaurant_discovery_facts')
+    .select('*')
+    .eq('restaurant_id', restaurantId)
+    .eq('status', 'APPROVED')
+    .order('created_at', { ascending: true });
   if (error) throw error;
   return data ?? [];
 }

@@ -49,6 +49,12 @@ export type ImageStatus = 'ACTIVE' | 'PENDING' | 'REJECTED' | 'ARCHIVED';
 
 export type ChangeRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'REMOVED';
 
+export type FactType = 'HISTORY' | 'EXPERIENCE' | 'CONCEPT' | 'LOCATION' | 'IDENTITY' | 'OTHER';
+
+export type FactConfidence = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export type FactStatus = 'DRAFT' | 'REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
+
 /* ------------------------------------------------------------------ */
 /* Row shapes (approved migration)                                     */
 /* ------------------------------------------------------------------ */
@@ -171,6 +177,23 @@ export type ReviewSignalsRow = {
   rating: number | null; // 0–5
   review_count: number | null;
   observed_at: string | null;
+}
+
+export type RestaurantDiscoveryFactsRow = {
+  id: string;
+  restaurant_id: string; // references restaurants
+  fact_text: string;
+  fact_type: FactType;
+  confidence: FactConfidence;
+  source_type: string;
+  source_reference: string;
+  evidence_note: string | null;
+  status: FactStatus;
+  verified_at: string | null;
+  approved_by: string | null; // references user_profiles
+  published_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export type UserProfilesRow = {
@@ -308,6 +331,12 @@ export type Database = {
         Update: Partial<ReviewSignalsRow>;
         Relationships: [];
       };
+      restaurant_discovery_facts: {
+        Row: RestaurantDiscoveryFactsRow;
+        Insert: Partial<RestaurantDiscoveryFactsRow>;
+        Update: Partial<RestaurantDiscoveryFactsRow>;
+        Relationships: [];
+      };
       user_profiles: {
         Row: UserProfilesRow;
         Insert: Partial<UserProfilesRow>;
@@ -363,6 +392,9 @@ export type Database = {
       menu_status: MenuStatus;
       image_status: ImageStatus;
       change_request_status: ChangeRequestStatus;
+      fact_type: FactType;
+      fact_confidence: FactConfidence;
+      fact_status: FactStatus;
     };
     CompositeTypes: { [_ in never]: never };
   };
