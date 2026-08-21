@@ -27,6 +27,7 @@ import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { useRestaurant } from '../hooks/useRestaurants';
 import { useRestaurantMenu } from '../hooks/useRestaurantMenu';
 import { useDiscoveryFacts } from '../hooks/useDiscoveryFacts';
+import { useReviewSamples } from '../hooks/useReviewSamples';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { selectRestaurantPhotos } from '../lib/photos';
 import { getOffersForRestaurant } from '../hooks/useOffers';
@@ -38,6 +39,7 @@ import RatingStars from '../components/RatingStars';
 import RatingSource from '../components/RatingSource';
 import RestaurantSignals from '../components/RestaurantSignals';
 import RestaurantCard from '../components/RestaurantCard';
+import CustomerHighlights from '../components/CustomerHighlights';
 
 import ImageGallery from '../components/ImageGallery';
 import ShareButton from '../components/ShareButton';
@@ -60,6 +62,7 @@ export default function RestaurantPage() {
   const { status, data: restaurant, reload } = useRestaurant(id);
   const menuState = useRestaurantMenu(restaurant ?? undefined);
   const discoveryFacts = useDiscoveryFacts(restaurant?.id);
+  const reviewHighlights = useReviewSamples(restaurant?.id);
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addRecent } = useRecentlyViewed();
   const geo = useGeolocation();
@@ -551,9 +554,10 @@ export default function RestaurantPage() {
                     {googleView.rating.toFixed(1)}★ · {googleView.reviewCount.toLocaleString('en-IN')} reviews on Google Maps
                   </span>
                 </div>
-                {(liveGoogle.meta.status === 'refreshing' || liveGoogle.meta.status === 'failed' || liveGoogle.meta.status === 'unavailable') && (
+                <CustomerHighlights samples={reviewHighlights.samples} status={reviewHighlights.status} />
+                {liveGoogle.meta.status === 'refreshing' && (
                   <p className="t-xs" style={{ color: 'var(--ink-faint)', margin: '0 0 var(--s2)' }} role="status" aria-live="polite">
-                    {liveGoogle.meta.status === 'refreshing' ? 'Refreshing Google data…' : 'Google data temporarily unavailable — showing the imported snapshot.'}
+                    Refreshing Google data…
                   </p>
                 )}
                 {googleView.reviews.length > 0 ? (
@@ -584,15 +588,9 @@ export default function RestaurantPage() {
                   </div>
                 ) : (
                   <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-                    {liveGoogle.meta.status === 'refreshing' ? (
-                      <>Refreshing Google reviews…</>
-                    ) : liveGoogle.meta.status === 'failed' || liveGoogle.meta.status === 'unavailable' ? (
-                      <>Google data temporarily unavailable.{' '}</>
-                    ) : (
-                      <>Only a limited set of Google reviews is returned by the Places API.{' '}</>
-                    )}
+                    {liveGoogle.meta.status === 'refreshing' && <>Refreshing Google reviews… </>}
                     <a href={googleMapsReviewsUrl(restaurant)} target="_blank" rel="noopener noreferrer" className="review__source">
-                      View Google reviews <ExternalLink size={11} aria-hidden="true" />
+                      View all Google reviews <ExternalLink size={11} aria-hidden="true" />
                     </a>
                   </p>
                 )}
