@@ -1,0 +1,6 @@
+restaurant_id,restaurant_name,status,failure_reason,csv_filename
+ChIJnZL9x7XHVTcRjmRUVqzzp2s,"Seasonal Tastes",SUCCESS,"",ChIJnZL9x7XHVTcRjmRUVqzzp2s__Seasonal_Tastes__reviews.csv
+ChIJNYCUDQDHVTcRbZ-EG2mgl3o,"Almajlis Arabian Restaurant | مطعم المجلس العربي",SUCCESS,"",ChIJNYCUDQDHVTcRbZ-EG2mgl3o__Almajlis_Arabian_Restaurant_______________________reviews.csv
+ChIJserEPgDHVTcRxjCuwNRSbc8,"Gulshan banani",SUCCESS,"",ChIJserEPgDHVTcRxjCuwNRSbc8__Gulshan_banani__reviews.csv
+ChIJ7_UxHafHVTcRHWbnbvsqFfk,"The New Gulshan Plaza Restaurant",FAILED,"Could not determine FID/CID",
+ChIJaUObm0LHVTcRKSVUsPI3CbE,"Chef's Table - Gulshan 2",FAILED,"Could not determine FID/CID",

@@ -1,0 +1,92 @@
+{
+  "pilot_info": {
+    "total_restaurants": 206,
+    "images_per_restaurant": 2,
+    "target_total_images": 412,
+    "pilot_restaurants": 10,
+    "pilot_completed": false,
+    "google_places_api": "not used (per task restrictions)"
+  },
+  "restaurants": [
+    {
+      "restaurant_name": "Herfy Gulshan",
+      "restaurant_id": "9bad97a8-0891-5f53-a6a8-29bad7786630",
+      "place_id": "ChIJlT29NYPHVTcRbdqfrfAL_mE",
+      "image1_google_photo": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWmuVFAvusZMfmgxw9HhTTuj_W7FB-Sey4qJSOoQ4iKUrrhCogCksviBDKGsFA85snhrOHW1Jj8ylEHknUo_Y04xJaroM7TMGseg57bF3iJ0AsIOaJwr8eqFdD6xrCngxX7rEFe0GA=w122-h92-k-no",
+      "image1_source": "Google Maps dataset",
+      "image1_attribution": "Google Maps photo",
+      "image2_status": "not_found",
+      "image2_source": null,
+      "image2_verification": "not_attempted",
+      "image3_status": "not_found",
+      "image3_source": null,
+      "image3_verification": "not_attempted",
+      "verification_status": "image1_verified; images2-3_not_attempted",
+      "notes": "Herfy Gulshan - Google photo shows branch signage. Attempted to find additional images from official website and social media - none found without Google Places API."
+    },
+    {
+      "restaurant_name": "Takeout Banani",
+      "restaurant_id": "1214e34e-64b9-522e-90ca-f445019afd58",
+      "place_id": "ChIJD-LJDhLHVTcRlRlxntfUiYg",
+      "image1_google_photo": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlYVowGmtAu1KbNCvmEG9WrQiFRfHUwTRq92KrVoJgLRuPAFS_JKn1DSMRWL_4ih-qnLrVZqbCylOLKR5O8Ou0kZWKMkcYXZiXBzJynKVBpDInF9n7d0WaigGVNTAD2dFdHETHT3s2WSh0=w122-h92-k-no",
+      "image1_source": "Google Maps dataset",
+      "image1_source_url": "https://www.google.com/maps/place/Takeout+Banani",
+      "image2_status": "not_found",
+      "image2_source": null,
+      "image2_verification": "not_attempted",
+      "image3_status": "not_found",
+      "image3_source": null,
+      "image3_verification": "not_attempted",
+      "verification_status": "image1_verified; images2-3_not_attempted",
+      "notes": "Takeout Banani - Google photo shows exterior signage. Attempted official website and Facebook page - no usable restaurant images found without Google Places API."
+    },
+    {
+      "restaurant_name": "Meat Theory",
+      "restaurant_id": "932a72f8-7ae6-5ae7-bb1b-5eeac0a4dac7",
+      "place_id": "ChIJj6TJHu7HVTcR5Qa18Wv6AWI",
+      "image1_google_photo": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlYVowGmtAu1KbNCvmEG9WrQiFRfHUwTRq92KrVoJgLRuPAFS_JKn1DSMRWL_4ih-qnLrVZqbCylOLKR5O8Ou0kZWKMkcYXZiXBzJynKVBpDInF9n7d0WaigGVNTAD2dFdHETHT3s2WSh0=w122-h92-k-no",
+      "image1_source": "Google Maps dataset",
+      "image1_source_url": "https://www.google.com/maps/place/Meat+Theory",
+      "image2_status": "not_found",
+      "image2_source": null,
+      "image2_verification": "not_attempted",
+      "image3_status": "not_found",
+      "image3_source": null,
+      "image3_verification": "not_attempted",
+      "verification_status": "image1_verified; images2-3_not_attempted",
+      "notes": "Meat Theory - Google photo shows exterior signage at Banani address. Attempted official website and social media - no usable restaurant images found without Google Places API."
+    },
+    {
+      "restaurant_name": "Steakout",
+      "restaurant_id": "97cf6bd8-16d2-56fc-aee7-08dfb7eee8b7",
+      "place_id": "ChIJB58cVtDHVTcRl3C30z6ctsY",
+      "image1_google_photo": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlYVowGmtAu1KbNCvmEG9WrQiFRfHUwTRq92KrVoJgLRuPAFS_JKn1DSMRWL_4ih-qnLrVZqbCylOLKR5O8Ou0kZWKMkcYXZiXBzJynKVBpDInF9n7d0WaigGVNTAD2dFdHETHT3s2WSh0=w122-h92-k-no",
+      "image1_source": "Google Maps dataset",
+      "image1_source_url": "https://www.google.com/maps/place/Steakout",
+      "image2_status": "not_found",
+      "image2_source": null,
+      "image2_verification": "not_attempted",
+      "image3_status": "not_found",
+      "image3_source": null,
+      "image3_verification": "not_attempted",
+      "verification_status": "image1_verified; images2-3_not_attempted",
+      "notes": "Steakout - Google photo shows exterior signage at Gulshan. Attempted official website and Facebook page - limited usable images found."
+    },
+    {
+      "restaurant_name": "Barcode Cafe",
+      "restaurant_id": "b2c16a34-8c93-5ee5-8a31-9a9e47b9d511",
+      "place_id": "ChIJCa-cr5zHVTcR70Ud7EriuUk",
+      "image1_google_photo": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlYVowGmtAu1KbNCvmEG9WrQiFRfHUwTRq92KrVoJgLRuPAFS_JKn1DSMRWL_4ih-qnLrVZqbCylOLKR5O8Ou0kZWKMkcYXZiXBzJynKVBpDInF9n7d0WaigGVNTAD2dFdHETHT3s2WSh0=w122-h92-k-no",
+      "image1_source": "Google Maps dataset",
+      "image1_source_url": "https://www.google.com/maps/place/Barcode+Cafe",
+      "image2_status": "not_found",
+      "image2_source": null,
+      "image2_verification": "not_attempted",
+      "image3_status": "not_found",
+      "image3_source": null,
+      "image3_verification": "not_attempted",
+      "verification_status": "image1_verified; images2-3_not_attempted",
+      "notes": "Barcode Cafe - Google photo shows exterior signage at Banani. Attempted official website and Facebook page - limited usable images found."
+    }
+  ]
+}

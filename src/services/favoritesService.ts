@@ -10,23 +10,23 @@ import { favoriteRepository } from '../repositories/favoriteRepository';
  * here — the context/UI keep the same `string[]` of ids.
  */
 export const favoritesService = {
-  /** Load favourite restaurant ids. */
-  load: (): string[] => favoriteRepository.load(),
+  /** Load favourite restaurant ids for the current user. */
+  load: (userId: string | null): string[] => favoriteRepository.load(userId),
 
-  /** Persist the current favourite id list. */
-  save: (ids: string[]): void => favoriteRepository.save(ids),
+  /** Persist the current favourite id list for the current user. */
+  save: (userId: string | null, ids: string[]): void => favoriteRepository.save(userId, ids),
 
   /** Add an id to the stored list (deduped). */
-  add: (id: string): void => {
-    const ids = favoriteRepository.load();
-    if (!ids.includes(id)) favoriteRepository.save([...ids, id]);
+  add: (userId: string | null, id: string): void => {
+    const ids = favoriteRepository.load(userId);
+    if (!ids.includes(id)) favoriteRepository.save(userId, [...ids, id]);
   },
 
   /** Remove an id from the stored list. */
-  remove: (id: string): void => {
-    favoriteRepository.save(favoriteRepository.load().filter((x) => x !== id));
+  remove: (userId: string | null, id: string): void => {
+    favoriteRepository.save(userId, favoriteRepository.load(userId).filter((x) => x !== id));
   },
 
   /** True when the id is stored. */
-  has: (id: string): boolean => favoriteRepository.load().includes(id),
+  has: (userId: string | null, id: string): boolean => favoriteRepository.load(userId).includes(id),
 };

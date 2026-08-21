@@ -1,22 +1,83 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { DemoUser, Role, SessionUser } from '../domain/auth';
-import { hashPassword, verifyPassword } from '../lib/demoAuth';
+import type { AppUser, DemoUser, Role, SessionUser } from '../domain/auth';
 import { seedDemoAccounts } from '../data/demoAccounts';
 import { ensureDemoStartingBalance } from '../lib/rewards';
 import { isPrerender } from '../lib/prerender';
 import { getRewards, saveRewards } from '../store/demoDb';
 import { userService } from '../services/userService';
 import { useUsers } from '../hooks/useUsers';
+import { getSupabase } from '../integrations/supabase/client';
+import { developmentOtpAuth } from '../lib/developmentOtpAdapter';
+
+// Normalize phone number helper
+// Accepts various Bangladesh phone formats and converts to canonical +8801XXXXXXXXX format
+// Valid input formats:
+// - Local: 01XXXXXXXXX (11 digits)
+// - International with +: +8801XXXXXXXXX (14 chars including +)
+// - International without +: 8801XXXXXXXXX (13 digits)
+// - Formatted: +880 1XXX-XXXXXX, +880 1XXX XXXXXX, etc.
+// Returns canonical format: +8801XXXXXXXXX (14 chars including +)
+const normalizePhone = (phoneNumber: string): string => {
+  // Trim whitespace and remove spaces, hyphens, parentheses
+  let normalized = phoneNumber.trim().replace(/[\s\-()]/g, '');
+  
+  // Handle leading + if present
+  const hasPlusPrefix = normalized.startsWith('+');
+  if (hasPlusPrefix) {
+    normalized = normalized.slice(1);
+  }
+  
+  // Remove any remaining non-digits
+  normalized = normalized.replace(/\D/g, '');
+  
+  // Validate and convert to canonical +8801XXXXXXXXX format
+  let canonical: string;
+  
+  if (normalized.startsWith('8801') && normalized.length === 13) {
+    // International with country code: 8801XXXXXXXXX (13 digits = 8801 + 9 digits)
+    // This handles both "+8801XXXXXXXXX" (after stripping +) and "8801XXXXXXXXX" directly
+    canonical = '+' + normalized;
+  } else if (normalized.startsWith('01') && normalized.length === 11) {
+    // Local format: 01XXXXXXXXX (11 digits = 01 + 9 digits) -> convert to +8801XXXXXXXXX
+    canonical = '+880' + normalized.slice(1);
+  } else if (normalized.startsWith('1') && normalized.length === 10) {
+    // Edge case: user typed 1XXXXXXXXX (10 digits, missing 880 prefix)
+    canonical = '+880' + normalized;
+  } else {
+    throw new Error('Invalid phone number. Please use a valid Bangladesh number (e.g., 01XXXXXXXXX, +8801XXXXXXXXX, or 8801XXXXXXXXX)');
+  }
+  
+  // Validate the canonical format: must be +8801 followed by 9 digits
+  if (!/^\+8801[0-9]{9}$/.test(canonical)) {
+    throw new Error('Invalid phone number. Please use a valid Bangladesh number (e.g., 01XXXXXXXXX, +8801XXXXXXXXX, or 8801XXXXXXXXX)');
+  }
+  
+  return canonical;
+};
 
 interface AuthContextValue {
-  /** The signed-in user (null = anonymous). */
+  /** The signed-in user (null = anonymous). Legacy DemoUser for backward compatibility. */
   user: DemoUser | null;
+  /** Unified application user identity for new code. */
+  appUser: AppUser | null;
   /** Who is signed in — mirrors `user` but stable across profile edits. */
   session: SessionUser | null;
   isAuthenticated: boolean;
   hasRole: (...roles: Role[]) => boolean;
-  login: (contact: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  signup: (name: string, contact: string, password: string, role?: Role) => Promise<{ ok: boolean; error?: string }>;
+  /** Send OTP to phone number */
+  sendOtp: (phoneNumber: string) => Promise<{ ok: boolean; error?: string; otp?: string }>;
+  /** Verify OTP code */
+  verifyOtp: (phoneNumber: string, code: string) => Promise<{ ok: boolean; error?: string }>;
+  /** Resend OTP */
+  resendOtp: (phoneNumber: string) => Promise<{ ok: boolean; error?: string; otp?: string }>;
+  /** Check if OTP can be resent */
+  canResendOtp: (phoneNumber?: string) => boolean;
+  /** Check if phone number already has an account (for signup flow) */
+  checkPhoneExists: (phoneNumber: string) => boolean;
+  /** Login with verified phone (completed OTP verification) */
+  loginWithVerifiedPhone: (phoneNumber: string) => Promise<{ ok: boolean; error?: string }>;
+  /** Signup with phone (after OTP verification) */
+  signup: (name: string, phoneNumber: string, role?: Role) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
 }
 
@@ -41,6 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Reactive snapshot of all stored users — keeps `user` fresh after profile
   // edits or demo wallet resets without a full page reload.
   const users = useUsers();
+
+  // Determine if we should use development OTP mock
+  const useDevMock = import.meta.env.VITE_DEV_AUTH_MOCK === 'true';
 
   // Hydrate the demo database with seed accounts on first run.
   useEffect(() => {
@@ -82,65 +146,498 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Initialize session from development adapter if in dev mock mode
+  useEffect(() => {
+    if (useDevMock) {
+      (async () => {
+        try {
+          const result = await developmentOtpAuth.getSession();
+          if (result.data?.session?.user) {
+            const supabaseUser = result.data.session.user;
+            // Check if user exists in our demo database
+            const existingUser = users.find(u => u.id === supabaseUser.id);
+            let dbUser: DemoUser;
+            
+            if (existingUser) {
+              dbUser = existingUser;
+            } else {
+              // Create demo user entry for this development identity
+              dbUser = {
+                id: supabaseUser.id,
+                name: supabaseUser.user_metadata?.full_name || `Dev User ${supabaseUser.phone?.slice(-4) || 'XXXX'}`,
+                contact: supabaseUser.phone || '',
+                passwordHash: '',
+                role: 'user',
+                restaurantIds: [],
+                createdAt: new Date().toISOString().slice(0, 10),
+                profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
+                completedFields: ['name', 'contact'],
+                badges: [],
+                referralCode: '',
+                referrals: [],
+                completionRewardClaimed: false,
+              };
+              userService.saveUser(dbUser);
+            }
+            
+            const sessionUser: SessionUser = {
+              id: dbUser.id,
+              name: dbUser.name,
+              role: dbUser.role,
+              restaurantIds: dbUser.restaurantIds
+            };
+            
+            userService.setSession(sessionUser);
+            setSessionState(sessionUser);
+          }
+        } catch (err) {
+          console.error('Error initializing dev session:', err);
+        }
+      })();
+    }
+  }, [useDevMock, users]);
+
   const user = useMemo(() => {
     if (!session) return null;
     return users.find((u) => u.id === session.id) ?? null;
   }, [session, users]);
 
-  // Reflect profile edits (stored user record changes) into the session copy.
+  // Supabase Auth state listener
   useEffect(() => {
-    if (session && user) {
-      const next: SessionUser = { id: user.id, name: user.name, role: user.role, restaurantIds: user.restaurantIds };
-      if (JSON.stringify(next) !== JSON.stringify(session)) setSessionState(next);
+    if (!useDevMock) {
+      // Only set up Supabase Auth listener when not in dev mock mode
+      let subscription: { unsubscribe: () => void } | null = null;
+      
+      (async () => {
+        try {
+          const supabase = await getSupabase();
+          if (supabase) {
+            const { data } = await supabase.auth.onAuthStateChange(async (event, session) => {
+              if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                if (session?.user) {
+                  // Fetch or create user profile from our user_profiles table
+                  try {
+                    const { data: profile, error } = await supabase
+                      .from('user_profiles')
+                      .select('*')
+                      .eq('user_id', session.user.id)
+                      .single();
+                    
+                    if (!error && profile) {
+                      // Save to local user service for backward compatibility
+                      const dbUser: DemoUser = {
+                        id: profile.user_id,
+                        name: profile.display_name || `${session.user.phone || ''}`.slice(-4),
+                        contact: session.user.phone || '',
+                        passwordHash: '',
+                        role: 'user',
+                        restaurantIds: [],
+                        createdAt: new Date().toISOString().slice(0, 10),
+                        profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
+                        completedFields: ['name', 'contact'],
+                        badges: [],
+                        referralCode: '',
+                        referrals: [],
+                        completionRewardClaimed: false,
+                      };
+                      
+                      userService.saveUser(dbUser);
+                      userService.setSession({
+                        id: dbUser.id,
+                        name: dbUser.name,
+                        role: dbUser.role,
+                        restaurantIds: dbUser.restaurantIds
+                      });
+                      setSessionState({
+                        id: dbUser.id,
+                        name: dbUser.name,
+                        role: dbUser.role,
+                        restaurantIds: dbUser.restaurantIds
+                      });
+                    }
+                  } catch (err) {
+                    console.error('Error fetching user profile:', err);
+                    userService.setSession(null);
+                    setSessionState(null);
+                  }
+                }
+              } else if (event === 'SIGNED_OUT') {
+                userService.setSession(null);
+                setSessionState(null);
+              }
+            });
+            
+            subscription = data.subscription;
+          }
+        } catch (err) {
+          console.error('Error setting up Supabase Auth listener:', err);
+        }
+      })();
+      
+      return () => {
+        subscription?.unsubscribe();
+      };
     }
-  }, [session, user]);
+  }, [useDevMock]);
 
-  const login = useCallback(async (contact: string, password: string) => {
-    const users = userService.getAllUsers();
-    const match = users.find((u) => u.contact.toLowerCase() === contact.trim().toLowerCase());
-    if (!match) return { ok: false, error: 'No account found with that contact. Try a demo account below.' };
-    const valid = await verifyPassword(password, match.passwordHash);
-    if (!valid) return { ok: false, error: 'Incorrect password.' };
-    const next: SessionUser = { id: match.id, name: match.name, role: match.role, restaurantIds: match.restaurantIds };
-    userService.setSession(next);
-    setSessionState(next);
-    return { ok: true };
-  }, []);
-
-  const signup = useCallback(async (name: string, contact: string, password: string, role: Role = 'user') => {
-    const trimmed = contact.trim().toLowerCase();
-    if (userService.getAllUsers().some((u) => u.contact.toLowerCase() === trimmed)) {
-      return { ok: false, error: 'An account with that contact already exists.' };
+  const sendOtp = useCallback(async (phoneNumber: string) => {
+    try {
+      const normalizedPhone = normalizePhone(phoneNumber);
+      
+      if (useDevMock) {
+        // Use development OTP adapter
+        const result = await developmentOtpAuth.signInWithOtp({ phone: normalizedPhone });
+        return {
+          ok: result.error === null,
+          error: result.error?.message ?? undefined,
+          otp: result.otp
+        };
+      } else {
+        // Use real Supabase Auth
+        const supabase = await getSupabase();
+        if (!supabase) {
+          return { ok: false, error: 'Supabase not configured' };
+        }
+        
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: normalizedPhone,
+        });
+        
+        return { ok: !error, error: error?.message };
+      }
+    } catch (error: any) {
+      return { ok: false, error: error.message };
     }
-    if (password.length < 6) return { ok: false, error: 'Password must be at least 6 characters.' };
-    const hash = await hashPassword(password);
-    const id = `user-${Date.now().toString(36)}`;
-    const newUser: DemoUser = {
-      id,
-      name: name.trim(),
-      contact: trimmed,
-      passwordHash: hash,
-      role,
-      restaurantIds: [],
-      createdAt: new Date().toISOString().slice(0, 10),
-      profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
-      completedFields: ['name', 'contact'],
-      badges: [],
-      referralCode: `${name.trim().toUpperCase().slice(0, 4)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-      referrals: [],
-      completionRewardClaimed: false,
-    };
-    userService.saveUser(newUser);
-    const next: SessionUser = { id, name: newUser.name, role, restaurantIds: [] };
-    userService.setSession(next);
-    setSessionState(next);
-    return { ok: true };
-  }, []);
+  }, [useDevMock]);
+
+  const verifyOtp = useCallback(async (phoneNumber: string, code: string) => {
+    try {
+      const normalizedPhone = normalizePhone(phoneNumber);
+      
+      if (useDevMock) {
+        // Use development OTP adapter
+        const result = await developmentOtpAuth.verifyOtp({ 
+          phone: normalizedPhone, 
+          token: code, 
+          type: 'sms' 
+        });
+        
+        if (result.error !== null) {
+          return { ok: false, error: result.error.message };
+        }
+        
+        // In dev mock mode, use localStorage for user profiles (not Supabase)
+        // The development OTP adapter already creates/persists the user identity
+        // and session in localStorage. The AuthContext session initialization
+        // effect will restore the user from localStorage on app load.
+        
+        return { ok: true };
+      } else {
+        // Use real Supabase Auth
+        const supabase = await getSupabase();
+        if (!supabase) {
+          return { ok: false, error: 'Supabase not configured' };
+        }
+        
+        const { error } = await supabase.auth.verifyOtp({
+          phone: normalizedPhone,
+          token: code,
+          type: 'sms'
+        });
+        
+        return { ok: !error, error: error?.message };
+      }
+    } catch (error: any) {
+      return { ok: false, error: error.message };
+    }
+  }, [useDevMock]);
+
+  const resendOtp = useCallback(async (phoneNumber: string) => {
+    try {
+      const normalizedPhone = normalizePhone(phoneNumber);
+      
+      if (useDevMock) {
+        // Use development OTP adapter
+        const result = await developmentOtpAuth.signInWithOtpForResend({ phone: normalizedPhone });
+        return {
+          ok: result.error === null,
+          error: result.error?.message ?? undefined,
+          otp: result.otp
+        };
+      } else {
+        // Use real Supabase Auth
+        const supabase = await getSupabase();
+        if (!supabase) {
+          return { ok: false, error: 'Supabase not configured' };
+        }
+        
+        const { error } = await supabase.auth.resend({
+          phone: normalizedPhone,
+          type: 'sms'
+        });
+        
+        return { ok: !error, error: error?.message };
+      }
+    } catch (error: any) {
+      return { ok: false, error: error.message };
+    }
+  }, [useDevMock]);
+
+  const canResendOtp = useCallback((phoneNumber?: string) => {
+    try {
+      const normalizedPhone = normalizePhone(phoneNumber ?? '');
+      
+      if (useDevMock) {
+        return developmentOtpAuth.canResendOtp(normalizedPhone);
+      } else {
+        // In real Supabase Auth, we'd need to check with the backend
+        // For simplicity, we'll allow resending (Supabase handles rate limiting)
+        return true;
+      }
+    } catch {
+      return false;
+    }
+  }, [useDevMock]);
+
+  const checkPhoneExists = useCallback((phoneNumber: string) => {
+    try {
+      const normalizedPhone = normalizePhone(phoneNumber);
+      
+      if (useDevMock) {
+        // In dev mock mode, check if user already exists in our demo database
+        // Normalize stored contacts for comparison (they may be in canonical format +8801...)
+        return users.some(u => {
+          const storedContact = u.contact?.replace(/\D/g, '');
+          const normalizedStored = storedContact ? normalizePhone(storedContact) : '';
+          return normalizedStored === normalizedPhone;
+        });
+      } else {
+        // In production, this would require a backend call
+        // For now, return false (let the signup flow handle it)
+        return false;
+      }
+    } catch {
+      return false;
+    }
+  }, [users, useDevMock]);
+
+  const loginWithVerifiedPhone = useCallback(async (phoneNumber: string) => {
+    try {
+      const normalizedPhone = normalizePhone(phoneNumber);
+      
+      if (useDevMock) {
+        // In dev mock mode, the verified identity comes from the OTP verification
+        // which already created the user profile and persisted the session.
+        // We just need to ensure the session is restored from the adapter.
+        const result = await developmentOtpAuth.getSession();
+        if (result.data?.session?.user) {
+          const supabaseUser = result.data.session.user;
+          
+          // Find or create user in demo database
+          let existingUser = users.find(u => u.id === supabaseUser.id);
+          if (!existingUser) {
+            existingUser = users.find(u => {
+              const storedContact = u.contact?.replace(/\D/g, '');
+              const normalizedStored = storedContact ? normalizePhone(storedContact) : '';
+              return normalizedStored === normalizedPhone;
+            });
+          }
+          
+          if (existingUser) {
+            const next: SessionUser = { 
+              id: existingUser.id, 
+              name: existingUser.name, 
+              role: existingUser.role, 
+              restaurantIds: existingUser.restaurantIds 
+            };
+            userService.setSession(next);
+            setSessionState(next);
+            return { ok: true };
+          } else {
+            // No existing account found - do not create a new user on login
+            return { ok: false, error: 'No account found. Please create an account first.' };
+          }
+        } else {
+          return { ok: false, error: 'No active development session' };
+        }
+      } else {
+        // Use real Supabase Auth - check session and sync with user_profiles
+        const supabase = await getSupabase();
+        if (!supabase) {
+          return { ok: false, error: 'Supabase not configured' };
+        }
+        
+        const { data: { session: supabaseSession }, error } = await supabase.auth.getSession();
+        if (error || !supabaseSession?.user) {
+          return { ok: false, error: 'No active session' };
+        }
+        
+        // Verify the phone number matches
+        if (supabaseSession.user.phone !== normalizedPhone) {
+          return { ok: false, error: 'Phone number mismatch' };
+        }
+        
+        // Sync with our user service
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', supabaseSession.user.id)
+            .single();
+          
+          if (!profileError && profile) {
+            const dbUser: DemoUser = {
+              id: profile.user_id,
+              name: profile.display_name || `${supabaseSession.user.phone || ''}`.slice(-4),
+              contact: supabaseSession.user.phone || '',
+              passwordHash: '',
+              role: 'user',
+              restaurantIds: [],
+              createdAt: new Date().toISOString().slice(0, 10),
+              profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
+              completedFields: ['name', 'contact'],
+              badges: [],
+              referralCode: '',
+              referrals: [],
+              completionRewardClaimed: false,
+            };
+            
+            userService.saveUser(dbUser);
+            userService.setSession({
+              id: dbUser.id,
+              name: dbUser.name,
+              role: dbUser.role,
+              restaurantIds: dbUser.restaurantIds
+            });
+            setSessionState({
+              id: dbUser.id,
+              name: dbUser.name,
+              role: dbUser.role,
+              restaurantIds: dbUser.restaurantIds
+            });
+          } else {
+            userService.setSession(null);
+            setSessionState(null);
+            return { ok: false, error: 'User profile not found' };
+          }
+        } catch (err) {
+          console.error('Error syncing with user service:', err);
+          userService.setSession(null);
+          setSessionState(null);
+          return { ok: false, error: 'Failed to sync user data' };
+        }
+        
+        return { ok: true };
+      }
+    } catch (error: any) {
+      return { ok: false, error: error.message };
+    }
+  }, [users, useDevMock]);
+
+  const signup = useCallback(async (name: string, phoneNumber: string, role: Role = 'user') => {
+    try {
+      const normalizedPhone = normalizePhone(phoneNumber);
+      
+      if (useDevMock) {
+        // In dev mock mode, check if user already exists in our demo database
+        // Normalize stored contacts for comparison (they may be in canonical format +8801...)
+        const phoneExists = users.some(u => {
+          const storedContact = u.contact?.replace(/\D/g, '');
+          const normalizedStored = storedContact ? normalizePhone(storedContact) : '';
+          return normalizedStored === normalizedPhone;
+        });
+        
+        if (phoneExists) {
+          return { ok: false, error: 'An account with this phone number already exists. Please sign in.' };
+        }
+        
+        // Get the stable UUID from the development OTP adapter session
+        // The adapter creates a stable UUID per phone number during OTP verification
+        const result = await developmentOtpAuth.getSession();
+        if (!result.data?.session?.user) {
+          return { ok: false, error: 'No active development session. Please complete OTP verification first.' };
+        }
+        
+        const stableUserId = result.data.session.user.id;
+        
+        // Create new user in our demo database with the stable UUID identity
+        const newUser: DemoUser = {
+          id: stableUserId,
+          name: name.trim(),
+          contact: normalizedPhone,
+          passwordHash: '',
+          role,
+          restaurantIds: [],
+          createdAt: new Date().toISOString().slice(0, 10),
+          profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
+          completedFields: ['name', 'contact'],
+          badges: [],
+          referralCode: `${name.trim().toUpperCase().slice(0, 4)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+          referrals: [],
+          completionRewardClaimed: false,
+        };
+        
+        userService.saveUser(newUser);
+        userService.setSession({
+          id: newUser.id,
+          name: newUser.name,
+          role: newUser.role,
+          restaurantIds: newUser.restaurantIds
+        });
+        setSessionState({
+          id: newUser.id,
+          name: newUser.name,
+          role: newUser.role,
+          restaurantIds: newUser.restaurantIds
+        });
+        
+        return { ok: true };
+      } else {
+        // Use real Supabase Auth
+        const supabase = await getSupabase();
+        if (!supabase) {
+          return { ok: false, error: 'Supabase not configured' };
+        }
+        
+        // First, sign up with OTP (this sends the OTP)
+        const { error: signupError } = await supabase.auth.signInWithOtp({
+          phone: normalizedPhone,
+        });
+        
+        if (signupError) {
+          return { ok: false, error: signupError.message };
+        }
+        
+        // Note: In Supabase phone auth, the user needs to verify the OTP first
+        // We return success here indicating OTP was sent, and the user needs
+        // to verify it via verifyOtp method
+        return { ok: true };
+      }
+    } catch (error: any) {
+      return { ok: false, error: error.message };
+    }
+  }, [users, useDevMock]);
 
   const logout = useCallback(() => {
     userService.setSession(null);
     setSessionState(null);
-  }, []);
+    
+    // Also sign out from the appropriate auth system
+    if (useDevMock) {
+      developmentOtpAuth.signOut();
+    } else {
+      (async () => {
+        try {
+          const supabase = await getSupabase();
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
+        } catch (err) {
+          console.error('Error signing out from Supabase:', err);
+        }
+      })();
+    }
+  }, [useDevMock]);
 
   const hasRole = useCallback(
     (...roles: Role[]) => (session ? roles.includes(session.role) : false),
@@ -148,8 +645,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, session, isAuthenticated: Boolean(session), hasRole, login, signup, logout }),
-    [user, session, hasRole, login, signup, logout],
+    () => ({ 
+      user, 
+      appUser: user ? {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        restaurantIds: user.restaurantIds,
+        contact: user.contact,
+        createdAt: user.createdAt,
+      } as AppUser : null,
+      session, 
+      isAuthenticated: Boolean(session), 
+      hasRole, 
+      sendOtp,
+      verifyOtp,
+      resendOtp,
+      canResendOtp,
+      checkPhoneExists,
+      loginWithVerifiedPhone,
+      signup,
+      logout 
+    }),
+    [user, session, hasRole, sendOtp, verifyOtp, resendOtp, canResendOtp, checkPhoneExists, loginWithVerifiedPhone, signup, logout],
   );
 
   if (!ready) {

@@ -1,0 +1,47 @@
+{
+  "total": 1,
+  "params": {
+    "q": "Almajlis Arabian Restaurant | مطعم المجلس العربي Gulshan Dhaka",
+    "page": 1,
+    "ll": "@23.7806,90.4188,15z",
+    "hl": "en",
+    "gl": "bd",
+    "extra": false,
+    "version": 2
+  },
+  "data": [
+    {
+      "Name": "Almajlis Arabian Restaurant | مطعم المجلس العربي",
+      "Fulladdress": "2nd Floor, Faisal Tower, 27 North C/A, Dhaka 1212",
+      "Street": "2nd Floor",
+      "Municipality": "Faisal Tower",
+      "Categories": [
+        "Family restaurant"
+      ],
+      "About": "Service options: [No-contact delivery, Delivery, Takeaway, Dine-in], Highlights: [Great coffee, Great dessert, Great tea selection], Popular for: [Lunch, Dinner, Solo dining], Accessibility: [Wheelchair-accessible seating, Wheelchair-accessible toilet], Offerings: [Coffee, Late-night food, Private dining room, Quick bite, Small plates], Dining options: [Brunch, Lunch, Dinner, Catering, Dessert, Seating, Table service], Amenities: [Toilet], Atmosphere: [Casual, Cosy, Trendy, Upmarket], Crowd: [Good for groups, Tourists], Planning: [Lunch reservations recommended, Dinner reservations recommended, Accepts reservations], Payments: [Credit cards, Debit cards, NFC mobile payments], Children: [Good for kids, Good for kids birthday, High chairs], Parking: [Free of charge street parking, Free parking lot, Paid parking lot]",
+      "Phone": "01830-000233",
+      "Phones": "01830-000233, +880 1830-000233",
+      "Claimed": "YES",
+      "Owner": "Almajlis Arabian Restaurant | مطعم المجلس العربي (Owner)",
+      "Owner Id": "103583283475663783319",
+      "Owner Link": "https://www.google.com/maps/contrib/103583283475663783319",
+      "Review Count": 737,
+      "Average Rating": 4.6,
+      "Review URL": "https://search.google.com/local/reviews?placeid=ChIJNYCUDQDHVTcRbZ-EG2mgl3o&authuser=0&hl=en&gl=US",
+      "Latitude": 23.7952571,
+      "Longitude": 90.41307719999999,
+      "Time Zone": "Asia/Dhaka",
+      "Website": "almajlisarabianrestaurant.com/",
+      "Domain": "almajlisarabianrestaurant.com",
+      "Opening Hours": "Thursday(2026-08-20): [11 AM–4 AM], Friday(2026-08-21): [11 AM–4 AM], Saturday(2026-08-22): [11 AM–4 AM], Sunday(2026-08-23): [11 AM–4 AM], Monday(2026-08-24): [11 AM–4 AM], Tuesday(2026-08-25): [11 AM–4 AM], Wednesday(2026-08-26): [11 AM–4 AM]",
+      "Featured Image": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=F1cwyGCszh7waAil3_TblQ&cb_client=search.gws-prod.gps&w=211&h=120&yaw=107.11893&pitch=0&thumbfov=100",
+      "Google Maps URL": "https://www.google.com/maps?cid=8833705567404203885",
+      "Google Knowledge URL": "https://www.google.com/search?kgmid=/g/11y9b6v1tn",
+      "Cid": "8833705567404203885",
+      "Fid": "0x3755c7000d948035:0x7a97a0691b849f6d",
+      "Kgmid": "/g/11y9b6v1tn",
+      "Place Id": "ChIJNYCUDQDHVTcRbZ-EG2mgl3o",
+      "Web Result URL": "https://www.google.com/search?q=local+guide+program&ibp=gwp;0,26,OkwKSiJGQWxtYWpsaXMgQXJhYmlhbiBSZXN0YXVyYW50IHwg2YXYt9i52YUg2KfZhNmF2KzZhNizINin2YTYudix2KjZiiBEaGFrYSgC&pcl=lp"
+    }
+  ]
+}

@@ -8,7 +8,7 @@ import * as queries from '../integrations/supabase/queries';
  *   SavedContext → savedRestaurantsService → savedRestaurantRepository → storage
  *
  * "Saved" is a bookmark list (quick access), deliberately distinct from
- * "Favourites" (a preference signal that shapes recommendations). The mock
+ * Favourites (a preference signal that shapes recommendations). The mock
  * implementation keeps the current UX: saved ids live in localStorage, keyed
  * by frontend restaurant slug. The Supabase implementation targets the
  * approved `saved_restaurants` table (user_id + restaurant_id, unique).
@@ -17,10 +17,10 @@ import * as queries from '../integrations/supabase/queries';
  * import's stored `slug` attribute) before bookmarks can be database-backed.
  */
 export interface SavedRestaurantRepository {
-  /** Load saved restaurant ids (frontend slugs) — localStorage today. */
-  load(): string[];
-  /** Persist the current saved id list. */
-  save(ids: string[]): void;
+  /** Load saved restaurant ids (frontend slugs) for the current user. */
+  load(userId: string | null): string[];
+  /** Persist the current saved id list for the current user. */
+  save(userId: string | null, ids: string[]): void;
   /** Future async path: a user's saved rows from the DB. */
   fetchIdsForUser?(userId: string): Promise<string[]>;
   /** Future async path: add a saved row. */
@@ -29,11 +29,14 @@ export interface SavedRestaurantRepository {
   removeForUser?(userId: string, restaurantId: string): Promise<void>;
 }
 
-const STORAGE_KEY = 'khabo-kothay:saved-restaurants';
+/** Get the storage key for the current user. */
+function getStorageKey(userId: string | null): string {
+  return userId ? `khabo-kothay:saved-restaurants:${userId}` : 'khabo-kothay:saved-restaurants:anonymous';
+}
 
-function readIds(): string[] {
+function readIds(key: string): string[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
@@ -43,10 +46,10 @@ function readIds(): string[] {
 }
 
 export const mockSavedRestaurantRepository: SavedRestaurantRepository = {
-  load: () => readIds(),
-  save: (ids) => {
+  load: (userId: string | null) => readIds(getStorageKey(userId)),
+  save: (userId: string | null, ids: string[]) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+      localStorage.setItem(getStorageKey(userId), JSON.stringify(ids));
     } catch {
       // storage unavailable — saved list just won't persist
     }
@@ -54,15 +57,13 @@ export const mockSavedRestaurantRepository: SavedRestaurantRepository = {
 };
 
 class SupabaseSavedRestaurantRepository implements SavedRestaurantRepository {
-  load(): string[] {
-    // Sync path has no backend equivalent; saved ids load through the async
-    // user path once auth is wired. Local fallback keeps the UI usable.
-    return readIds();
+  load(userId: string | null): string[] {
+    return readIds(getStorageKey(userId));
   }
 
-  save(ids: string[]): void {
+  save(userId: string | null, ids: string[]): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+      localStorage.setItem(getStorageKey(userId), JSON.stringify(ids));
     } catch {
       // noop
     }

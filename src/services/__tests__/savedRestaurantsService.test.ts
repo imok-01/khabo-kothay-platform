@@ -7,35 +7,44 @@ beforeEach(() => {
 
 describe('savedRestaurantsService (mock repository — localStorage)', () => {
   it('starts empty and persists ids', () => {
-    expect(savedRestaurantsService.load()).toEqual([]);
-    savedRestaurantsService.add('a');
-    savedRestaurantsService.add('b');
-    expect(savedRestaurantsService.load()).toEqual(['a', 'b']);
+    expect(savedRestaurantsService.load(null)).toEqual([]);
+    savedRestaurantsService.add(null, 'a');
+    savedRestaurantsService.add(null, 'b');
+    expect(savedRestaurantsService.load(null)).toEqual(['a', 'b']);
   });
 
   it('add is idempotent (deduped)', () => {
-    savedRestaurantsService.add('a');
-    savedRestaurantsService.add('a');
-    expect(savedRestaurantsService.load()).toEqual(['a']);
+    savedRestaurantsService.add(null, 'a');
+    savedRestaurantsService.add(null, 'a');
+    expect(savedRestaurantsService.load(null)).toEqual(['a']);
   });
 
   it('removes an id and keeps the rest', () => {
-    savedRestaurantsService.add('a');
-    savedRestaurantsService.add('b');
-    savedRestaurantsService.remove('a');
-    expect(savedRestaurantsService.load()).toEqual(['b']);
-    expect(savedRestaurantsService.has('a')).toBe(false);
-    expect(savedRestaurantsService.has('b')).toBe(true);
+    savedRestaurantsService.add(null, 'a');
+    savedRestaurantsService.add(null, 'b');
+    savedRestaurantsService.remove(null, 'a');
+    expect(savedRestaurantsService.load(null)).toEqual(['b']);
+    expect(savedRestaurantsService.has(null, 'a')).toBe(false);
+    expect(savedRestaurantsService.has(null, 'b')).toBe(true);
   });
 
   it('survives a reload (persisted in localStorage)', () => {
-    savedRestaurantsService.add('seasonal-tastes');
-    expect(savedRestaurantsService.load()).toEqual(['seasonal-tastes']);
+    savedRestaurantsService.add(null, 'seasonal-tastes');
+    // New read from the same storage — no provider reset needed since the
+    // mock repository reads localStorage on every call.
+    expect(savedRestaurantsService.load(null)).toEqual(['seasonal-tastes']);
   });
 
   it('keeps a separate store from favourites', () => {
-    savedRestaurantsService.add('seasonal-tastes');
-    // Favourites live under their own key; saved must not see them.
-    expect(savedRestaurantsService.load()).toEqual(['seasonal-tastes']);
+    // This test is now redundant since they use different localStorage keys
+    // but we keep it for clarity
+    expect(savedRestaurantsService.load(null)).toEqual([]);
+  });
+
+  it('keeps separate stores per user', () => {
+    savedRestaurantsService.add('user-1', 'a');
+    savedRestaurantsService.add('user-2', 'b');
+    expect(savedRestaurantsService.load('user-1')).toEqual(['a']);
+    expect(savedRestaurantsService.load('user-2')).toEqual(['b']);
   });
 });

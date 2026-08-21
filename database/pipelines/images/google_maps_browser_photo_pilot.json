@@ -1,0 +1,141 @@
+{
+  "pilot_date": "2026-08-20T07:50:41.936Z",
+  "browser": "Playwright Chromium (visible, fresh context per restaurant)",
+  "method": "Direct search URL → place page → photos → scroll → click for full size",
+  "restaurants_tested": 5,
+  "restaurants_3_images": 1,
+  "restaurants_2_images": 0,
+  "restaurants_1_image": 3,
+  "restaurants_0_images": 1,
+  "restaurants": [
+    {
+      "restaurant_id": "daf5744e-c698-513d-a840-a79dcd317f8a",
+      "restaurant_name": "Alfresco Banani",
+      "google_place_id": "0x3755c70deb283103:0xc748ef315ea10517",
+      "identity_verified": true,
+      "images": [
+        {
+          "position": 1,
+          "source": "Google Maps",
+          "reference": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlqmQui62dq8Z1nD86CgbARkC1ZQyc_RwiHb7mQ1GZkvfKKA6J0zvh1NGymJVugFByydMR79HgCMIusaO-kY2AlaG0KryWR6208iuDKEdIZdRfhzNO7CWbS_iGgsOg3TIyAf8gV=w32-h32-p-k-no",
+          "verification_status": "VERIFIED",
+          "notes": "Found on Google Maps for \"Alfresco Banani\"",
+          "width_px": 32,
+          "height_px": 32,
+          "author_attributions": [],
+          "google_maps_uri": "",
+          "retrieval_verified": true
+        }
+      ],
+      "coverage_status": "1_IMAGES",
+      "notes": ""
+    },
+    {
+      "restaurant_id": "52ddccee-63db-57bb-8171-194f082d52f6",
+      "restaurant_name": "Al-Amar Lebanese Cuisine Gulshan",
+      "google_place_id": "",
+      "identity_verified": false,
+      "images": [],
+      "coverage_status": "0_IMAGES",
+      "notes": ""
+    },
+    {
+      "restaurant_id": "ea76ed39-eefc-5eb8-b296-4d36d93982aa",
+      "restaurant_name": "Aaheli Kabab and Chinese Restaurant",
+      "google_place_id": "0x3755c70e991c0c77:0x9fa67b93281f7043",
+      "identity_verified": true,
+      "images": [
+        {
+          "position": 1,
+          "source": "Google Maps",
+          "reference": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWngVgIYdoeJVOc7-I9VfDkjVB5iTM_y_tCkz2caS6Ii-EBPexpxxnADTCM038yfT8GP2w3lcDXuT_0H-VjM2acZ3FJKvXZpvooqC__VUVVH1fUwTitI_7_xCBQV1_qsd7DWyGoviA=w408-h306-k-no",
+          "verification_status": "VERIFIED",
+          "notes": "Found on Google Maps for \"Aaheli Kabab and Chinese Restaurant\"",
+          "width_px": 408,
+          "height_px": 306,
+          "author_attributions": [],
+          "google_maps_uri": "",
+          "retrieval_verified": true
+        }
+      ],
+      "coverage_status": "1_IMAGES",
+      "notes": ""
+    },
+    {
+      "restaurant_id": "d9c46286-b961-57c1-bc1a-3db72f08b8e0",
+      "restaurant_name": "Bahar",
+      "google_place_id": "0x3755c7894ba49dfd:0x6caf90a7f39c67ae",
+      "identity_verified": true,
+      "images": [
+        {
+          "position": 1,
+          "source": "Google Maps",
+          "reference": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWlzIi_Om7831imdasy-jgty-n2NInwf2FKGYBvT91JI9vL51xe6PVx6_jwRb-ibN5RZ-1tvRpdcEM3GYv_VLPHAMps7455jXplURfzegvMgw6inkL-DKvt2m98PxT9QIJwsR6aI=w32-h32-p-k-no",
+          "verification_status": "VERIFIED",
+          "notes": "Found on Google Maps for \"Bahar\"",
+          "width_px": 32,
+          "height_px": 32,
+          "author_attributions": [],
+          "google_maps_uri": "",
+          "retrieval_verified": true
+        }
+      ],
+      "coverage_status": "1_IMAGES",
+      "notes": ""
+    },
+    {
+      "restaurant_id": "4a6c85a5-8cf0-582a-883d-e670ac85be33",
+      "restaurant_name": "Bamboo Shoot Gulshan",
+      "google_place_id": "0x3755c7a1bce90fc3:0x7edd08f9123d1698",
+      "identity_verified": true,
+      "images": [
+        {
+          "position": 1,
+          "source": "Google Maps",
+          "reference": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWn8enRZQiKCEXwo3ilu45TrEIMu268zAb_RdfMwXdDrtbtA8B6yDuEaaMlw6yst4RWlWqMIQPo1YPPWGgeOJ25FWn4S1yNGOUxxP4NSo5gTy3dGI8uK4Nym_Ohy6nUX5QpxOLUi=w203-h152-k-no",
+          "verification_status": "VERIFIED",
+          "notes": "Found on Google Maps for \"Bamboo Shoot Gulshan\"",
+          "width_px": 203,
+          "height_px": 152,
+          "author_attributions": [],
+          "google_maps_uri": "",
+          "retrieval_verified": true
+        },
+        {
+          "position": 2,
+          "source": "Google Maps",
+          "reference": "https://lh3.googleusercontent.com/gps-cs-s/AHRPTWl96yEHQbx29JqHflYl2qj6jN0wiedEQ__VIzKsRgeJscNgXAR7q4RqUk8P4P0d0QB1sAuwxm60pI54D3tHgaD1WgGAM7P0VP9F80DOA6snPklc6zCKZU1h2IZ0SVHrO0-jxVGzPRGtXxLZ=w213-h120-k-no",
+          "verification_status": "VERIFIED",
+          "notes": "Found on Google Maps for \"Bamboo Shoot Gulshan\"",
+          "width_px": 213,
+          "height_px": 120,
+          "author_attributions": [],
+          "google_maps_uri": "",
+          "retrieval_verified": true
+        },
+        {
+          "position": 3,
+          "source": "Google Maps",
+          "reference": "https://lh3.googleusercontent.com/a-/ALV-UjUqxNguJPxh2SGJYDHZNGu1J4xkwD_DYAQw9IVhvTFwa8p8BY0=w36-h36-p-rp-mo-ba12-br100",
+          "verification_status": "VERIFIED",
+          "notes": "Found on Google Maps for \"Bamboo Shoot Gulshan\"",
+          "width_px": 36,
+          "height_px": 36,
+          "author_attributions": [],
+          "google_maps_uri": "",
+          "retrieval_verified": true
+        }
+      ],
+      "coverage_status": "3_IMAGES",
+      "notes": ""
+    }
+  ],
+  "storage_policy": {
+    "photo_urls_expire": true,
+    "photo_resource_names_stable": true,
+    "requires_dynamic_fetch": true,
+    "attribution_required": true,
+    "note": "Google Maps photo URLs are temporary. The photoResourceName is stable, but the actual image URL must be re-fetched. KK must either fetch dynamically or download-and-cache."
+  },
+  "recommendation": "YELLOW"
+}

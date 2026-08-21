@@ -410,6 +410,16 @@ export async function selectProfileForUser(userId: string): Promise<UserProfiles
   return data;
 }
 
+export async function insertUserProfile(userId: string, displayName: string | null, phoneNumber: string | null): Promise<UserProfilesRow> {
+  const { data, error } = await (await requireSupabase())
+    .from('user_profiles')
+    .insert({ user_id: userId, display_name: displayName, phone_number: phoneNumber })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function selectRolesForUser(userId: string): Promise<RolesRow[]> {
   const { data, error } = await (await requireSupabase()).from('roles').select('*').eq('user_id', userId);
   if (error) throw error;

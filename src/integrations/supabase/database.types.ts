@@ -200,6 +200,7 @@ export type UserProfilesRow = {
   id: string;
   user_id: string; // references auth.users
   display_name: string | null;
+  phone_number: string | null;
   created_at: string | null;
 }
 

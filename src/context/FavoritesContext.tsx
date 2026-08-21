@@ -7,6 +7,11 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { grantFavouriteReward, grantCuisineDiscovery } from '../lib/rewards';
+import { favoritesService } from '../services/favoritesService';
+import { restaurantService } from '../services/restaurantService';
+import { getSession } from '../store/demoDb';
 
 interface FavoritesContextValue {
   favoriteIds: string[];
@@ -15,21 +20,24 @@ interface FavoritesContextValue {
   clearFavorites: () => void;
 }
 
-import { getSession } from '../store/demoDb';
-import { grantCuisineDiscovery, grantFavouriteReward } from '../lib/rewards';
-import { favoritesService } from '../services/favoritesService';
-import { restaurantService } from '../services/restaurantService';
-
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
+  const { appUser } = useAuth();
+  const userId = appUser?.id ?? null;
+
   // Persistence lives behind favoritesService → favoriteRepository
   // (localStorage today; the approved favorites table later).
-  const [favoriteIds, setFavoriteIds] = useState<string[]>(favoritesService.load);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => favoritesService.load(userId));
+
+  // Reload favorites when userId changes (e.g., login/logout/user switch)
+  useEffect(() => {
+    setFavoriteIds(favoritesService.load(userId));
+  }, [userId]);
 
   useEffect(() => {
-    favoritesService.save(favoriteIds);
-  }, [favoriteIds]);
+    favoritesService.save(userId, favoriteIds);
+  }, [favoriteIds, userId]);
 
   const isFavorite = useCallback(
     (id: string) => favoriteIds.includes(id),
@@ -46,10 +54,13 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     if (!adding) return;
     const session = getSession();
     if (!session) return;
-    grantFavouriteReward(session.id);
-    const r = restaurantService.getAllSync().find((x) => x.id === id);
-    if (r) grantCuisineDiscovery(session.id, r.cuisines);
-  }, [favoriteIds]);
+    // Use the unified appUser identity for rewards
+    if (appUser) {
+      grantFavouriteReward(appUser.id);
+      const r = restaurantService.getAllSync().find((x) => x.id === id);
+      if (r) grantCuisineDiscovery(appUser.id, r.cuisines);
+    }
+  }, [favoriteIds, appUser]);
 
   const clearFavorites = useCallback(() => setFavoriteIds([]), []);
 

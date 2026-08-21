@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { savedRestaurantsService } from '../services/savedRestaurantsService';
 
 interface SavedContextValue {
@@ -18,18 +19,22 @@ interface SavedContextValue {
 
 const SavedContext = createContext<SavedContextValue | null>(null);
 
-/**
- * Saved — a bookmark list for quick access, deliberately separate from
- * Favourites (which is a preference signal for recommendations). Persistence
- * lives behind savedRestaurantsService → savedRestaurantRepository
- * (localStorage today; the approved saved_restaurants table later).
- */
 export function SavedProvider({ children }: { children: ReactNode }) {
-  const [savedIds, setSavedIds] = useState<string[]>(savedRestaurantsService.load);
+  const { appUser } = useAuth();
+  const userId = appUser?.id ?? null;
+
+  // Persistence lives behind savedRestaurantsService → savedRestaurantRepository
+  // (localStorage today; the approved saved_restaurants table later).
+  const [savedIds, setSavedIds] = useState<string[]>(() => savedRestaurantsService.load(userId));
+
+  // Reload saved restaurants when userId changes (e.g., login/logout/user switch)
+  useEffect(() => {
+    setSavedIds(savedRestaurantsService.load(userId));
+  }, [userId]);
 
   useEffect(() => {
-    savedRestaurantsService.save(savedIds);
-  }, [savedIds]);
+    savedRestaurantsService.save(userId, savedIds);
+  }, [savedIds, userId]);
 
   const isSaved = useCallback((id: string) => savedIds.includes(id), [savedIds]);
 

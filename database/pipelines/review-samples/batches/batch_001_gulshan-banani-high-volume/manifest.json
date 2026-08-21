@@ -1,0 +1,170 @@
+{
+  "dataset": "GOOGLE_REVIEW_HIGHLIGHTS_BATCH_001 — Gulshan/Banani high-volume venues",
+  "approved_on": "AWAITING HUMAN DATA COLLECTION",
+  "count": 0,
+  "reviews": [],
+  "status": "AWAITING_HUMAN_DATA",
+  "notes": "Batch 001 selected 20 high-volume Gulshan/Banani restaurants. AI collection attempted but failed (web search returned zero results, cannot browse Google Maps). Awaiting human data provider to collect raw review data per GOOGLE_REVIEW_HIGHLIGHTS_SOP_V2.md Phase 2.",
+  "restaurants": [
+    {
+      "restaurant_id": "9bad97a8-0891-5f53-a6a8-29bad7786630",
+      "restaurant_name": "Herfy Gulshan",
+      "google_place_id": "ChIJlT29NYPHVTcRbdqfrfAL_mE",
+      "google_review_count": 9237,
+      "google_rating": 4.3,
+      "notes": "Fast Food / Premium. Branch verify against Herfy - Banani (ChIJuWqUQBLHVTcRPChtGfQzhXU)."
+    },
+    {
+      "restaurant_id": "1214e34e-64b9-522e-90ca-f445019afd58",
+      "restaurant_name": "Takeout Banani",
+      "google_place_id": "ChIJD-LJDhLHVTcRlRlxntfUiYg",
+      "google_review_count": 5940,
+      "google_rating": 4.4,
+      "notes": "Mid-range. Distinct venue from Takeout Gulshan (id takeout-gulshan)."
+    },
+    {
+      "restaurant_id": "932a72f8-7ae6-5ae7-bb1b-5eeac0a4dac7",
+      "restaurant_name": "Meat Theory",
+      "google_place_id": "ChIJj6TJHu7HVTcR5Qa18Wv6AWI",
+      "google_review_count": 5643,
+      "google_rating": 4.8,
+      "notes": "Luxury steakhouse. Was 0-sample in pilot QA — target for collection."
+    },
+    {
+      "restaurant_id": "97cf6bd8-16d2-56fc-aee7-08dfb7eee8b7",
+      "restaurant_name": "Steakout",
+      "google_place_id": "ChIJB58cVtDHVTcRl3C30z6ctsY",
+      "google_review_count": 4780,
+      "google_rating": 4.6,
+      "notes": "Continental / Luxury."
+    },
+    {
+      "restaurant_id": "b2c16a34-8c93-5ee5-8a31-9a9e47b9d511",
+      "restaurant_name": "Barcode Cafe",
+      "google_place_id": "ChIJCa-cr5zHVTcR70Ud7EriuUk",
+      "google_review_count": 4649,
+      "google_rating": 4.3,
+      "notes": "Premium."
+    },
+    {
+      "restaurant_id": "2b95d5ca-0666-50c3-9a5a-ca0d571f46cc",
+      "restaurant_name": "Burger King Banani",
+      "google_place_id": "ChIJcTdhSwzHVTcRtn8ew90MPXQ",
+      "google_review_count": 4334,
+      "google_rating": 4.2,
+      "notes": "Fast Food / Premium. Branch verify against Burger King Gulshan 2."
+    },
+    {
+      "restaurant_id": "49de3cae-decb-55aa-907f-40f3509387ce",
+      "restaurant_name": "Beyond Buffet (Gulshan)",
+      "google_place_id": "ChIJ2Vv6YHzHVTcRLP4-fOtV4xE",
+      "google_review_count": 4196,
+      "google_rating": 4.0,
+      "notes": "Luxury buffet."
+    },
+    {
+      "restaurant_id": "38c9dda3-5649-572e-b911-7a171e9e9cd2",
+      "restaurant_name": "The New Gulshan Plaza Restaurant",
+      "google_place_id": "ChIJ7_UxHafHVTcRHWbnbvsqFfk",
+      "google_review_count": 4149,
+      "google_rating": 4.2,
+      "notes": "Mid-range."
+    },
+    {
+      "restaurant_id": "ace474c2-35ba-50ef-914f-9818df21f6fc",
+      "restaurant_name": "Texas Flame",
+      "google_place_id": "ChIJGel-pgfHVTcROlcZ5WYFsTo",
+      "google_review_count": 4045,
+      "google_rating": 4.9,
+      "notes": "Continental / Luxury."
+    },
+    {
+      "restaurant_id": "ed00f196-4678-5ff8-b2f6-f7b638588299",
+      "restaurant_name": "Madchef | Banani",
+      "google_place_id": "ChIJr7jnoA7HVTcRno2Ggd8gvrQ",
+      "google_review_count": 3997,
+      "google_rating": 4.3,
+      "notes": "Fast Food / Mid-range."
+    },
+    {
+      "restaurant_id": "bfb00a92-aaa9-5e08-aebe-ccc548b77657",
+      "restaurant_name": "Pizza Inn Gulshan 1",
+      "google_place_id": "ChIJ52qDzOfHVTcR4YQgBGNcpYU",
+      "google_review_count": 3605,
+      "google_rating": 4.1,
+      "notes": "Premium. Branch verify (Pizza Inn has multiple Dhaka branches)."
+    },
+    {
+      "restaurant_id": "a3599f17-903b-5337-9cdd-2c738ca9803d",
+      "restaurant_name": "Pizza Guy",
+      "google_place_id": "ChIJV9UU4kzGVTcROaDLsxtjwik",
+      "google_review_count": 3528,
+      "google_rating": 4.3,
+      "notes": "Italian / Premium."
+    },
+    {
+      "restaurant_id": "7a12e33e-7485-5f11-adee-a002e7ad7bc1",
+      "restaurant_name": "BFC - Banani",
+      "google_place_id": "ChIJcZ0_hgvHVTcRSoIDyC6I5Ag",
+      "google_review_count": 3471,
+      "google_rating": 4.2,
+      "notes": "Fast Food / Mid-range."
+    },
+    {
+      "restaurant_id": "5dd91301-5651-5861-a96d-bb96093b604b",
+      "restaurant_name": "Salam's Kitchen",
+      "google_place_id": "ChIJbWyeJAzHVTcRWJS3lPCkmd0",
+      "google_review_count": 3429,
+      "google_rating": 4.0,
+      "notes": "Bangladeshi / Mid-range."
+    },
+    {
+      "restaurant_id": "daf5744e-c698-513d-a840-a79dcd317f8a",
+      "restaurant_name": "Alfresco Banani",
+      "google_place_id": "ChIJAzEo6w3HVTcRFwWhXjHvSMc",
+      "google_review_count": 3302,
+      "google_rating": 4.2,
+      "notes": "Mid-range."
+    },
+    {
+      "restaurant_id": "7ebbc394-4aad-54b1-800d-4a0a4ccfa9f2",
+      "restaurant_name": "Premium Sweets",
+      "google_place_id": "ChIJRYAR053HVTcRrJh-Urd6SRI",
+      "google_review_count": 3244,
+      "google_rating": 4.3,
+      "notes": "Mid-range. Dessert venue — variety for the rollout."
+    },
+    {
+      "restaurant_id": "00eaab53-9d6b-5c06-9e8c-88f622dc7644",
+      "restaurant_name": "Nawab Chatga",
+      "google_place_id": "ChIJKUoKnp7HVTcRGb4g4dIN0Mw",
+      "google_review_count": 3159,
+      "google_rating": 4.2,
+      "notes": "Bengali / Premium. Distinct from Chittagong-origin brands — branch verify."
+    },
+    {
+      "restaurant_id": "2e00bc58-8c46-51f6-b30b-68967e06a3fe",
+      "restaurant_name": "Arrowhead Grill",
+      "google_place_id": "ChIJVVQsB1jHVTcRm0J5sy9ghQw",
+      "google_review_count": 3102,
+      "google_rating": 4.6,
+      "notes": "Continental / Luxury."
+    },
+    {
+      "restaurant_id": "16c6c3ee-70ef-548e-9d08-eadb08b74a57",
+      "restaurant_name": "Koyla Restaurant & Kebab",
+      "google_place_id": "ChIJSVP68njHVTcRiUdOw6HN7w0",
+      "google_review_count": 3100,
+      "google_rating": 4.2,
+      "notes": "Premium."
+    },
+    {
+      "restaurant_id": "57781c3a-77b4-540f-8cde-4c92e014f09f",
+      "restaurant_name": "Thai Emerald",
+      "google_place_id": "ChIJyS_C95zHVTcRma-MxvTQ-OQ",
+      "google_review_count": 3090,
+      "google_rating": 4.3,
+      "notes": "Mid-range. Thai cuisine variety."
+    }
+  ]
+}

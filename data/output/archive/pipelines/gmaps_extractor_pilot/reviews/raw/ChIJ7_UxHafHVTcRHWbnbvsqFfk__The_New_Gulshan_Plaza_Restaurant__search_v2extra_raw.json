@@ -1,0 +1,8 @@
+{
+  "status": 500,
+  "ok": false,
+  "data": {
+    "data": [],
+    "error": "You have exceeded your free requests for this month. Please upgrade to a paid plan."
+  }
+}

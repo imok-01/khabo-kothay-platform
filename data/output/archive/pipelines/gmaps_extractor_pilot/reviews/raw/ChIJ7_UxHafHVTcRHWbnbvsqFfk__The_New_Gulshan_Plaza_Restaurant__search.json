@@ -1,0 +1,45 @@
+{
+  "total": 1,
+  "params": {
+    "q": "The New Gulshan Plaza Restaurant Gulshan Dhaka",
+    "page": 1,
+    "ll": "@23.7806,90.4188,15z",
+    "hl": "en",
+    "gl": "bd",
+    "extra": false,
+    "version": 2
+  },
+  "data": [
+    {
+      "Name": "The New Gulshan Plaza Restaurant",
+      "Fulladdress": "33 Rd 45, Dhaka 1212",
+      "Street": "33 Rd 45",
+      "Municipality": "Dhaka 1212",
+      "Categories": [
+        "Restaurant"
+      ],
+      "About": "Service options: [Delivery, On-site services, Takeaway, Dine-in], Highlights: [Great dessert, Great tea selection], Popular for: [Breakfast, Lunch, Dinner, Solo dining], Accessibility: [Wheelchair-accessible toilet, No wheelchair-accessible seating], Offerings: [Coffee, Halal food, Healthy options, Late-night food, Quick bite, Small plates], Dining options: [Breakfast, Brunch, Lunch, Dinner, Catering, Dessert, Table service], Amenities: [Toilet], Atmosphere: [Casual, Cosy, Trendy], Crowd: [Good for groups, Tourists, University students], Planning: [Accepts reservations, Usually a wait], Payments: [Credit cards, Debit cards, NFC mobile payments, ], Children: [Good for kids], Parking: [Free of charge street parking, Free parking lot, Paid street parking, ]",
+      "Phone": "01850-509001",
+      "Phones": "01850-509001, +880 1850-509001",
+      "Claimed": "YES",
+      "Owner": "The New Gulshan Plaza Restaurant (Owner)",
+      "Owner Id": "117009452791197818454",
+      "Owner Link": "https://www.google.com/maps/contrib/117009452791197818454",
+      "Review Count": 4151,
+      "Average Rating": 4.2,
+      "Review URL": "https://search.google.com/local/reviews?placeid=ChIJ7_UxHafHVTcRHWbnbvsqFfk&authuser=0&hl=en&gl=US",
+      "Latitude": 23.7936503,
+      "Longitude": 90.4143306,
+      "Time Zone": "Asia/Dhaka",
+      "Opening Hours": "Thursday(2026-08-20): [7 AM–12:30 AM], Friday(2026-08-21): [7 AM–12:30 AM], Saturday(2026-08-22): [7 AM–12:30 AM], Sunday(2026-08-23): [7 AM–12:30 AM], Monday(2026-08-24): [7 AM–12:30 AM], Tuesday(2026-08-25): [7 AM–12:30 AM], Wednesday(2026-08-26): [7 AM–12:30 AM]",
+      "Featured Image": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=m24_6qiixtZtismeetgHmQ&cb_client=search.gws-prod.gps&w=211&h=120&yaw=351.40485&pitch=0&thumbfov=100",
+      "Google Maps URL": "https://www.google.com/maps?cid=17948299149340796445",
+      "Google Knowledge URL": "https://www.google.com/search?kgmid=/g/11c6v4zyys",
+      "Cid": "17948299149340796445",
+      "Fid": "0x3755c7a71d31f5ef:0xf9152afb6ee7661d",
+      "Kgmid": "/g/11c6v4zyys",
+      "Place Id": "ChIJ7_UxHafHVTcRHWbnbvsqFfk",
+      "Web Result URL": "https://www.google.com/search?q=local+guide+program&ibp=gwp;0,26,OiwKKiImVGhlIE5ldyBHdWxzaGFuIFBsYXphIFJlc3RhdXJhbnQgRGhha2EoAg&pcl=lp"
+    }
+  ]
+}

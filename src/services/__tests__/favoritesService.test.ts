@@ -7,31 +7,38 @@ beforeEach(() => {
 
 describe('favoritesService (mock repository — localStorage)', () => {
   it('starts empty and persists ids', () => {
-    expect(favoritesService.load()).toEqual([]);
-    favoritesService.add('a');
-    favoritesService.add('b');
-    expect(favoritesService.load()).toEqual(['a', 'b']);
+    expect(favoritesService.load(null)).toEqual([]);
+    favoritesService.add(null, 'a');
+    favoritesService.add(null, 'b');
+    expect(favoritesService.load(null)).toEqual(['a', 'b']);
   });
 
   it('add is idempotent (deduped)', () => {
-    favoritesService.add('a');
-    favoritesService.add('a');
-    expect(favoritesService.load()).toEqual(['a']);
+    favoritesService.add(null, 'a');
+    favoritesService.add(null, 'a');
+    expect(favoritesService.load(null)).toEqual(['a']);
   });
 
   it('removes an id and keeps the rest', () => {
-    favoritesService.add('a');
-    favoritesService.add('b');
-    favoritesService.remove('a');
-    expect(favoritesService.load()).toEqual(['b']);
-    expect(favoritesService.has('a')).toBe(false);
-    expect(favoritesService.has('b')).toBe(true);
+    favoritesService.add(null, 'a');
+    favoritesService.add(null, 'b');
+    favoritesService.remove(null, 'a');
+    expect(favoritesService.load(null)).toEqual(['b']);
+    expect(favoritesService.has(null, 'a')).toBe(false);
+    expect(favoritesService.has(null, 'b')).toBe(true);
   });
 
   it('survives a reload (persisted in localStorage)', () => {
-    favoritesService.add('seasonal-tastes');
+    favoritesService.add(null, 'seasonal-tastes');
     // New read from the same storage — no provider reset needed since the
     // mock repository reads localStorage on every call.
-    expect(favoritesService.load()).toEqual(['seasonal-tastes']);
+    expect(favoritesService.load(null)).toEqual(['seasonal-tastes']);
+  });
+
+  it('keeps separate stores per user', () => {
+    favoritesService.add('user-1', 'a');
+    favoritesService.add('user-2', 'b');
+    expect(favoritesService.load('user-1')).toEqual(['a']);
+    expect(favoritesService.load('user-2')).toEqual(['b']);
   });
 });

@@ -1,0 +1,293 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { DemoUser, Role, SessionUser } from '../domain/auth';
+import { seedDemoAccounts } from '../data/demoAccounts';
+import { ensureDemoStartingBalance } from '../lib/rewards';
+import { isPrerender } from '../lib/prerender';
+import { getRewards, saveRewards } from '../store/demoDb';
+import { userService } from '../services/userService';
+import { useUsers } from '../hooks/useUsers';
+import { otpService } from '../lib/otp';
+
+interface AuthContextValue {
+  /** The signed-in user (null = anonymous). */
+  user: DemoUser | null;
+  /** Who is signed in — mirrors `user` but stable across profile edits. */
+  session: SessionUser | null;
+  isAuthenticated: boolean;
+  hasRole: (...roles: Role[]) => boolean;
+  /** Send OTP to phone number */
+  sendOtp: (phoneNumber: string) => Promise<{ ok: boolean; error?: string; otpState?: any }>;
+  /** Verify OTP code */
+  verifyOtp: (otpState: any, code: string) => Promise<{ ok: boolean; error?: string; sessionUser?: SessionUser }>;
+  /** Resend OTP */
+  resendOtp: (otpState: any) => any;
+  /** Check if OTP can be resent */
+  canResendOtp: (otpState: any) => boolean;
+  /** Login with verified phone (completed OTP verification) */
+  loginWithVerifiedPhone: (phoneNumber: string) => Promise<{ ok: boolean; error?: string }>;
+  /** Signup with phone (after OTP verification) */
+  signup: (name: string, phoneNumber: string, role?: Role) => Promise<{ ok: boolean; error?: string }>;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSessionState] = useState<SessionUser | null>(() => userService.getSession());
+  const [ready, setReady] = useState(() => {
+    // Build-time prerender: effects never run server-side, so start ready to
+    // render the full app tree into the static HTML.
+    if (isPrerender()) return true;
+    // Prerendered public pages arrive with the full app already in the DOM.
+    // Start ready so hydration matches the static content instead of flashing
+    // the loader — the seeding/session effect still runs in the background.
+    if (typeof document !== 'undefined') {
+      const root = document.getElementById('root');
+      if (root && root.querySelector('.app')) return true;
+    }
+    return false;
+  });
+
+  // Reactive snapshot of all stored users — keeps `user` fresh after profile
+  // edits or demo wallet resets without a full page reload.
+  const users = useUsers();
+
+  // Hydrate the demo database with seed accounts on first run.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const existing = userService.getUsers();
+        if (Object.keys(existing.byId).length === 0) {
+          const seeded = await seedDemoAccounts();
+          seeded.forEach((u) => userService.saveUser(u));
+          // Seed the rewards ledger for users who already have referral
+          // activity in their profile (demo consistency).
+          seeded.forEach((u) => {
+            if (u.referrals.length === 0) return;
+            const state = getRewards(u.id);
+            if (state.referrals.length === 0) {
+              saveRewards(u.id, { ...state, referrals: u.referrals });
+            }
+          });
+        }
+        // Ensure demo accounts carry their seeded starting balance and repair
+        // any corrupted (negative) balances from earlier demo sessions.
+        for (const u of Object.values(userService.getUsers().byId)) {
+          if (u.role === 'user' || u.role === 'restaurant_admin') {
+            ensureDemoStartingBalance(u.id);
+          }
+        }
+        // A stored session must reference a user that still exists.
+        const current = userService.getSession();
+        if (current && !userService.getUsers().byId[current.id]) {
+          userService.setSession(null);
+        }
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const user = useMemo(() => {
+    if (!session) return null;
+    return users.find((u) => u.id === session.id) ?? null;
+  }, [session, users]);
+
+  // Reflect profile edits (stored user record changes) into the session copy.
+  useEffect(() => {
+    if (session && user) {
+      const next: SessionUser = { id: user.id, name: user.name, role: user.role, restaurantIds: user.restaurantIds };
+      if (JSON.stringify(next) !== JSON.stringify(session)) setSessionState(next);
+    }
+  }, [session, user]);
+
+  const sendOtp = useCallback(async (phoneNumber: string) => {
+    try {
+      // Normalize phone number
+      const normalizedPhone = otpService.normalizePhone(phoneNumber);
+      
+      // Basic phone validation (should start with 880 and be 11 digits for Bangladesh)
+      if (!/^880[0-9]{9}$/.test(normalizedPhone)) {
+        return { ok: false, error: 'Invalid phone number. Please use a valid Bangladesh number (e.g., 01XXXXXXXXX or +880XXXXXXXXX)' };
+      }
+      
+      // Generate OTP
+      const otpState = otpService.generateOtp(normalizedPhone);
+      
+      // In a real implementation, we would save the OTP state associated with the phone number
+      // For now, we'll return it to the caller to manage state
+      // In production, this would be saved in a temporary store or sent via SMS
+      
+      return { 
+        ok: true, 
+        otpState,
+        // Return normalized phone for consistency
+        phoneNumber: normalizedPhone
+      };
+    } catch {
+      return { ok: false, error: 'Failed to send OTP. Please try again.' };
+    }
+  }, []);
+
+  const verifyOtp = useCallback(async (otpState: any, code: string) => {
+    try {
+      const result = otpService.validateOtp(otpState, code);
+      
+      if (!result.valid) {
+        return { ok: false, error: result.error };
+      }
+      
+      // OTP verified successfully
+      return { ok: true, verified: true };
+    } catch {
+      return { ok: false, error: 'Failed to verify OTP. Please try again.' };
+    }
+  }, []);
+
+  const resendOtp = useCallback((otpState: any) => {
+    if (!otpService.canResend(otpState)) {
+      return { ok: false, error: 'Please wait before requesting a new OTP' };
+    }
+    
+    // Generate new OTP using the phone number stored in the OTP state
+    const newOtpState = otpService.resendOtp(otpState);
+    return { ok: true, otpState: newOtpState };
+  }, []);
+
+  const canResendOtp = useCallback((otpState: any) => {
+    return otpService.canResend(otpState);
+  }, []);
+
+  const loginWithVerifiedPhone = useCallback(async (phoneNumber: string) => {
+    try {
+      // Normalize phone number
+      const normalizedPhone = otpService.normalizePhone(phoneNumber);
+      
+      // Find user by phone number
+      const normalizedLower = normalizedPhone.toLowerCase();
+      const existingUser = users.find(u => 
+        otpService.normalizePhone(u.contact) === normalizedLower
+      );
+      
+      if (!existingUser) {
+        return { ok: false, error: 'No account found with this phone number. Please sign up first.' };
+      }
+      
+      // Create session user
+      const next: SessionUser = { 
+        id: existingUser.id, 
+        name: existingUser.name, 
+        role: existingUser.role, 
+        restaurantIds: existingUser.restaurantIds 
+      };
+      
+      userService.setSession(next);
+      setSessionState(next);
+      
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Failed to log in. Please try again.' };
+    }
+  }, [users]);
+
+  const signup = useCallback(async (name: string, phoneNumber: string, role: Role = 'user') => {
+    try {
+      // Normalize phone number
+      const normalizedPhone = otpService.normalizePhone(phoneNumber);
+      
+      // Basic phone validation
+      if (!/^880[0-9]{9}$/.test(normalizedPhone)) {
+        return { ok: false, error: 'Invalid phone number. Please use a valid Bangladesh number.' };
+      }
+      
+      // Check if phone number already exists
+      const normalizedLower = normalizedPhone.toLowerCase();
+      const phoneExists = users.some(u => 
+        otpService.normalizePhone(u.contact) === normalizedLower
+      );
+      
+      if (phoneExists) {
+        return { ok: false, error: 'An account with this phone number already exists.' };
+      }
+      
+// Create new user
+      const id = `user-${Date.now().toString(36)}`;
+      // Create a temporary password hash for the new user (not used in phone-first flow but required by DemoUser type)
+      const tempPasswordHash = `temp-${Date.now()}`;
+      const newUser: DemoUser = {
+        id,
+        name: name.trim(),
+        contact: normalizedPhone, // Store normalized phone number
+        passwordHash: tempPasswordHash, // Required by DemoUser type but not used in phone-first auth
+        role,
+        restaurantIds: [],
+        createdAt: new Date().toISOString().slice(0, 10),
+        profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
+        completedFields: ['name', 'contact'], // Mark name and contact as completed
+        badges: [],
+        referralCode: `${name.trim().toUpperCase().slice(0, 4)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+        referrals: [],
+        completionRewardClaimed: false,
+      };
+      
+      userService.saveUser(newUser);
+      
+      // Create session
+      const next: SessionUser = { id, name: newUser.name, role, restaurantIds: [] };
+      userService.setSession(next);
+      setSessionState(next);
+      
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Failed to create account. Please try again.' };
+    }
+  }, [users]);
+  
+  const logout = useCallback(() => {
+    userService.setSession(null);
+    setSessionState(null);
+  }, []);
+
+  const hasRole = useCallback(
+    (...roles: Role[]) => (session ? roles.includes(session.role) : false),
+    [session],
+  );
+
+  const value = useMemo(
+    () => ({ 
+      user, 
+      session, 
+      isAuthenticated: Boolean(session), 
+      hasRole, 
+      sendOtp,
+      verifyOtp,
+      resendOtp,
+      canResendOtp,
+      loginWithVerifiedPhone,
+      signup,
+      logout 
+    }),
+    [user, session, hasRole, sendOtp, verifyOtp, resendOtp, canResendOtp, loginWithVerifiedPhone, signup, logout],
+  );
+
+  if (!ready) {
+    return (
+      <main className="page-loader" aria-busy="true" role="status">
+        <span className="page-loader__spinner" aria-hidden="true" />
+        <span className="sr-only">Loading…</span>
+      </main>
+    );
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  return ctx;
+}

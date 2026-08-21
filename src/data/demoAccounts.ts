@@ -5,12 +5,15 @@ import { hashPassword } from '../lib/demoAuth';
  * Seeded demo accounts. Passwords are hashed at seed time (never plaintext).
  * Every account is clearly a demo — no real credentials exist.
  *
- * Available demo logins (password: `demo123`):
- *  - executive@khabokothay.in  → Khabo Kothay executive admin
- *  - owner@arsalan.in          → Seasonal Tastes restaurant admin (real Dhaka venue)
- *  - owner@bhojohori.in        → Almajlis Arabian Restaurant admin (real Dhaka venue)
- *  - ananya@example.com        → regular user (partially completed profile)
- *  - rahul@example.com         → regular user (fresh account)
+ * Development-only demo accounts using valid Bangladesh mobile formats:
+ *  - 01712345678  → Khabo Kothay executive admin
+ *  - 01812345678  → Seasonal Tastes restaurant admin (real Dhaka venue)
+ *  - 01912345678  → Almajlis Arabian Restaurant admin (real Dhaka venue)
+ *  - 01612345678  → regular user (partially completed profile)
+ *  - 01512345678  → regular user (fresh account)
+ *
+ * NOTE: These are development-only accounts. In production, phone-based
+ * authentication uses real Supabase Auth with SMS delivery.
  */
 export const DEMO_PASSWORD = 'demo123';
 
@@ -18,11 +21,11 @@ export const DEMO_PASSWORD = 'demo123';
 export const DEMO_USER_IDS = ['exec-kk', 'owner-arsalan', 'owner-bhojohori', 'user-ananya', 'user-rahul'];
 
 export const DEMO_ACCOUNT_CREDENTIALS: Array<{ contact: string; role: string; restaurant?: string }> = [
-  { contact: 'executive@khabokothay.in', role: 'executive' },
-  { contact: 'owner@arsalan.in', role: 'restaurant_admin', restaurant: 'Seasonal Tastes' },
-  { contact: 'owner@bhojohori.in', role: 'restaurant_admin', restaurant: 'Almajlis Arabian Restaurant' },
-  { contact: 'ananya@example.com', role: 'user' },
-  { contact: 'rahul@example.com', role: 'user' },
+  { contact: '01712345678', role: 'executive' },
+  { contact: '01812345678', role: 'restaurant_admin', restaurant: 'Seasonal Tastes' },
+  { contact: '01912345678', role: 'restaurant_admin', restaurant: 'Almajlis Arabian Restaurant' },
+  { contact: '01612345678', role: 'user' },
+  { contact: '01512345678', role: 'user' },
 ];
 
 export async function seedDemoAccounts(): Promise<DemoUser[]> {
@@ -34,7 +37,7 @@ export async function seedDemoAccounts(): Promise<DemoUser[]> {
       ...base,
       id: 'exec-kk',
       name: 'Executive Admin',
-      contact: 'executive@khabokothay.in',
+      contact: '01712345678',
       role: 'executive',
       restaurantIds: [],
       profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
@@ -48,7 +51,7 @@ export async function seedDemoAccounts(): Promise<DemoUser[]> {
       ...base,
       id: 'owner-arsalan',
       name: 'Seasonal Tastes Management',
-      contact: 'owner@arsalan.in',
+      contact: '01812345678',
       role: 'restaurant_admin',
       restaurantIds: ['seasonal-tastes'],
       profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
@@ -62,7 +65,7 @@ export async function seedDemoAccounts(): Promise<DemoUser[]> {
       ...base,
       id: 'owner-bhojohori',
       name: 'Almajlis Management',
-      contact: 'owner@bhojohori.in',
+      contact: '01912345678',
       role: 'restaurant_admin',
       restaurantIds: ['almajlis-arabian-restaurant'],
       profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
@@ -76,7 +79,7 @@ export async function seedDemoAccounts(): Promise<DemoUser[]> {
       ...base,
       id: 'user-ananya',
       name: 'Ananya Dutta',
-      contact: 'ananya@example.com',
+      contact: '01612345678',
       role: 'user',
       restaurantIds: [],
       avatarUrl: undefined,
@@ -102,7 +105,7 @@ export async function seedDemoAccounts(): Promise<DemoUser[]> {
       ...base,
       id: 'user-rahul',
       name: 'Rahul Sharma',
-      contact: 'rahul@example.com',
+      contact: '01512345678',
       role: 'user',
       restaurantIds: [],
       profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },

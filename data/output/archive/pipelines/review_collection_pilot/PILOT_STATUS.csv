@@ -1,0 +1,6 @@
+restaurant_id,restaurant_name,status,failure_reason,csv_filename
+ChIJnZL9x7XHVTcRjmRUVqzzp2s,Seasonal Tastes,FAILED,Google Maps navigation timeout (60s) - automated browser blocked,
+ChIJNYCUDQDHVTcRbZ-EG2mgl3o,Almajlis Arabian Restaurant | مطعم المجلس العربي,FAILED,Google Maps navigation timeout (60s) - automated browser blocked,
+ChIJserEPgDHVTcRxjCuwNRSbc8,Gulshan banani,FAILED,Google Maps navigation timeout (60s) - automated browser blocked,
+ChIJ7_UxHafHVTcRHWbnbvsqFfk,The New Gulshan Plaza Restaurant,FAILED,Google Maps navigation timeout (60s) - automated browser blocked,
+ChIJaUObm0LHVTcRKSVUsPI3CbE,Chef's Table - Gulshan 2,FAILED,Google Maps navigation timeout (60s) - automated browser blocked,

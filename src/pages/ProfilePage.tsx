@@ -37,16 +37,16 @@ type PickerKind = 'cuisines' | 'budget' | 'diet' | 'areas' | 'interests' | null;
 
 export default function ProfilePage() {
   usePageTitle('Your profile');
-  const { user, logout } = useAuth();
+  const { user, appUser, logout } = useAuth();
   const { favoriteIds } = useFavorites();
   const [tab, setTab] = useState<'profile' | 'rewards' | 'referral'>('profile');
   const [saved, setSaved] = useState(false);
   const [inviteName, setInviteName] = useState('');
   const [picker, setPicker] = useState<PickerKind>(null);
 
-  const balance = user ? tokenBalance(user.id) : 0;
+  const balance = user ? tokenBalance(appUser?.id ?? user.id) : 0;
   const completion = user ? profileCompletion(user) : 0;
-  const rewards = useRewards(user?.id ?? '');
+  const rewards = useRewards(appUser?.id ?? user?.id ?? '');
 
   const allUserReviews = useUserReviews();
   const myReviews = useMemo(() => {
@@ -113,7 +113,7 @@ export default function ProfilePage() {
 
   const claimCompletionReward = () => {
     // The ledger enforces once-only even if the UI flag is out of sync.
-    const res = grantProfileCompletionReward(user.id);
+    const res = grantProfileCompletionReward(appUser?.id ?? user.id);
     if (res.granted) saveUser({ ...user, completionRewardClaimed: true });
   };
 
@@ -123,7 +123,7 @@ export default function ProfilePage() {
   const onInvite = (e: FormEvent) => {
     e.preventDefault();
     if (!inviteName.trim()) return;
-    inviteFriend(user.id, inviteName.trim());
+    inviteFriend(appUser?.id ?? user.id, inviteName.trim());
     setInviteName('');
   };
 
@@ -416,7 +416,7 @@ export default function ProfilePage() {
 
         {tab === 'rewards' && (
           <div className="profile-body">
-            <RewardsWallet userId={user.id} />
+            <RewardsWallet userId={appUser?.id ?? user.id} />
           </div>
         )}
 
@@ -448,7 +448,7 @@ export default function ProfilePage() {
                       <button
                         type="button"
                         className="btn btn--ghost btn--sm"
-                        onClick={() => verifyInvite(user.id, r.id)}
+                        onClick={() => verifyInvite(appUser?.id ?? user.id, r.id)}
                         title="Demo step — no OTP is actually sent"
                       >
                         Simulate verify

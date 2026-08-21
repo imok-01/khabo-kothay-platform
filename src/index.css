@@ -3020,3 +3020,178 @@ button {
   .detail__stats { grid-template-columns: 1fr 1fr; }
   .compare-table th, .compare-table td { padding: var(--s2); }
 }
+
+/* ============================================================
+   AUTHENTICATION OTP STYLES
+   ============================================================ */
+.auth-card__dev-otp {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  background: var(--primary-soft);
+  border: 1px dashed var(--primary);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  margin: var(--s4) 0;
+}
+
+.auth-card__dev-otp-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+}
+
+.auth-card__dev-otp-code {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--primary);
+  background: var(--surface);
+  padding: var(--s1) var(--s2);
+  border-radius: var(--r-sm);
+  min-width: 4.5rem;
+  text-align: center;
+}
+
+.auth-card__dev-otp-copy {
+  font-size: var(--fs-xs);
+  padding: var(--s1) var(--s2);
+  border-radius: var(--r-sm);
+}
+
+.auth-card__dev-otp-copy:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.auth-card__otp-actions {
+  display: flex;
+  gap: var(--s3);
+  margin-top: var(--s3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.auth-card__otp-tip {
+  font-size: var(--fs-xs);
+  color: var(--ink-faint);
+}
+
+/* ============================================================
+   DEVELOPMENT OTP BANNER
+   ============================================================ */
+.dev-otp-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  background: var(--primary-soft);
+  border: 1px dashed var(--primary);
+  border-radius: var(--r-lg);
+  padding: var(--s4) var(--s5);
+  margin: var(--s4) 0;
+}
+
+.dev-otp-banner__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+
+.dev-otp-banner__badge {
+  display: inline-block;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+  background: var(--surface);
+  padding: var(--s1) var(--s2);
+  border-radius: var(--r-sm);
+  width: fit-content;
+}
+
+.dev-otp-banner__note {
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+
+.dev-otp-banner__code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+}
+
+.dev-otp-banner__code code {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--primary);
+  user-select: all;
+}
+
+.dev-otp-banner__copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  color: var(--ink-soft);
+  background: var(--surface-2);
+  transition: all var(--dur-fast) var(--ease);
+  flex-shrink: 0;
+}
+
+.dev-otp-banner__copy:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.dev-otp-banner__copy:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.dev-otp-banner__expiry {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--fs-sm);
+  color: var(--ink-faint);
+}
+
+.dev-otp-banner__expiry svg {
+  flex-shrink: 0;
+  color: var(--warning);
+}
+
+/* Override for inline copy button in older style */
+.auth-card__dev-otp-copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: all var(--dur-fast) var(--ease);
+}
+
+.auth-card__dev-otp-copy:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}

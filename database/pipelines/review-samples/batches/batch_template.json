@@ -1,0 +1,16 @@
+{
+  "dataset": "GOOGLE_REVIEW_HIGHLIGHTS_SOP_V1.md — batch template (replace with batch label)",
+  "approved_on": "YYYY-MM-DD",
+  "count": 0,
+  "reviews": [
+    {
+      "restaurant_id": "00000000-0000-0000-0000-000000000000",
+      "restaurant_name": "Restaurant Name (from live restaurants table)",
+      "source": "Google",
+      "source_url": "https://aggregator.example/place/...",
+      "attribution": "Reviewer Display Name",
+      "observed_at": "YYYY-MM-DD",
+      "review_text": "Verbatim Google review text. Typos, emojis, and Bangla characters preserved exactly as written. Never rewritten or shortened."
+    }
+  ]
+}

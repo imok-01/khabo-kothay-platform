@@ -17,10 +17,10 @@ import * as queries from '../integrations/supabase/queries';
  */
 
 export interface FavoriteRepository {
-  /** Load favourite restaurant ids (frontend slugs) — localStorage today. */
-  load(): string[];
-  /** Persist the current favourite id list. */
-  save(ids: string[]): void;
+  /** Load favourite restaurant ids (frontend slugs) for the current user. */
+  load(userId: string | null): string[];
+  /** Persist the current favourite id list for the current user. */
+  save(userId: string | null, ids: string[]): void;
   /** Future async path: a user's favourite rows from the DB. */
   fetchIdsForUser?(userId: string): Promise<string[]>;
   /** Future async path: add a favourite row. */
@@ -29,11 +29,14 @@ export interface FavoriteRepository {
   removeForUser?(userId: string, restaurantId: string): Promise<void>;
 }
 
-const STORAGE_KEY = 'khabo-kothay:favorites';
+/** Get the storage key for the current user. */
+function getStorageKey(userId: string | null): string {
+  return userId ? `khabo-kothay:favorites:${userId}` : 'khabo-kothay:favorites:anonymous';
+}
 
-function readIds(): string[] {
+function readIds(key: string): string[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
@@ -43,10 +46,10 @@ function readIds(): string[] {
 }
 
 export const mockFavoriteRepository: FavoriteRepository = {
-  load: () => readIds(),
-  save: (ids) => {
+  load: (userId: string | null) => readIds(getStorageKey(userId)),
+  save: (userId: string | null, ids) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+      localStorage.setItem(getStorageKey(userId), JSON.stringify(ids));
     } catch {
       // storage unavailable — favourites just won't persist
     }
@@ -54,15 +57,13 @@ export const mockFavoriteRepository: FavoriteRepository = {
 };
 
 class SupabaseFavoriteRepository implements FavoriteRepository {
-  load(): string[] {
-    // Sync path has no backend equivalent; favourites load through the async
-    // user path once auth is wired. Local fallback keeps the UI usable.
-    return readIds();
+  load(userId: string | null): string[] {
+    return readIds(getStorageKey(userId));
   }
 
-  save(ids: string[]): void {
+  save(userId: string | null, ids: string[]): void {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+      localStorage.setItem(getStorageKey(userId), JSON.stringify(ids));
     } catch {
       // noop
     }

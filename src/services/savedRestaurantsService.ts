@@ -11,23 +11,23 @@ import { savedRestaurantRepository } from '../repositories/savedRestaurantReposi
  * happens here — the context/UI keep the same `string[]` of ids.
  */
 export const savedRestaurantsService = {
-  /** Load saved restaurant ids. */
-  load: (): string[] => savedRestaurantRepository.load(),
+  /** Load saved restaurant ids for the current user. */
+  load: (userId: string | null): string[] => savedRestaurantRepository.load(userId),
 
-  /** Persist the current saved id list. */
-  save: (ids: string[]): void => savedRestaurantRepository.save(ids),
+  /** Persist the current saved id list for the current user. */
+  save: (userId: string | null, ids: string[]): void => savedRestaurantRepository.save(userId, ids),
 
   /** Add an id to the stored list (deduped). */
-  add: (id: string): void => {
-    const ids = savedRestaurantRepository.load();
-    if (!ids.includes(id)) savedRestaurantRepository.save([...ids, id]);
+  add: (userId: string | null, id: string): void => {
+    const ids = savedRestaurantRepository.load(userId);
+    if (!ids.includes(id)) savedRestaurantRepository.save(userId, [...ids, id]);
   },
 
   /** Remove an id from the stored list. */
-  remove: (id: string): void => {
-    savedRestaurantRepository.save(savedRestaurantRepository.load().filter((x) => x !== id));
+  remove: (userId: string | null, id: string): void => {
+    savedRestaurantRepository.save(userId, savedRestaurantRepository.load(userId).filter((x) => x !== id));
   },
 
   /** True when the id is stored. */
-  has: (id: string): boolean => savedRestaurantRepository.load().includes(id),
+  has: (userId: string | null, id: string): boolean => savedRestaurantRepository.load(userId).includes(id),
 };

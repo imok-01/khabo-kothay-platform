@@ -25,21 +25,44 @@ export function roleViewOf(role?: Role | null): RoleView {
   return 'customer';
 }
 
-export interface UserPreferences {
-  cuisines: string[];
-  budget?: string;
-  diet: 'any' | 'veg' | 'nonveg';
-  neighbourhoods: string[];
-  diningInterests: string[];
+/**
+ * Application-facing user identity contract.
+ *
+ * This is the unified identity that the rest of the application should use.
+ * It abstracts away the difference between development (stable UUID per phone)
+ * and production (Supabase auth.users.id).
+ *
+ * In development: stable UUID per phone number (generated once, persisted in localStorage)
+ * In production: Supabase auth.users.id
+ */
+export type AppUserId = string;
+
+/**
+ * Minimal application user profile for the rest of the application.
+ * Contains only the fields needed by the UI layer.
+ * Downstream systems (rewards, referrals, favorites, etc.) should migrate
+ * to use this identity instead of DemoUser.id.
+ */
+export interface AppUser {
+  id: AppUserId;
+  name: string;
+  role: Role;
+  restaurantIds: string[];
+  contact?: string;
+  createdAt?: string;
 }
 
-export interface Badge {
-  id: string;
-  label: string;
-  description: string;
-  earnedAt: string;
-}
+/**
+ * Session user for authentication state.
+ * Extends AppUser with session-specific fields if needed.
+ */
+export type SessionUser = AppUser;
 
+/**
+ * Legacy demo user type — used by downstream systems that haven't migrated yet.
+ * @deprecated Use AppUser for new code. Downstream systems (rewards, referrals,
+ * favorites, saved, etc.) still use this type but should migrate to AppUser.
+ */
 export interface DemoUser {
   /** Stable internal id. */
   id: string;
@@ -67,4 +90,17 @@ export interface DemoUser {
   bio?: string;
 }
 
-export type SessionUser = Pick<DemoUser, 'id' | 'name' | 'role' | 'restaurantIds'>;
+export interface UserPreferences {
+  cuisines: string[];
+  budget?: string;
+  diet: 'any' | 'veg' | 'nonveg';
+  neighbourhoods: string[];
+  diningInterests: string[];
+}
+
+export interface Badge {
+  id: string;
+  label: string;
+  description: string;
+  earnedAt: string;
+}
