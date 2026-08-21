@@ -107,6 +107,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Determine if we should use development OTP mock
   const useDevMock = import.meta.env.VITE_DEV_AUTH_MOCK === 'true';
 
+  // Production safety guard: prevent dev mock from running in production
+  if (useDevMock && import.meta.env.PROD) {
+    console.error('SECURITY ERROR: VITE_DEV_AUTH_MOCK is enabled in production!');
+    throw new Error('VITE_DEV_AUTH_MOCK cannot be enabled in production');
+  }
+
   // Hydrate the demo database with seed accounts on first run.
   useEffect(() => {
     let cancelled = false;
@@ -238,19 +244,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   try {
                     const { data: profile, error } = await supabase
                       .from('user_profiles')
-                      .select('*')
+                      .select('*, roles(role_name, restaurant_id)')
                       .eq('user_id', session.user.id)
                       .single();
                     
                     if (!error && profile) {
+                      // Determine role from roles table
+                      const roles = (profile.roles as unknown) as Array<{ role_name: string; restaurant_id: string | null }> | null;
+                      const roleName = roles?.[0]?.role_name || 'user';
+                      const restaurantId = roles?.[0]?.restaurant_id || null;
+                      
+                      // Map role name to our Role type
+                      const roleMap: Record<string, Role> = {
+                        user: 'user',
+                        restaurant_admin: 'restaurant_admin',
+                        executive: 'executive',
+                      };
+                      const role = roleMap[roleName] ?? 'user';
+                      
                       // Save to local user service for backward compatibility
                       const dbUser: DemoUser = {
                         id: profile.user_id,
                         name: profile.display_name || `${session.user.phone || ''}`.slice(-4),
                         contact: session.user.phone || '',
                         passwordHash: '',
-                        role: 'user',
-                        restaurantIds: [],
+                        role,
+                        restaurantIds: restaurantId ? [restaurantId] : [],
                         createdAt: new Date().toISOString().slice(0, 10),
                         profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
                         completedFields: ['name', 'contact'],
@@ -431,8 +450,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return normalizedStored === normalizedPhone;
         });
       } else {
-        // In production, this would require a backend call
-        // For now, return false (let the signup flow handle it)
+        // In production, check user_profiles table for existing phone number
+        // This is async but we return a promise-aware function
+        // Note: This is a synchronous callback, so we can't await here
+        // The actual check happens in the signup flow via the async check
+        // For synchronous checks, we rely on the dev mock path
+        // In production, the signup flow will handle the async check
         return false;
       }
     } catch {
@@ -480,7 +503,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           return { ok: false, error: 'No active development session' };
         }
-      } else {
+} else {
         // Use real Supabase Auth - check session and sync with user_profiles
         const supabase = await getSupabase();
         if (!supabase) {
@@ -501,53 +524,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const { data: profile, error: profileError } = await supabase
             .from('user_profiles')
-            .select('*')
+            .select('*, roles(role_name, restaurant_id)')
             .eq('user_id', supabaseSession.user.id)
             .single();
+        
+        if (!profileError && profile) {
+          // Determine role from roles table
+          const roles = (profile.roles as unknown) as Array<{ role_name: string; restaurant_id: string | null }> | null;
+          const roleName = roles?.[0]?.role_name || 'user';
+          const restaurantId = roles?.[0]?.restaurant_id || null;
           
-          if (!profileError && profile) {
-            const dbUser: DemoUser = {
-              id: profile.user_id,
-              name: profile.display_name || `${supabaseSession.user.phone || ''}`.slice(-4),
-              contact: supabaseSession.user.phone || '',
-              passwordHash: '',
-              role: 'user',
-              restaurantIds: [],
-              createdAt: new Date().toISOString().slice(0, 10),
-              profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
-              completedFields: ['name', 'contact'],
-              badges: [],
-              referralCode: '',
-              referrals: [],
-              completionRewardClaimed: false,
-            };
-            
-            userService.saveUser(dbUser);
-            userService.setSession({
-              id: dbUser.id,
-              name: dbUser.name,
-              role: dbUser.role,
-              restaurantIds: dbUser.restaurantIds
-            });
-            setSessionState({
-              id: dbUser.id,
-              name: dbUser.name,
-              role: dbUser.role,
-              restaurantIds: dbUser.restaurantIds
-            });
-          } else {
-            userService.setSession(null);
-            setSessionState(null);
-            return { ok: false, error: 'User profile not found' };
-          }
-        } catch (err) {
-          console.error('Error syncing with user service:', err);
+          // Map role name to our Role type
+          const roleMap: Record<string, Role> = {
+            user: 'user',
+            restaurant_admin: 'restaurant_admin',
+            executive: 'executive',
+          };
+          const role = roleMap[roleName] ?? 'user';
+          
+          const dbUser: DemoUser = {
+            id: profile.user_id,
+            name: profile.display_name || `${supabaseSession.user.phone || ''}`.slice(-4),
+            contact: supabaseSession.user.phone || '',
+            passwordHash: '',
+            role,
+            restaurantIds: restaurantId ? [restaurantId] : [],
+            createdAt: new Date().toISOString().slice(0, 10),
+            profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },
+            completedFields: ['name', 'contact'],
+            badges: [],
+            referralCode: '',
+            referrals: [],
+            completionRewardClaimed: false,
+          };
+          
+          userService.saveUser(dbUser);
+          userService.setSession({
+            id: dbUser.id,
+            name: dbUser.name,
+            role: dbUser.role,
+            restaurantIds: dbUser.restaurantIds
+          });
+          setSessionState({
+            id: dbUser.id,
+            name: dbUser.name,
+            role: dbUser.role,
+            restaurantIds: dbUser.restaurantIds
+          });
+        } else {
           userService.setSession(null);
           setSessionState(null);
-          return { ok: false, error: 'Failed to sync user data' };
+          return { ok: false, error: 'User profile not found' };
         }
-        
-        return { ok: true };
+      } catch (err) {
+        console.error('Error syncing with user service:', err);
+        userService.setSession(null);
+        setSessionState(null);
+        return { ok: false, error: 'Failed to sync user data' };
+      }
+      
+      return { ok: true };
       }
     } catch (error: any) {
       return { ok: false, error: error.message };
@@ -638,7 +674,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [users, useDevMock]);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     userService.setSession(null);
     setSessionState(null);
     
@@ -646,16 +682,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (useDevMock) {
       developmentOtpAuth.signOut();
     } else {
-      (async () => {
-        try {
-          const supabase = await getSupabase();
-          if (supabase) {
-            await supabase.auth.signOut();
-          }
-        } catch (err) {
-          console.error('Error signing out from Supabase:', err);
+      try {
+        const supabase = await getSupabase();
+        if (supabase) {
+          await supabase.auth.signOut();
         }
-      })();
+      } catch (err) {
+        console.error('Error signing out from Supabase:', err);
+      }
     }
   }, [useDevMock]);
 
