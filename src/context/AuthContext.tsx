@@ -3,6 +3,7 @@ import type { AppUser, DemoUser, Role, SessionUser } from '../domain/auth';
 import { seedDemoAccounts } from '../data/demoAccounts';
 import { ensureDemoStartingBalance } from '../lib/rewards';
 import { isPrerender } from '../lib/prerender';
+import { runDevIdentityCleanup } from '../lib/devIdentityCleanup';
 import { getRewards, saveRewards } from '../store/demoDb';
 import { userService } from '../services/userService';
 import { useUsers } from '../hooks/useUsers';
@@ -111,6 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     (async () => {
       try {
+        // Dev-mode hard reset: purge stale generic Dev Users that shadow demo seeds (previous buggy builds)
+        runDevIdentityCleanup();
         const existing = userService.getUsers();
         if (Object.keys(existing.byId).length === 0) {
           const seeded = await seedDemoAccounts();
