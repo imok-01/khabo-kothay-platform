@@ -2542,6 +2542,12 @@ button {
   max-width: 80vw;
 }
 
+.lightbox__counter {
+  color: rgba(233, 226, 210, 0.6);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+}
+
 .lightbox__btn {
   position: absolute;
   display: grid;

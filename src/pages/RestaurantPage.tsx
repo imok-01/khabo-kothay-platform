@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   Heart,
@@ -10,9 +10,7 @@ import {
   ChefHat,
   BadgePercent,
   History,
-  X,
   ChevronLeft,
-  ChevronRight,
   ThumbsUp,
   ExternalLink,
   Languages,
@@ -35,12 +33,13 @@ import { getOffersForRestaurant } from '../hooks/useOffers';
 import { distanceKm } from '../lib/geo';
 import { googleMapsDirectionsUrl, googleMapsEmbedUrl, googleMapsPlaceUrl, googleMapsReviewsUrl } from '../lib/maps';
 import { effectiveRating, effectiveReviewCount } from '../lib/ratings';
-import { imageProvider } from '../hooks/useImages';
+
 import RatingStars from '../components/RatingStars';
 import RatingSource from '../components/RatingSource';
 import RestaurantSignals from '../components/RestaurantSignals';
 import RestaurantCard from '../components/RestaurantCard';
-import RestaurantImage from '../components/RestaurantImage';
+
+import ImageGallery from '../components/ImageGallery';
 import ShareButton from '../components/ShareButton';
 import EmptyState from '../components/EmptyState';
 import FetchError from '../components/FetchError';
@@ -68,11 +67,8 @@ export default function RestaurantPage() {
   const userReviews = useUserReviews();
   useRestaurantDrafts(); // re-render when an approved profile draft lands
   const [bookingRequested, setBookingRequested] = useState(false);
-  const [activeImage, setActiveImage] = useState(0);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [priceDish, setPriceDish] = useState<MenuItem | null>(null);
   const [requestingOrigin, setRequestingOrigin] = useState(false);
-  const closeBtnRef = useRef<HTMLButtonElement>(null);
   usePageTitle(restaurant ? restaurant.name : 'Restaurant not found');
 
   // Live Google data — on-demand refresh keyed by the stable Place ID. Runs
@@ -89,7 +85,6 @@ export default function RestaurantPage() {
   // Khabo Kothay community photos → clearly-labelled demo placeholders.
   const gallery = restaurant ? selectRestaurantPhotos(restaurant, 'gallery') : { photos: [], leadSource: 'demo' as const };
   const images = gallery.photos;
-  const imageCount = images.length;
   const photoSourceLabel =
     gallery.leadSource === 'google-photos'
       ? 'Photos from Google Maps'
@@ -97,28 +92,7 @@ export default function RestaurantPage() {
         ? 'Khabo Kothay photos'
         : 'Demo photos';
 
-  // Keyboard + scroll-lock for the lightbox, and focus management on open.
-  useEffect(() => {
-    if (!lightboxOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    closeBtnRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setLightboxOpen(false);
-      if (e.key === 'ArrowRight') setActiveImage((i) => (i + 1) % imageCount);
-      if (e.key === 'ArrowLeft') setActiveImage((i) => (i - 1 + imageCount) % imageCount);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [lightboxOpen, imageCount]);
 
-  const stepLightbox = useCallback(
-    (dir: 1 | -1) => setActiveImage((i) => (i + dir + imageCount) % imageCount),
-    [imageCount],
-  );
 
   // Menu dishes used to connect offers to dish price context. Loaded through
   // the same async menu path as MenuSection (Supabase when configured).
@@ -249,39 +223,13 @@ export default function RestaurantPage() {
           <ChevronLeft size={15} aria-hidden="true" /> Back
         </button>
 
-        {/* Photo gallery */}
+        {/* Photo gallery — single source of truth via ImageGallery */}
         {images.length > 0 && (
-          <div className="detail__gallery">
-            <div
-              className="detail__gallery-main"
-              onClick={() => setLightboxOpen(true)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && setLightboxOpen(true)}
-              aria-label={`Open photo gallery for ${restaurant.name}`}
-            >
-              <RestaurantImage source={images[activeImage]} name={restaurant.name} width={1200} eager />
-              <span className="detail__gallery-source">{photoSourceLabel}</span>
-              {imageCount > 1 && (
-                <span className="detail__gallery-count">{activeImage + 1} / {imageCount}</span>
-              )}
-            </div>
-            {imageCount > 1 && (
-              <div className="detail__gallery-thumbs" aria-label="Photo thumbnails">
-                {images.map((img, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    aria-current={i === activeImage}
-                    aria-label={`Photo ${i + 1}: ${img.alt}`}
-                    onClick={() => setActiveImage(i)}
-                  >
-                    <RestaurantImage source={img} name={restaurant.name} width={300} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <ImageGallery
+            images={images}
+            restaurantName={restaurant.name}
+            photoSourceLabel={photoSourceLabel}
+          />
         )}
 
         {/* Identity */}
@@ -757,54 +705,6 @@ export default function RestaurantPage() {
 
       {/* Price intelligence modal — shared by the menu and offers */}
       {priceDish && <DishPriceHistory dish={priceDish} change={priceChange(priceDish)} onClose={() => setPriceDish(null)} />}
-
-      {/* Lightbox */}
-      {lightboxOpen && images.length > 0 && (
-        <div
-          className="lightbox"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`${restaurant.name} photo gallery`}
-          onClick={() => setLightboxOpen(false)}
-        >
-          <button
-            ref={closeBtnRef}
-            type="button"
-            className="lightbox__btn lightbox__close"
-            onClick={(e) => { e.stopPropagation(); setLightboxOpen(false); }}
-            aria-label="Close gallery"
-          >
-            <X size={18} />
-          </button>
-          {imageCount > 1 && (
-            <>
-              <button
-                type="button"
-                className="lightbox__btn lightbox__prev"
-                onClick={(e) => { e.stopPropagation(); stepLightbox(-1); }}
-                aria-label="Previous photo"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <button
-                type="button"
-                className="lightbox__btn lightbox__next"
-                onClick={(e) => { e.stopPropagation(); stepLightbox(1); }}
-                aria-label="Next photo"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </>
-          )}
-          <img
-            src={imageProvider.urlFor(images[activeImage], 1600)}
-            alt={images[activeImage].alt}
-            className="lightbox__img"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <p className="lightbox__caption">{images[activeImage].alt}</p>
-        </div>
-      )}
     </main>
   );
 }
