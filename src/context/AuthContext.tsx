@@ -154,8 +154,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const result = await developmentOtpAuth.getSession();
           if (result.data?.session?.user) {
             const supabaseUser = result.data.session.user;
-            // Check if user exists in our demo database
-            const existingUser = users.find(u => u.id === supabaseUser.id);
+            // Check if user exists in our demo database - prioritize phone match (demo roles) over id
+            // This ensures demo accounts are restored correctly even if a stale generic user exists
+            let existingUser: typeof users[number] | undefined;
+            if (supabaseUser.phone) {
+              try {
+                const normalizedPhone = normalizePhone(supabaseUser.phone);
+                existingUser = users.find(u => {
+                  const storedContact = u.contact?.replace(/\D/g, '');
+                  const normalizedStored = storedContact ? normalizePhone(storedContact) : '';
+                  return normalizedStored === normalizedPhone;
+                });
+              } catch {
+                // ignore normalize errors - fall through to id check
+              }
+            }
+            if (!existingUser) {
+              existingUser = users.find(u => u.id === supabaseUser.id);
+            }
             let dbUser: DemoUser;
             
             if (existingUser) {
@@ -433,14 +449,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (result.data?.session?.user) {
           const supabaseUser = result.data.session.user;
           
-          // Find or create user in demo database
-          let existingUser = users.find(u => u.id === supabaseUser.id);
+          // Find existing user in demo database - prioritize phone match (demo roles) over id match
+          // This ensures demo accounts (exec-kk, etc.) are found even when a stale generic user exists with same phone
+          let existingUser = users.find(u => {
+            const storedContact = u.contact?.replace(/\D/g, '');
+            const normalizedStored = storedContact ? normalizePhone(storedContact) : '';
+            return normalizedStored === normalizedPhone;
+          });
           if (!existingUser) {
-            existingUser = users.find(u => {
-              const storedContact = u.contact?.replace(/\D/g, '');
-              const normalizedStored = storedContact ? normalizePhone(storedContact) : '';
-              return normalizedStored === normalizedPhone;
-            });
+            existingUser = users.find(u => u.id === supabaseUser.id);
           }
           
           if (existingUser) {
