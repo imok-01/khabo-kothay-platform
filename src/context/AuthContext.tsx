@@ -107,10 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Determine if we should use development OTP mock
   const useDevMock = import.meta.env.VITE_DEV_AUTH_MOCK === 'true';
 
-  // Production safety guard: prevent dev mock from running in production
-  if (useDevMock && import.meta.env.PROD) {
-    console.error('SECURITY ERROR: VITE_DEV_AUTH_MOCK is enabled in production!');
-    throw new Error('VITE_DEV_AUTH_MOCK cannot be enabled in production');
+  // Determine app environment from explicit config (not Vercel's PROD flag)
+  // VITE_APP_ENV can be 'production' or 'development'
+  const appEnv = import.meta.env.VITE_APP_ENV || 'production';
+
+  // Production safety guard: prevent dev mock from running in production environment
+  if (useDevMock && appEnv === 'production') {
+    console.error('SECURITY ERROR: VITE_DEV_AUTH_MOCK is enabled in production environment!');
+    throw new Error('VITE_DEV_AUTH_MOCK cannot be enabled in production environment');
   }
 
   // Hydrate the demo database with seed accounts on first run.

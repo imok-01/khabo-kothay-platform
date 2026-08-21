@@ -1959,7 +1959,6 @@ button {
   grid-template-columns: 2fr 1fr;
   gap: var(--s2);
   border-radius: var(--r-lg);
-  overflow: hidden;
   border: 1px solid var(--border);
   margin-bottom: var(--s5);
   background: var(--surface);
@@ -1969,6 +1968,8 @@ button {
   position: relative;
   aspect-ratio: 16 / 9;
   min-height: 300px;
+  overflow: hidden;
+  border-radius: var(--r-lg);
   cursor: zoom-in;
 }
 
@@ -1984,8 +1985,10 @@ button {
 
 .detail__gallery-thumbs {
   display: grid;
-  grid-template-rows: repeat(2, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   gap: var(--s2);
+  overflow: hidden;
+  border-radius: var(--r-lg);
 }
 
 .detail__gallery-thumbs button {
