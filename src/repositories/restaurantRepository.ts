@@ -1,19 +1,12 @@
 import type { Restaurant } from '../types';
 import { restaurants as seedRestaurants } from '../data/restaurants';
 import { attachIntelligence, attachIntelligenceToAll } from '../lib/intelligence';
-import { estimateCostForTwo, type CostEstimate } from '../lib/costEstimate';
+import { estimateCostForTwo } from '../lib/costEstimate';
 import { applyApprovedDraft } from '../lib/restaurantDraft';
 import { isSupabaseConfigured } from '../integrations/supabase/client';
 import * as queries from '../integrations/supabase/queries';
 import { mapRestaurantRows, slugify } from '../transformers/restaurant';
-import { menuCostEstimate } from '../transformers/menu';
 import { mockMenuRepository } from './menuRepository';
-import type {
-  MenuItemsRow,
-  MenusRow,
-  PriceObservationsRow,
-  RestaurantSourcesRow,
-} from '../integrations/supabase/database.types';
 
 /**
  * RestaurantRepository — the single seam between restaurant data and the
@@ -93,11 +86,12 @@ function withMenuEstimate(restaurant: Restaurant): Restaurant {
 
 interface RestaurantDbBundleRows {
   sources: Awaited<ReturnType<typeof queries.selectSourcesForRestaurant>>;
+  verificationRecords: Awaited<ReturnType<typeof queries.selectVerificationRecordsForRestaurant>>;
 }
 
 /** Fetch the row bundle for one restaurant (identity + sources + attributes +
- *  tags + images + signals + reviews + menu) so the transformer can compose
- *  the frontend domain object. */
+ *  tags + images + signals + reviews + menu + verification records) so the transformer
+ *  can compose the frontend domain object. */
 async function fetchBundle(restaurantId: string): Promise<RestaurantDbBundleRows & {
   restaurant: Awaited<ReturnType<typeof queries.selectRestaurantById>>;
   attributes: Awaited<ReturnType<typeof queries.selectAttributesForRestaurant>>;
@@ -106,8 +100,9 @@ async function fetchBundle(restaurantId: string): Promise<RestaurantDbBundleRows
   images: Awaited<ReturnType<typeof queries.selectImagesForRestaurant>>;
   reviewSignals: Awaited<ReturnType<typeof queries.selectReviewSignalsForRestaurant>>;
   userReviews: Awaited<ReturnType<typeof queries.selectUserReviewsForRestaurant>>;
+  verificationRecords: Awaited<ReturnType<typeof queries.selectVerificationRecordsForRestaurant>>;
 }> {
-  const [restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews] =
+  const [restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews, verificationRecords] =
     await Promise.all([
       queries.selectRestaurantById(restaurantId),
       queries.selectSourcesForRestaurant(restaurantId),
@@ -117,11 +112,12 @@ async function fetchBundle(restaurantId: string): Promise<RestaurantDbBundleRows
       queries.selectImagesForRestaurant(restaurantId),
       queries.selectReviewSignalsForRestaurant(restaurantId),
       queries.selectUserReviewsForRestaurant(restaurantId),
+      queries.selectVerificationRecordsForRestaurant(restaurantId),
     ]);
 
   // Menus are deliberately NOT part of the restaurant aggregate — they flow
   // through menuService → menuRepository (see mapRestaurantRows).
-  return { restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews };
+  return { restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews, verificationRecords };
 }
 
 class SupabaseRestaurantRepository implements RestaurantRepository {
@@ -149,7 +145,9 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
     // fan-out per restaurant. 206 restaurants x 8 tables would otherwise
     // fire ~1,600 parallel requests and exhaust the browser connection pool
     // (ERR_INSUFFICIENT_RESOURCES).
-    const [sources, aliases, attributes, tags, images, reviewSignals, userReviews, menus] = await Promise.all([
+    // NOTE: menu_items and price_observations are no longer fetched here.
+    // The menuEstimate is read from the stored restaurant_attributes.
+    const [sources, aliases, attributes, tags, images, reviewSignals, userReviews] = await Promise.all([
       queries.selectSourcesForRestaurants(ids),
       queries.selectRestaurantAliasesForRestaurants(ids),
       queries.selectAttributesForRestaurants(ids),
@@ -157,15 +155,7 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
       queries.selectImagesForRestaurants(ids),
       queries.selectReviewSignalsForRestaurants(ids),
       queries.selectUserReviewsForRestaurants(ids),
-      queries.selectMenusForRestaurants(ids),
     ]);
-
-    // Menu price observations for the whole catalogue — used to attach the
-    // menu-derived cost estimate to every restaurant, so cards (which only
-    // ever hold the Restaurant domain object) can show a real price instead
-    // of "Price not listed".
-    const menuItems = await queries.selectMenuItemsForMenus(menus.map((m) => m.id));
-    const observations = await queries.selectPriceObservationsForItems(menuItems.map((i) => i.id));
 
     const byRestaurant = <T extends { restaurant_id: string }>(list: T[]): Map<string, T[]> => {
       const map = new Map<string, T[]>();
@@ -183,9 +173,6 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
     const imagesMap = byRestaurant(images);
     const signalsMap = byRestaurant(reviewSignals);
     const reviewsMap = byRestaurant(userReviews);
-    const menusByRestaurant = byRestaurant(menus);
-    const itemsByMenu = groupBy(menuItems, (i) => i.menu_id);
-    const observationsByItem = groupBy(observations, (o) => o.menu_item_id);
 
     return rows
       .map((row) =>
@@ -199,7 +186,7 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
             images: imagesMap.get(row.id) ?? [],
             reviewSignals: signalsMap.get(row.id) ?? [],
             userReviews: reviewsMap.get(row.id) ?? [],
-            menuEstimate: menuEstimateForRestaurant(row.id, menusByRestaurant, itemsByMenu, observationsByItem, sourcesMap.get(row.id) ?? []),
+            // menuEstimate is now read from attributes by the transformer
           }),
         ),
       );
@@ -212,65 +199,12 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
     if (!restaurant) return undefined;
     const bundle = await fetchBundle(uuid);
 
-    // Same menu-derived estimate as the catalogue path, so a restaurant
-    // fetched by id carries the identical price source as its card.
-    const menus = await queries.selectMenusForRestaurant(uuid);
-    const menuItems = await queries.selectMenuItemsForMenus(menus.map((m) => m.id));
-    const observations = await queries.selectPriceObservationsForItems(menuItems.map((i) => i.id));
-    const menuEstimate = menuEstimateForRestaurant(
-      uuid,
-      new Map([[uuid, menus]]),
-      groupBy(menuItems, (i) => i.menu_id),
-      groupBy(observations, (o) => o.menu_item_id),
-      bundle.sources,
-    );
-
-    return attachIntelligence(mapRestaurantRows({ ...bundle, restaurant, menuEstimate }));
+    // menuEstimate is now read from attributes by the transformer.
+    // Menus are fetched separately by useRestaurantMenu for the detail page display.
+    return attachIntelligence(mapRestaurantRows({ ...bundle, restaurant }));
   }
 }
-
-/** Group a row list by an arbitrary key (menu id, item id…). */
-function groupBy<T, K extends string>(list: T[], key: (item: T) => K): Map<K, T[]> {
-  const map = new Map<K, T[]>();
-  for (const item of list) {
-    const k = key(item);
-    const bucket = map.get(k) ?? [];
-    bucket.push(item);
-    map.set(k, bucket);
-  }
-  return map;
-}
-
-/**
- * Menu-derived cost estimate for one restaurant from the catalogue's grouped
- * menu rows. Reuses the same Menu mapping + estimate the detail page uses
- * (menuCostEstimate → mapMenuRows + estimateCostForTwo) so every surface
- * agrees on the number. Returns undefined (honest "no data") when the venue
- * has no menu rows.
- */
-function menuEstimateForRestaurant(
-  restaurantId: string,
-  menusByRestaurant: Map<string, MenusRow[]>,
-  itemsByMenu: Map<string, MenuItemsRow[]>,
-  observationsByItem: Map<string, PriceObservationsRow[]>,
-  sources: RestaurantSourcesRow[],
-): CostEstimate | undefined {
-  const menus = menusByRestaurant.get(restaurantId) ?? [];
-  if (menus.length === 0) return undefined;
-
-  const itemsByMenuFor: Record<string, MenuItemsRow[]> = {};
-  const observationsByItemFor: Record<string, PriceObservationsRow[]> = {};
-  for (const menu of menus) {
-    const items = itemsByMenu.get(menu.id) ?? [];
-    itemsByMenuFor[menu.id] = items;
-    for (const item of items) {
-      observationsByItemFor[item.id] = observationsByItem.get(item.id) ?? [];
-    }
-  }
-
-  return menuCostEstimate({ menus, itemsByMenu: itemsByMenuFor, observationsByItem: observationsByItemFor, sources });
-}
-
+ 
 /**
  * Resolve a frontend route id to the database UUID.
  *

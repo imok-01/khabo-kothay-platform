@@ -42,6 +42,8 @@ export interface RestaurantDbBundle {
   reviewSignals: ReviewSignalsRow[];
   /** KK user reviews — optional, detail views fetch them. */
   userReviews?: UserReviewsRow[];
+  /** Verification records — optional, used for verified address extraction. */
+  verificationRecords?: VerificationRecordsRow[];
   intelligence?: RestaurantIntelligence;
   /**
    * Menu-derived cost-for-two estimate, computed by the repository from the
@@ -95,6 +97,24 @@ function attrBool(bundle: RestaurantDbBundle, key: string): boolean | undefined 
 function attrStringArray(bundle: RestaurantDbBundle, key: string): string[] {
   const v = attr(bundle, key);
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+}
+
+function attrCostEstimate(bundle: RestaurantDbBundle, key: string): CostEstimate | undefined {
+  const v = attr(bundle, key);
+  if (!v) return undefined;
+  if (typeof v === 'object' && v !== null) {
+    const est = v as Partial<CostEstimate>;
+    if (
+      typeof est.low === 'number' &&
+      typeof est.high === 'number' &&
+      typeof est.median === 'number' &&
+      typeof est.itemCount === 'number' &&
+      (est.confidence === 'low' || est.confidence === 'medium' || est.confidence === 'high')
+    ) {
+      return est as CostEstimate;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -242,6 +262,25 @@ export function mapRestaurantRows(bundle: RestaurantDbBundle): Restaurant {
   const isVeg = attrBool(bundle, 'isVeg') ?? false;
   const serviceOptions = attrString(bundle, 'service_options');
 
+  // Extract verified address from verification_records
+  // Priority: KK_VERIFIED > RESTAURANT_CONFIRMED > SOURCE_VERIFIED > UNVERIFIED
+  const verifiedAddressRecord = bundle.verificationRecords
+    ?.filter((v: VerificationRecordsRow) => v.field_name === 'address')
+    ?.sort((a: VerificationRecordsRow, b: VerificationRecordsRow) => {
+      const priority: Record<VerificationStatus, number> = {
+        KK_VERIFIED: 4,
+        RESTAURANT_CONFIRMED: 3,
+        SOURCE_VERIFIED: 2,
+        UNKNOWN: 1,
+        STALE: 0,
+        CONFLICTING: -1,
+        UNVERIFIED: -2,
+        NEEDS_REVIEW: -3,
+      };
+      return (priority[b.status] ?? -10) - (priority[a.status] ?? -10);
+    })[0];
+  const addressVerified = verifiedAddressRecord?.field_value as string | null ?? null;
+
   return {
     id: resolveSlug(bundle),
     name: r.name,
@@ -252,7 +291,8 @@ export function mapRestaurantRows(bundle: RestaurantDbBundle): Restaurant {
     budget,
     priceForTwo,
     location: r.area ?? attrString(bundle, 'location') ?? '',
-    address: r.address ?? '',
+    address: r.address_display ?? r.address ?? '',
+    address_verified: addressVerified,
     city: r.city ?? undefined,
     // The pipeline stores the hours under the snake_case key; accept both
     // spellings so mock-shaped data (camelCase) keeps working too.
@@ -274,7 +314,7 @@ export function mapRestaurantRows(bundle: RestaurantDbBundle): Restaurant {
     // menuRepository (seed/admin-override today, Supabase menus later). The
     // repository computes the menu-derived estimate and passes it through.
     intelligence: bundle.intelligence,
-    menuEstimate: bundle.menuEstimate,
+    menuEstimate: bundle.menuEstimate ?? attrCostEstimate(bundle, 'menuEstimate'),
   };
 }
 
@@ -317,3 +357,4 @@ export function mapPriceObservationRows(
       source: r.source === 'menu' ? 'menu' : r.source === 'offer' ? 'offer' : 'report',
     }));
 }
+
