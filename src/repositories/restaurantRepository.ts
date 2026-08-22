@@ -86,11 +86,10 @@ function withMenuEstimate(restaurant: Restaurant): Restaurant {
 
 interface RestaurantDbBundleRows {
   sources: Awaited<ReturnType<typeof queries.selectSourcesForRestaurant>>;
-  verificationRecords: Awaited<ReturnType<typeof queries.selectVerificationRecordsForRestaurant>>;
 }
 
 /** Fetch the row bundle for one restaurant (identity + sources + attributes +
- *  tags + images + signals + reviews + menu + verification records) so the transformer
+ *  tags + images + signals + reviews + menu) so the transformer
  *  can compose the frontend domain object. */
 async function fetchBundle(restaurantId: string): Promise<RestaurantDbBundleRows & {
   restaurant: Awaited<ReturnType<typeof queries.selectRestaurantById>>;
@@ -100,9 +99,8 @@ async function fetchBundle(restaurantId: string): Promise<RestaurantDbBundleRows
   images: Awaited<ReturnType<typeof queries.selectImagesForRestaurant>>;
   reviewSignals: Awaited<ReturnType<typeof queries.selectReviewSignalsForRestaurant>>;
   userReviews: Awaited<ReturnType<typeof queries.selectUserReviewsForRestaurant>>;
-  verificationRecords: Awaited<ReturnType<typeof queries.selectVerificationRecordsForRestaurant>>;
 }> {
-  const [restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews, verificationRecords] =
+  const [restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews] =
     await Promise.all([
       queries.selectRestaurantById(restaurantId),
       queries.selectSourcesForRestaurant(restaurantId),
@@ -112,12 +110,11 @@ async function fetchBundle(restaurantId: string): Promise<RestaurantDbBundleRows
       queries.selectImagesForRestaurant(restaurantId),
       queries.selectReviewSignalsForRestaurant(restaurantId),
       queries.selectUserReviewsForRestaurant(restaurantId),
-      queries.selectVerificationRecordsForRestaurant(restaurantId),
     ]);
 
   // Menus are deliberately NOT part of the restaurant aggregate — they flow
   // through menuService → menuRepository (see mapRestaurantRows).
-  return { restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews, verificationRecords };
+  return { restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews };
 }
 
 class SupabaseRestaurantRepository implements RestaurantRepository {

@@ -10,8 +10,30 @@
 
 async function digestHex(input: string): Promise<string> {
   const bytes = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  
+  // Web Crypto API requires a secure context (HTTPS or localhost).
+  // In some dev environments, crypto.subtle may be unavailable.
+  // Use a fallback for development only; production must have Web Crypto.
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  
+  // Fallback for environments without Web Crypto (e.g., certain dev contexts).
+  // This is a simple non-cryptographic hash — ONLY for development/demo.
+  // Production MUST have Web Crypto API available in a secure context.
+  if (import.meta.env.DEV) {
+    let hash = 0;
+    for (let i = 0; i < input.length; i++) {
+      const char = input.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    // Convert to hex-like string to maintain format compatibility
+    return Math.abs(hash).toString(16).padStart(8, '0');
+  }
+  
+  throw new Error('Web Crypto API (crypto.subtle) is required but unavailable. This environment must be a secure context (HTTPS or localhost).');
 }
 
 export async function hashPassword(plaintext: string): Promise<string> {

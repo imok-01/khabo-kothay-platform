@@ -21,6 +21,7 @@ function baseBundle(overrides: Partial<RestaurantDbBundle> = {}): RestaurantDbBu
     longitude: 90.4146485,
     phone: null,
     website: 'https://seasonaltastes.example.com',
+      address_display: null,
     status: 'ACTIVE',
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
@@ -169,3 +170,5 @@ describe('deliveryFromServiceOptions', () => {
 function bundleRestaurantId(): string {
   return baseBundle().restaurant.id;
 }
+
+

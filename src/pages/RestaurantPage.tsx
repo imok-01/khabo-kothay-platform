@@ -175,10 +175,13 @@ export default function RestaurantPage() {
   const budgetStat = budgetDisplay(restaurant);
 
   // Clean, source-verified address lines (street → area → city).
+  // Priority: verified address > Google live address > display address
+  const verifiedAddress = displayRestaurant.address_verified;
   const addressLines = formatAddress({
-    address: googleView?.address || displayRestaurant.address,
+    address: verifiedAddress || googleView?.address || displayRestaurant.address,
     location: displayRestaurant.location,
     city: displayRestaurant.city,
+    isVerified: !!verifiedAddress,
   });
 
   // Graceful hours display: weekly maps render per-day, single ranges render

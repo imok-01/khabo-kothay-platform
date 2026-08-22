@@ -70,6 +70,7 @@ export type RestaurantsRow = {
   longitude: number | null; // DECIMAL
   phone: string | null;
   website: string | null;
+    address_display: string | null;
   status: RestaurantStatus;
   created_at: string | null;
   updated_at: string | null;
@@ -400,3 +401,7 @@ export type Database = {
     CompositeTypes: { [_ in never]: never };
   };
 }
+
+
+
+

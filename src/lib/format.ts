@@ -51,12 +51,32 @@ function isPoorAddress(value: string): boolean {
  * line is a verified stored value — a missing part is simply omitted, never
  * invented. When only poor data exists the result is empty so the caller can
  * show an honest fallback.
+ *
+ * If the cleaned address is already a complete address (not poor), it is
+ * returned as-is to avoid duplicating area/city that are already embedded.
+ *
+ * If the address is a verified address (from verification_records), it is
+ * always returned as-is without prepending area/city.
  */
-export function formatAddress(place: { address?: string; location?: string; city?: string }): string[] {
+export function formatAddress(place: { address?: string; location?: string; city?: string; isVerified?: boolean }): string[] {
   const area = cleanAddressSegment(place.location ?? '');
   const city = cleanAddressSegment(place.city ?? '');
   const cleaned = place.address ? cleanAddressSegment(place.address) : '';
+  const isVerified = place.isVerified === true;
 
+  // If we have a verified address, use it directly — it's already complete and authoritative.
+  // Also if we have a meaningful cleaned address, use it directly — it already
+  // contains the city/area (e.g. "House 12/B, Road 55, Dhaka"). Prepending
+  // area/city again would duplicate them.
+  if (isVerified && cleaned) {
+    return [cleaned];
+  }
+  if (cleaned && !isPoorAddress(cleaned)) {
+    return [cleaned];
+  }
+
+  // Fallback: build from components when only poor/no address exists.
+  // Poor addresses (plus codes, road fragments) are omitted entirely.
   const lines: string[] = [];
   if (area) lines.push(area);
   if (city && !lines.includes(city)) lines.push(city);

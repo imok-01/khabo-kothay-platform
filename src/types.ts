@@ -51,6 +51,8 @@ export interface Restaurant {
   address: string;
   /** City (e.g. "Dhaka"). Absent in mock data — never invented when unknown. */
   city?: string;
+  /** Verified address from verification_records. Null when not yet verified. */
+  address_verified?: string | null;
   /** Place facts — source-agnostic (Google and our data agree on these). */
   openingHours: string;
   isVeg: boolean;

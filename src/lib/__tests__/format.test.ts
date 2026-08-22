@@ -44,11 +44,9 @@ describe('cleanAddressSegment', () => {
 });
 
 describe('formatAddress', () => {
-  it('builds [area, city, street] lines in preferred display order', () => {
-    expect(formatAddress({ address: 'House 12/B', location: 'Gulshan', city: 'Dhaka' })).toEqual([
-      'Gulshan',
-      'Dhaka',
-      'House 12/B',
+  it('returns complete address directly without prepending area/city', () => {
+    expect(formatAddress({ address: 'House 12/B, 5th Floor, Road 55, Dhaka', location: 'Gulshan', city: 'Dhaka' })).toEqual([
+      'House 12/B, 5th Floor, Road 55, Dhaka',
     ]);
   });
 
@@ -81,10 +79,8 @@ describe('formatAddress', () => {
     expect(formatAddress({ address: 'Lane No 4' })).toEqual([]);
   });
 
-  it('keeps a useful address line after area and city', () => {
+  it('returns useful address directly without prepending area/city', () => {
     expect(formatAddress({ address: 'Road 45, House 12/B', location: 'Gulshan', city: 'Dhaka' })).toEqual([
-      'Gulshan',
-      'Dhaka',
       'Road 45, House 12/B',
     ]);
   });
