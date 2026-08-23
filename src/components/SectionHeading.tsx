@@ -4,7 +4,7 @@ interface SectionHeadingProps {
   eyebrow: string;
   title: string;
   lede?: string;
-  action?: { label: string; to: string; onClick?: () => void };
+  action?: { label: string; to?: string; onClick?: () => void };
 }
 
 export default function SectionHeading({ eyebrow, title, lede, action }: SectionHeadingProps) {
@@ -20,11 +20,11 @@ export default function SectionHeading({ eyebrow, title, lede, action }: Section
           <button type="button" className="section-heading__action" onClick={action.onClick}>
             {action.label}
           </button>
-        ) : (
+        ) : action.to ? (
           <Link to={action.to} className="section-heading__action">
             {action.label}
           </Link>
-        ))}
+        ) : null)}
     </div>
   );
 }

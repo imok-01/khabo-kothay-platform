@@ -21,7 +21,7 @@ interface RewardCardState {
 const EARN_RULES = [
   { label: 'Complete your profile', value: `+${DEFAULT_REWARD_CONFIG.profileCompletion}`, note: 'One time only' },
   { label: 'Write your first useful review', value: `+${DEFAULT_REWARD_CONFIG.review}`, note: 'One time only' },
-  { label: 'Favourite a restaurant', value: `+${DEFAULT_REWARD_CONFIG.favourite}`, note: `Cap ${DEFAULT_REWARD_CONFIG.favouriteCap} favourites` },
+  { label: 'Save a restaurant', value: `+${DEFAULT_REWARD_CONFIG.favourite}`, note: `Cap ${DEFAULT_REWARD_CONFIG.favouriteCap} saved places` },
   { label: 'Try a new cuisine', value: `+${DEFAULT_REWARD_CONFIG.cuisineDiscovery}`, note: `Cap ${DEFAULT_REWARD_CONFIG.cuisineDiscoveryCap} cuisines` },
   { label: 'Refer a verified new user', value: `+${DEFAULT_REWARD_CONFIG.referralVerified}`, note: 'Per successful referral' },
   { label: 'Upload a useful food photo', value: `+${DEFAULT_REWARD_CONFIG.photo}`, note: 'Arrives with photo uploads' },

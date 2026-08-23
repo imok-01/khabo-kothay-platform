@@ -284,7 +284,7 @@ export default function RestaurantPage() {
               type="button"
               className={`fav-btn fav-btn--lg ${fav ? 'fav-btn--active' : ''}`}
               onClick={() => toggleFavorite(restaurant.id)}
-              aria-label={fav ? 'Remove from favourites' : 'Add to favourites'}
+              aria-label={fav ? 'Remove from saved places' : 'Add to saved places'}
               aria-pressed={fav}
             >
               <Heart size={18} fill={fav ? 'currentColor' : 'none'} aria-hidden="true" />

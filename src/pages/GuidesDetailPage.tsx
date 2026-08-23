@@ -33,7 +33,7 @@ export default function GuidesDetailPage() {
         <div className="section__inner">
           <EmptyState
             title="Guide not found"
-            message="We couldn't find that guide. Browse all our curated guides instead."
+              message="We couldn't find that guide. Browse all our guides instead."
             actionLabel="All guides"
             actionTo="/guides"
           />
@@ -44,6 +44,7 @@ export default function GuidesDetailPage() {
 
   const cover = data?.find((r) => r.id === collection.coverRestaurantId);
   const others = collections.filter((c) => c.slug !== collection.slug).slice(0, 4);
+  const exploreHref = '/explore?' + new URLSearchParams(collection.exploreParams).toString();
 
   return (
     <main>
@@ -65,8 +66,8 @@ export default function GuidesDetailPage() {
           <SectionHeading
             eyebrow="In this guide"
             title={`${restaurants.length} ${restaurants.length === 1 ? 'place' : 'places'}`}
-            lede="Every venue below matches this curated guide from real data."
-            action={{ label: 'Search all', to: '/search' }}
+            lede="Every venue below matches this guide, built from real restaurant data."
+            action={{ label: 'Explore restaurants', to: exploreHref }}
           />
           {status === 'loading' && !data ? (
             <SkeletonGrid count={8} />
@@ -74,8 +75,8 @@ export default function GuidesDetailPage() {
             <EmptyState
               title="No matching restaurants yet"
               message="This guide doesn't have live matches right now. Check back as our data grows."
-              actionLabel="Search all"
-              actionTo="/search"
+              actionLabel="Explore restaurants"
+              actionTo={exploreHref}
             />
           ) : (
             <div className="grid">

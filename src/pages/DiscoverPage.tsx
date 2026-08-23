@@ -1,14 +1,13 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Compass, BookOpen, UtensilsCrossed, MapPin, ArrowRight } from 'lucide-react';
+import { Compass, MapPin, ArrowRight, Search, Sparkles } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useRestaurants } from '../hooks/useRestaurants';
 import { collections } from '../data/collections';
-import { hiddenGems, worthTheTrip } from '../hooks/useRecommendations';
-import { effectiveRating } from '../lib/ratings';
 import { selectRestaurantPhotos } from '../lib/photos';
-import RestaurantCard from '../components/RestaurantCard';
 import RestaurantImage from '../components/RestaurantImage';
 import SectionHeading from '../components/SectionHeading';
+import SearchBar from '../components/SearchBar';
 import { SkeletonGrid } from '../components/Skeleton';
 import { usePageTitle } from '../lib/usePageTitle';
 import type { Restaurant } from '../types';
@@ -17,24 +16,31 @@ function leadPhoto(restaurant: Restaurant | undefined) {
   return restaurant ? selectRestaurantPhotos(restaurant, 'card').photos[0] : undefined;
 }
 
+const MOODS = [
+  { label: 'Date night', to: '/explore?q=date%20night' },
+  { label: 'Family dinner', to: '/explore?family=1' },
+  { label: 'Quick lunch', to: '/explore?mealType=Lunch' },
+  { label: 'Late night', to: '/explore?q=late%20night' },
+  { label: 'Budget friendly', to: '/explore?budget=Budget' },
+  { label: 'Celebration', to: '/explore?q=celebration' },
+];
+
+const QUICK_ACTIONS: { label: string; to: string; icon: LucideIcon }[] = [
+  { label: 'Top rated', to: '/explore?sortBy=rating', icon: Sparkles },
+  { label: 'Open now', to: '/explore?openNow=1&sortBy=distance', icon: Search },
+  { label: 'Hidden gems', to: '/explore?q=hidden%20gems', icon: Compass },
+];
+
 export default function DiscoverPage() {
   const { status, data } = useRestaurants();
-  usePageTitle('Discover restaurants');
+  usePageTitle('Discover');
 
   const restaurants = useMemo(() => data ?? [], [data]);
-
-  const trending = useMemo(
-    () =>
-      [...restaurants]
-        .sort((a, b) => effectiveRating(b) - effectiveRating(a))
-        .slice(0, 8),
-    [restaurants],
-  );
 
   const popularCuisines = useMemo(() => {
     const counts = new Map<string, number>();
     for (const r of restaurants) for (const c of r.cuisines) counts.set(c, (counts.get(c) ?? 0) + 1);
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
   }, [restaurants]);
 
   const popularAreas = useMemo(() => {
@@ -43,23 +49,22 @@ export default function DiscoverPage() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
   }, [restaurants]);
 
-  const gems = useMemo(() => hiddenGems(restaurants).slice(0, 8), [restaurants]);
-  const trip = useMemo(() => worthTheTrip(restaurants).slice(0, 8), [restaurants]);
-
   const byId = useMemo(() => new Map(restaurants.map((r) => [r.id, r])), [restaurants]);
+
+  const previewGuides = collections.slice(0, 4);
 
   return (
     <main>
       <section className="hero hero--compact">
         <div className="hero__inner">
           <span className="hero__eyebrow"><Compass size={14} aria-hidden="true" /> Discover</span>
-          <h1 className="hero__title">Not sure where to eat?</h1>
+          <h1 className="hero__title">What are you in the mood for?</h1>
           <p className="hero__subtitle">
-            Browse by cuisine, neighbourhood or a curated guide — or jump straight into search when you know exactly what you want.
+            Choose a mood, a cuisine or a neighbourhood — or search when you already know what you want.
           </p>
+          <SearchBar variant="hero" restaurants={restaurants} />
           <div className="surprise__actions" style={{ justifyContent: 'flex-start' }}>
-            <Link to="/search" className="btn btn--primary btn--lg"><UtensilsCrossed size={16} aria-hidden="true" /> Search restaurants</Link>
-            <Link to="/guides" className="btn btn--ghost btn--lg"><BookOpen size={16} aria-hidden="true" /> Browse guides</Link>
+            <Link to="/explore" className="btn btn--ghost btn--lg"><Sparkles size={16} aria-hidden="true" /> Surprise me</Link>
           </div>
         </div>
       </section>
@@ -67,58 +72,33 @@ export default function DiscoverPage() {
       <section className="section">
         <div className="section__inner">
           <SectionHeading
-            eyebrow="Right now"
-            title="Trending"
-            lede="The highest-rated tables across the city this week."
-            action={{ label: 'Search all', to: '/search' }}
+            eyebrow="Not sure yet?"
+            title="Browse by mood"
+            lede="Start with how you want to eat — we'll handle the rest."
           />
-          {status === 'loading' && restaurants.length === 0 ? (
-            <SkeletonPlaceholder />
-          ) : (
-            <div className="grid">
-              {trending.map((r, i) => (
-                <RestaurantCard key={r.id} restaurant={r} variant={i === 0 ? 'featured' : 'standard'} />
-              ))}
-            </div>
-          )}
+          <div className="tile-grid tile-grid--cuisines">
+            {MOODS.map((m) => (
+              <Link
+                key={m.label}
+                to={m.to}
+                className="tile"
+              >
+                <div className="tile__body">
+                  <strong>{m.label}</strong>
+                  <span>Explore <ArrowRight size={13} aria-hidden="true" /></span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
       <section className="section section--tint">
         <div className="section__inner">
           <SectionHeading
-            eyebrow="Editorial"
-            title="Guides"
-            lede="Hand-picked collections for a mood, a moment or a craving."
-            action={{ label: 'All guides', to: '/guides' }}
-          />
-          <div className="collection-grid">
-            {collections.map((c) => {
-              const cover = byId.get(c.coverRestaurantId);
-              return (
-                <Link key={c.slug} to={`/guides/${c.slug}`} className="collection-card">
-                  <div className="collection-card__media">
-                    {cover && <RestaurantImage source={leadPhoto(cover)} name={c.title} width={560} />}
-                  </div>
-                  <div className="collection-card__body">
-                    <h3>{c.title}</h3>
-                    <p>{c.description}</p>
-                    <span className="collection-card__count">View guide <ArrowRight size={13} aria-hidden="true" /></span>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="section__inner">
-          <SectionHeading
             eyebrow="What are you craving?"
-            title="Popular cuisines"
-            lede="The kitchens Dhaka is searching for most."
-            action={{ label: 'Discover more', to: '/search' }}
+            title="Browse cuisines"
+            lede="Every kitchen in the city, one craving at a time."
           />
           <div className="tile-grid tile-grid--cuisines">
             {popularCuisines.map(([c, count], i) => (
@@ -137,13 +117,12 @@ export default function DiscoverPage() {
         </div>
       </section>
 
-      <section className="section section--tint">
+      <section className="section">
         <div className="section__inner">
           <SectionHeading
             eyebrow="Where in the city?"
-            title="Popular areas"
-            lede="The neighbourhoods with the most tables worth a visit."
-            action={{ label: 'Discover more', to: '/search' }}
+            title="Browse areas"
+            lede="From Gulshan's fine dining to Banani's late-night bites."
           />
           <div className="tile-grid tile-grid--neighbourhoods">
             {popularAreas.map(([n, count]) => {
@@ -164,31 +143,54 @@ export default function DiscoverPage() {
         </div>
       </section>
 
-      <section className="section">
+      <section className="section section--tint">
         <div className="section__inner">
-          <SectionHeading eyebrow="Off the beaten path" title="Hidden gems" lede="Highly rated, quietly loved." action={{ label: 'Search all', to: '/search' }} />
-          <div className="grid">
-            {gems.map((r) => (
-              <RestaurantCard key={r.id} restaurant={r} />
-            ))}
-          </div>
+          <SectionHeading
+            eyebrow="Curated shortlists"
+            title="Guides"
+            lede="Editorially curated lists for a mood, a moment or a craving — every guide is built from real data."
+            action={{ label: 'View all guides', to: '/guides' }}
+          />
+          {status === 'loading' && !data ? (
+            <SkeletonGrid count={4} />
+          ) : (
+            <div className="collection-grid">
+              {previewGuides.map((c) => {
+                const cover = byId.get(c.coverRestaurantId);
+                return (
+                  <Link key={c.slug} to={`/guides/${c.slug}`} className="collection-card">
+                    <div className="collection-card__media">
+                      {cover && <RestaurantImage source={leadPhoto(cover)} name={c.title} width={560} />}
+                    </div>
+                    <div className="collection-card__body">
+                      <h3>{c.title}</h3>
+                      <p>{c.description}</p>
+                      <span className="collection-card__count">View guide <ArrowRight size={13} aria-hidden="true" /></span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
-      <section className="section section--tint">
+      <section className="section">
         <div className="section__inner">
-          <SectionHeading eyebrow="Farther, but worth it" title="Worth the trip" lede="A little out of the way, unusually strong." action={{ label: 'Browse guides', to: '/guides' }} />
-          <div className="grid">
-            {trip.map((r) => (
-              <RestaurantCard key={r.id} restaurant={r} />
+          <SectionHeading
+            eyebrow="Shortcuts"
+            title="Jump straight to results"
+            lede="Already know the kind of place you want? Skip the browsing."
+          />
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            {QUICK_ACTIONS.map(({ label, to, icon: Icon }) => (
+              <Link key={label} to={to} className="btn btn--ghost btn--lg">
+                <Icon size={16} aria-hidden="true" /> {label}
+              </Link>
             ))}
           </div>
         </div>
       </section>
     </main>
   );
-}
-
-function SkeletonPlaceholder() {
-  return <SkeletonGrid count={8} />;
 }

@@ -92,7 +92,7 @@ function FaqItem({ entry }: { entry: FaqEntry }) {
 const FAQ_ENTRIES: FaqEntry[] = [
   {
     q: 'Is Khabo Kothay free to use?',
-    a: ['Yes. Browsing, searching, saving favourites and getting recommendations are all free.'],
+     a: ['Yes. Browsing, searching, saving places and getting recommendations are all free.'],
   },
   {
     q: 'How are recommendations calculated?',
@@ -244,13 +244,13 @@ export const HowItWorksPage = () => (
         {
           heading: '2. We rank the best matches',
           paragraphs: [
-            'Every restaurant gets a match percentage based on your choices and, when you\u2019re signed in, your saved preferences and favourites. Every score comes with reasons — tap the info icon to see exactly why a place matched.',
+            'Every restaurant gets a match percentage based on your choices and, when you\u2019re signed in, your saved preferences and saved places. Every score comes with reasons — tap the info icon to see exactly why a place matched.',
           ],
         },
         {
           heading: '3. Pick, save and share',
           list: [
-            'Save favourites to build your shortlist.',
+             'Save places to build your shortlist.',
             'Compare restaurants side by side.',
             'Get directions or check the map.',
             'Share a restaurant with friends.',
@@ -322,7 +322,7 @@ export const PrivacyPage = () => (
         {
           heading: 'What we store',
           list: [
-            'Favourites, recently viewed and your preferences are stored locally in your browser.',
+             'Saved places, recently viewed and your preferences are stored locally in your browser.',
             'Demo sign-in keeps your session and profile data in your browser too — no external account server is involved in the current demo build.',
             'Location is only used when you explicitly allow it, and only to sort by distance.',
           ],

@@ -194,7 +194,7 @@ export default function HomePage() {
       {recents.length > 0 && (
         <section className="section">
           <div className="section__inner">
-            <SectionHeading eyebrow="Pick up where you left off" title="Recently viewed" action={{ label: 'Clear', to: '/explore', onClick: clearRecent }} />
+            <SectionHeading eyebrow="Pick up where you left off" title="Recently viewed" action={{ label: 'Clear', onClick: clearRecent }} />
             <div className="scroller">
               {recents.slice(0, 6).map((r) => (
                 <RestaurantCard key={r.id} restaurant={r} variant="compact" />
@@ -211,7 +211,7 @@ export default function HomePage() {
             eyebrow={preferences.preferredCuisines.length > 0 ? 'Personalised for you' : 'The city agrees'}
             title={personalizedTitle}
             lede={preferences.preferredCuisines.length > 0 ? 'Ranked for your taste, budget and usual haunts — with honest reasons for every match.' : 'The most-loved tables across Dhaka right now.'}
-            action={{ label: 'See all', to: '/discover' }}
+            action={{ label: 'See all', to: '/for-you' }}
           />
           {status === 'loading' && restaurants.length === 0 ? (
             <SkeletonGrid count={4} />
@@ -281,7 +281,7 @@ export default function HomePage() {
               eyebrow="Off the beaten path"
               title="Hidden gems"
               lede="Highly rated, quietly loved — the tables the algorithms usually miss."
-              action={{ label: 'Explore all', to: '/explore?sortBy=rating' }}
+              action={{ label: 'Explore all', to: '/explore?q=hidden%20gems' }}
             />
             <div className="grid">
               {gems.slice(0, 4).map((r) => (
@@ -300,7 +300,7 @@ export default function HomePage() {
               eyebrow="Farther, but worth it"
               title="Worth the trip"
               lede="A little out of the way, unusually strong — worth crossing the city for."
-              action={{ label: 'All highly rated', to: '/guides' }}
+              action={{ label: 'All highly rated', to: '/explore?sortBy=rating' }}
             />
             <div className="grid">
               {trip.map((r) => (
@@ -339,7 +339,7 @@ export default function HomePage() {
       {/* Cuisines */}
       <section className="section section--tint">
         <div className="section__inner">
-          <SectionHeading eyebrow="What are you craving?" title="Browse by cuisine" lede="Every kitchen in the city, one craving at a time." action={{ label: 'All cuisines', to: '/explore' }} />
+          <SectionHeading eyebrow="What are you craving?" title="Browse by cuisine" lede="Every kitchen in the city, one craving at a time." action={{ label: 'All cuisines', to: '/discover' }} />
           <div className="tile-grid tile-grid--cuisines">
             {CUISINES.filter((c) => restaurants.some((r) => r.cuisines.includes(c)))
               .map((c) => ({ c, count: restaurants.filter((r) => r.cuisines.includes(c)).length }))
@@ -366,7 +366,7 @@ export default function HomePage() {
       {/* Neighbourhoods */}
       <section className="section">
         <div className="section__inner">
-          <SectionHeading eyebrow="Pick a neighbourhood" title="Where in the city?" lede="From Gulshan's fine dining to Banani's late-night bites." action={{ label: 'All locations', to: '/explore' }} />
+          <SectionHeading eyebrow="Pick a neighbourhood" title="Where in the city?" lede="From Gulshan's fine dining to Banani's late-night bites." action={{ label: 'All locations', to: '/discover' }} />
           <div className="tile-grid tile-grid--neighbourhoods">
             {NEIGHBORHOODS.map((n) => {
               const inArea = restaurants.filter((r) => r.location === n);

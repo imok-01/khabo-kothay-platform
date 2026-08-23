@@ -14,50 +14,99 @@ function leadPhoto(restaurant: Restaurant | undefined) {
   return restaurant ? selectRestaurantPhotos(restaurant, 'card').photos[0] : undefined;
 }
 
+const FEATURED_SLUG = 'italian-evenings';
+
+// Presentation-only grouping of the existing collections (the data model has
+// no category field and is auto-generated, so grouping stays in the view).
+const GROUP_DEFS: { label: string; slugs: string[] }[] = [
+  { label: 'By area', slugs: ['top-rated', 'gulshan-dining', 'banani-bites'] },
+  { label: 'By cuisine', slugs: ['chinese-cravings', 'bangladeshi-classics', 'italian-evenings', 'japanese-table'] },
+  { label: 'By occasion & convenience', slugs: ['quick-and-casual', 'delivered'] },
+];
+
 export default function GuidesPage() {
   const { status, data } = useRestaurants();
-  usePageTitle('Guides');
+  usePageTitle('Khabo Kothay restaurant guides');
 
   const byId = useMemo(() => new Map((data ?? []).map((r) => [r.id, r])), [data]);
+
+  const featured = collections.find((c) => c.slug === FEATURED_SLUG);
+
+  const grouped = useMemo(() => {
+    const groups = GROUP_DEFS.map((g) => ({
+      label: g.label,
+      items: collections.filter((c) => g.slugs.includes(c.slug) && c.slug !== FEATURED_SLUG),
+    })).filter((g) => g.items.length > 0);
+    const assigned = new Set(GROUP_DEFS.flatMap((g) => g.slugs));
+    const ungrouped = collections.filter((c) => c.slug !== FEATURED_SLUG && !assigned.has(c.slug));
+    if (ungrouped.length) groups.push({ label: 'More guides', items: ungrouped });
+    return groups;
+  }, []);
+
+  const fcover = featured ? byId.get(featured.coverRestaurantId) : undefined;
 
   return (
     <main>
       <section className="hero hero--compact">
         <div className="hero__inner">
           <span className="hero__eyebrow"><BookOpen size={14} aria-hidden="true" /> Guides</span>
-          <h1 className="hero__title">Guides &amp; collections</h1>
+          <h1 className="hero__title">Find the right restaurant for every moment</h1>
           <p className="hero__subtitle">
-            Editorially curated lists for a mood, a moment or a craving — every guide is built from real restaurant data.
+            Shortlists of places worth trying — built from real Dhaka restaurant data.
           </p>
         </div>
       </section>
 
-      <section className="section">
-        <div className="section__inner">
-          <SectionHeading eyebrow="Curated" title="All guides" lede="Pick a guide to start exploring." />
-          {status === 'loading' && !data ? (
-            <SkeletonGrid count={8} />
-          ) : (
-            <div className="collection-grid">
-              {collections.map((c) => {
-                const cover = byId.get(c.coverRestaurantId);
-                return (
-                  <Link key={c.slug} to={`/guides/${c.slug}`} className="collection-card">
-                    <div className="collection-card__media">
-                      {cover && <RestaurantImage source={leadPhoto(cover)} name={c.title} width={560} />}
-                    </div>
-                    <div className="collection-card__body">
-                      <h3>{c.title}</h3>
-                      <p>{c.description}</p>
-                      <span className="collection-card__count">View guide <ArrowRight size={13} aria-hidden="true" /></span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
+      {featured && (
+        <section className="section">
+          <div className="section__inner">
+            <SectionHeading
+              eyebrow="Khabo Kothay guide"
+              title="Featured guide"
+              lede="A shortlist we're proud of — a good place to start."
+            />
+            <Link to={`/guides/${featured.slug}`} className="collection-card">
+              <div className="collection-card__media">
+                {fcover && <RestaurantImage source={leadPhoto(fcover)} name={featured.title} width={560} />}
+              </div>
+              <div className="collection-card__body">
+                <h3>{featured.title}</h3>
+                <p>{featured.description}</p>
+                <span className="collection-card__count">View guide <ArrowRight size={13} aria-hidden="true" /></span>
+              </div>
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {grouped.map((group) => (
+        <section key={group.label} className="section section--tint">
+          <div className="section__inner">
+            <SectionHeading eyebrow="Guides" title={group.label} lede="Shortlists for this kind of craving or occasion." />
+            {status === 'loading' && !data ? (
+              <SkeletonGrid count={Math.max(group.items.length, 1)} />
+            ) : (
+              <div className="collection-grid">
+                {group.items.map((c) => {
+                  const cover = byId.get(c.coverRestaurantId);
+                  return (
+                    <Link key={c.slug} to={`/guides/${c.slug}`} className="collection-card">
+                      <div className="collection-card__media">
+                        {cover && <RestaurantImage source={leadPhoto(cover)} name={c.title} width={560} />}
+                      </div>
+                      <div className="collection-card__body">
+                        <h3>{c.title}</h3>
+                        <p>{c.description}</p>
+                        <span className="collection-card__count">View guide <ArrowRight size={13} aria-hidden="true" /></span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      ))}
     </main>
   );
 }

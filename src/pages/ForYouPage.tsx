@@ -25,7 +25,7 @@ export default function ForYouPage() {
         <div className="surprise__actions" style={{ justifyContent: 'center' }}>
           {session ? (
             <Link to="/favorites" className="btn btn--primary">
-              <UserRound size={16} aria-hidden="true" /> View your favourites
+              <UserRound size={16} aria-hidden="true" /> View your saved places
             </Link>
           ) : (
             <Link to="/login" className="btn btn--primary">

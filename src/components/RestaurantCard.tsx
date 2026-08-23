@@ -108,7 +108,7 @@ export default function RestaurantCard({ restaurant, distanceKm, match, highligh
         type="button"
         className={`fav-btn ${fav ? 'fav-btn--active' : ''}`}
         onClick={() => toggleFavorite(restaurant.id)}
-        aria-label={fav ? `Remove ${restaurant.name} from favourites` : `Add ${restaurant.name} to favourites`}
+        aria-label={fav ? `Remove ${restaurant.name} from saved places` : `Add ${restaurant.name} to saved places`}
         aria-pressed={fav}
       >
         <Heart size={16} fill={fav ? 'currentColor' : 'none'} aria-hidden="true" />

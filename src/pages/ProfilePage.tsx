@@ -61,7 +61,7 @@ export default function ProfilePage() {
           <div className="access-denied">
             <User size={40} aria-hidden="true" />
             <h1>Sign in to see your profile</h1>
-            <p>Your favourites, reviews and rewards live here once you're signed in.</p>
+            <p>Your saved places, reviews and rewards live here once you're signed in.</p>
             <Link to="/login" className="btn btn--primary">Sign in</Link>
           </div>
         </div>

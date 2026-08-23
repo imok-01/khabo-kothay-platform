@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Soup, Heart, Bookmark, Menu, X, UserCircle2, ShieldCheck, Store, Info, UtensilsCrossed, Compass, BookOpen, PenLine, LogOut, Settings, LayoutDashboard, ChevronDown } from 'lucide-react';
-import { useFavorites } from '../context/FavoritesContext';
+import { Soup, Bookmark, Menu, X, UserCircle2, ShieldCheck, Store, Info, UtensilsCrossed, Compass, BookOpen, PenLine, LogOut, Settings, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { useSaved } from '../context/SavedContext';
 import { useAuth } from '../context/AuthContext';
 import { roleViewOf, type RoleView } from '../domain/auth';
@@ -13,7 +12,7 @@ import SearchBar from './SearchBar';
  * Role-aware primary navigation.
  *
  *   guest            → Home · Explore · Sign in
- *   customer         → Home · Explore · Favourites · Saved · account menu
+ *   customer         → Home · Discover · Explore · Saved · account menu
  *   restaurant_owner → Dashboard · My restaurant · Update information · account menu
  *   admin            → Home · Explore · Admin · account menu
  *
@@ -27,7 +26,6 @@ export default function Navbar() {
   const accountRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { favoriteIds } = useFavorites();
   const { savedIds } = useSaved();
   const { session, user, logout } = useAuth();
   const { data: restaurantData } = useRestaurants();
@@ -95,9 +93,8 @@ export default function Navbar() {
     // customer
     return [
       { to: '/profile', label: 'Profile', icon: UserCircle2 },
-      { to: '/saved', label: 'Saved restaurants', icon: Bookmark },
-      { to: '/favorites', label: 'Favourites', icon: Heart },
-      { to: '/profile', label: 'Settings', icon: Settings },
+        { to: '/saved', label: 'Saved restaurants', icon: Bookmark },
+        { to: '/profile', label: 'Settings', icon: Settings },
     ];
   })();
 
@@ -124,20 +121,15 @@ export default function Navbar() {
             {view === 'guest' && (
               <>
                 <NavLink to="/" end className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Home</NavLink>
-                <NavLink to="/explore" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Explore</NavLink>
                 <NavLink to="/discover" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Discover</NavLink>
+                <NavLink to="/explore" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Explore</NavLink>
               </>
             )}
             {view === 'customer' && (
               <>
                 <NavLink to="/" end className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Home</NavLink>
-                <NavLink to="/explore" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Explore</NavLink>
                 <NavLink to="/discover" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Discover</NavLink>
-                <NavLink to="/favorites" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>
-                  <Heart size={15} aria-hidden="true" />
-                  Favourites
-                  {favoriteIds.length > 0 && <span className="nav__badge">{favoriteIds.length}</span>}
-                </NavLink>
+                <NavLink to="/explore" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Explore</NavLink>
                 <NavLink to="/saved" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>
                   <Bookmark size={15} aria-hidden="true" />
                   Saved
@@ -161,8 +153,8 @@ export default function Navbar() {
             {view === 'admin' && (
               <>
                 <NavLink to="/" end className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Home</NavLink>
-                <NavLink to="/explore" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Explore</NavLink>
                 <NavLink to="/discover" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Discover</NavLink>
+                <NavLink to="/explore" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Explore</NavLink>
                 <NavLink to="/admin" className={({ isActive }) => `nav__link nav__link--role ${isActive ? 'nav__link--active' : ''}`}>
                   <ShieldCheck size={15} aria-hidden="true" /> Admin
                 </NavLink>
@@ -265,10 +257,6 @@ export default function Navbar() {
               <NavLink to="/saved" onClick={() => setMenuOpen(false)}>
                 <Bookmark size={15} aria-hidden="true" />
                 Saved {savedIds.length > 0 && `(${savedIds.length})`}
-              </NavLink>
-              <NavLink to="/favorites" onClick={() => setMenuOpen(false)}>
-                <Heart size={15} aria-hidden="true" />
-                Favourites {favoriteIds.length > 0 && `(${favoriteIds.length})`}
               </NavLink>
             </div>
             <div className="nav__mobile-section">

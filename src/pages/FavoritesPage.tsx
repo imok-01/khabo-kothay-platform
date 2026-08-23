@@ -20,7 +20,7 @@ export default function FavoritesPage() {
   const { recentIds } = useRecentlyViewed();
   const { user } = useAuth();
   const { status, data, reload } = useRestaurants();
-  usePageTitle('Favourites');
+  usePageTitle('Saved');
 
   const preferences = useMemo(() => {
     const derived = derivePreferences(favoriteIds, recentIds);
@@ -62,7 +62,7 @@ export default function FavoritesPage() {
         <div className="section__inner">
           <EmptyState
             icon={<Heart size={34} />}
-            title="No favourites yet"
+            title="No saved places yet"
             message="Tap the heart on any restaurant to save it here — and we'll learn what you like to recommend better spots."
             actionLabel="Start exploring"
             actionTo="/explore"
@@ -78,7 +78,7 @@ export default function FavoritesPage() {
         <div className="favorites-head">
           <div>
             <span className="section-heading__eyebrow">Your shortlist</span>
-            <h1>Favourites</h1>
+            <h1>Saved</h1>
             <p>
               {status === 'loading' && !data
                 ? 'Loading…'

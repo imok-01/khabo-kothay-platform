@@ -34,7 +34,7 @@ export default function Footer() {
           <Link to="/explore"><UtensilsCrossed size={14} aria-hidden="true" /> Search restaurants</Link>
           <Link to="/guides"><BookOpen size={14} aria-hidden="true" /> Guides</Link>
           <Link to="/saved"><Bookmark size={14} aria-hidden="true" /> Saved</Link>
-          <Link to="/favorites"><Heart size={14} aria-hidden="true" /> Favourites</Link>
+          <Link to="/favorites"><Heart size={14} aria-hidden="true" /> Saved</Link>
         </div>
         <div className="footer__col">
           <h4>Company</h4>
@@ -71,7 +71,7 @@ export default function Footer() {
             <Link to="/privacy"><ShieldCheck size={13} aria-hidden="true" /> Privacy</Link>
             <Link to="/terms"><FileText size={13} aria-hidden="true" /> Terms</Link>
           </div>
-          <p className="footer__note">Favourites are stored on your device.</p>
+          <p className="footer__note">Saved places are stored on your device.</p>
         </div>
       </div>
     </footer>
