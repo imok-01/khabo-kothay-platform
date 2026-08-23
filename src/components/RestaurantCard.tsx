@@ -7,7 +7,8 @@ import { openNowLabel } from '../lib/openHours';
 import { useFavorites } from '../context/FavoritesContext';
 import { useSaved } from '../context/SavedContext';
 import { useCompare } from '../context/CompareContext';
-import { getOffersForRestaurant } from '../hooks/useOffers';
+import { getOffersForRestaurant, OFFERS_ENABLED } from '../hooks/useOffers';
+import { track } from '../lib/analytics';
 import type { MatchResult } from '../domain/recommendation';
 import { selectRestaurantPhotos } from '../lib/photos';
 import RestaurantImage from './RestaurantImage';
@@ -35,7 +36,7 @@ export default function RestaurantCard({ restaurant, distanceKm, match, highligh
   const saved = isSaved(restaurant.id);
   const comparing = isComparing(restaurant.id);
   const openStatus = openNowLabel(restaurant.openingHours);
-  const offers = getOffersForRestaurant(restaurant.id);
+  const offers = OFFERS_ENABLED ? getOffersForRestaurant(restaurant.id) : [];
   const image = selectRestaurantPhotos(restaurant, 'card').photos[0];
   const price = priceForTwoDisplay(restaurant);
 
@@ -45,6 +46,7 @@ export default function RestaurantCard({ restaurant, distanceKm, match, highligh
         to={`/restaurant/${restaurant.id}`}
         className="card__link"
         aria-label={`View ${restaurant.name}`}
+        onClick={() => track('result_clicked', { id: restaurant.id })}
       >
         <div className="card__media">
           <RestaurantImage source={image} name={restaurant.name} width={640} />

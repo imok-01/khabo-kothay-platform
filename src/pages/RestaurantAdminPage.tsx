@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard, Store, Image, UtensilsCrossed, BadgePercent, MessageSquareQuote, Settings,
@@ -7,9 +7,10 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { usePageTitle } from '../lib/usePageTitle';
 import { getEffectiveMenu } from '../lib/menu';
-import { menuService } from '../services/menuService';
 import { isSupabaseConfigured } from '../integrations/supabase/client';
 import { restaurants, saveMenuOverride, useMenusVersion } from '../hooks/useRestaurantData';
+import { useOwnerRestaurants } from '../hooks/useOwnerRestaurant';
+import { useOwnerMenu } from '../hooks/useOwnerMenu';
 import { useUserReviews } from '../hooks/useReviews';
 import { useAdminOffers, upsertAdminOffer, deleteAdminOffer, type AdminOfferDraft } from '../hooks/useAdminOffers';
 import {
@@ -37,12 +38,23 @@ export default function RestaurantAdminPage() {
   const userReviews = useUserReviews();
   const adminOffers = useAdminOffers();
 
-  const owned = useMemo(
-    () => restaurants.filter((r) => session?.restaurantIds.includes(r.id)),
-    [session],
-  );
+  const { restaurants: owned, loading: ownedLoading } = useOwnerRestaurants(session?.restaurantIds);
 
   const [selectedId, setSelectedId] = useState<string>(owned[0]?.id ?? '');
+
+  useEffect(() => {
+    if (!selectedId && owned[0]) setSelectedId(owned[0].id);
+  }, [owned, selectedId]);
+
+  if (ownedLoading) {
+    return (
+      <main className="section section--narrow">
+        <div className="section__inner">
+          <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Loading your restaurant…</p>
+        </div>
+      </main>
+    );
+  }
 
   if (!session || session.role !== 'restaurant_admin' || owned.length === 0) {
     return (
@@ -298,82 +310,112 @@ function PhotosTab({ restaurantId }: { restaurantId: string }) {
 
 /* ------------------------------------------------------------------ */
 
-function LiveMenuTab({ restaurant }: { restaurant: string }) {
-  const [liveMenu, setLiveMenu] = useState<Menu | null>(null);
-  const [liveStatus, setLiveStatus] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
+function MenuTab({ restaurant }: { restaurant: string }) {
+  if (isSupabaseConfigured()) return <OwnerMenuTab restaurant={restaurant} />;
+  return <MenuEditorTab restaurant={restaurant} />;
+}
 
-  // Supabase: READ the live catalogue menu (read-only). Editing isn't
-  // migrated, so the demo editor stays disabled against real data.
+function OwnerMenuTab({ restaurant }: { restaurant: string }) {
+  const { session } = useAuth();
+  const owner = useOwnerMenu(restaurant, session?.id ?? '');
+  const [localMenu, setLocalMenu] = useState<Menu | null>(null);
+
   useEffect(() => {
-    let cancelled = false;
-    setLiveStatus('loading');
-    menuService
-      .fetchMenuForRestaurant(restaurant)
-      .then((menu) => {
-        if (cancelled) return;
-        setLiveMenu(menu);
-        setLiveStatus(menu ? 'ready' : 'empty');
-      })
-      .catch(() => {
-        if (!cancelled) setLiveStatus('error');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [restaurant]);
+    setLocalMenu(owner.menu);
+  }, [owner.menu]);
+
+  const handlePersist = (next: Menu) => setLocalMenu(next);
+  const onSave = async () => {
+    if (localMenu) await owner.saveDraft(localMenu);
+  };
+  const onSubmit = async () => {
+    if (!localMenu) return;
+    await owner.saveDraft(localMenu);
+    await owner.submitForReview();
+  };
+  const onCreate = async () => {
+    await owner.createDraft();
+  };
+
+  const statusLabel =
+    owner.menuStatus === 'DRAFT'
+      ? 'Draft — private, not public yet'
+      : owner.menuStatus === 'PENDING_REVIEW'
+        ? 'Submitted for review'
+        : owner.menuStatus === 'PUBLISHED'
+          ? 'Live menu'
+          : 'No menu yet';
+
+  const banner =
+    owner.menuStatus === 'DRAFT'
+      ? 'This is a private draft. Save it any time; it replaces your live menu only after Khabo Kothay approves a submission.'
+      : owner.menuStatus === 'PENDING_REVIEW'
+        ? "Submitted for review — you'll be notified when Khabo Kothay publishes it. It stays private until then."
+        : owner.menuStatus === 'PUBLISHED'
+          ? 'This is your live public menu. Create a draft to propose changes (forked from this menu).'
+          : 'No menu recorded yet. Create a draft to start building your menu.';
 
   return (
     <div className="panel">
       <div className="panel__head">
         <h2>Menu manager</h2>
-        <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>Live catalogue menu · read-only</span>
+        <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{statusLabel}</span>
       </div>
-      {liveStatus === 'loading' && <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Loading the live menu…</p>}
-      {liveStatus === 'error' && (
-        <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-          Couldn't load the live menu right now. Try again in a moment.
-        </p>
+
+      {owner.loading && <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Loading your menu…</p>}
+      {owner.status === 'error' && (
+        <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Couldn't load your menu right now. Try again in a moment.</p>
       )}
-      {liveStatus === 'empty' && (
+
+      {!owner.loading && owner.menuStatus && (
+        <div className="admin-banner" role="status">
+          <Info size={13} aria-hidden="true" /> {banner}
+        </div>
+      )}
+
+      {localMenu && (
+        <MenuEditorTab restaurant={restaurant} menu={localMenu} onPersist={handlePersist} readOnly={!owner.canEdit} />
+      )}
+
+      {!owner.loading && !localMenu && owner.menuStatus === null && (
         <div className="menu-empty">
           <UtensilsCrossed size={24} aria-hidden="true" />
           <div>
             <h3>No menu recorded yet</h3>
-            <p>The live catalogue has no menu rows for this venue yet.</p>
+            <p>Create a draft to start building your menu.</p>
           </div>
         </div>
       )}
-      {liveMenu &&
-        liveMenu.categories.map((cat) => (
-          <div key={cat.id} className="menu-cat-admin">
-            <div className="menu-cat-admin__head"><h3>{cat.name}</h3></div>
-            <ul className="menu-cat-admin__list">
-              {cat.dishes.map((d) => (
-                <li key={d.id} className="menu-dish-admin">
-                  <div className="menu-dish-admin__main">
-                    <strong>{d.name}</strong>
-                    <span className="t-sm">{d.price > 0 ? formatCurrency(d.price) : 'Price not listed'}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      <div className="admin-banner" role="status">
-        <Info size={13} aria-hidden="true" /> Editing isn't connected to the live catalogue yet. The menu above is read from the recorded
-        catalogue — updating it requires the menu migration (a future phase).
+
+      <div className="admin-form__actions">
+        {owner.canEdit && (
+          <>
+            <button type="button" className="btn btn--primary" onClick={onSave} disabled={owner.saving}>
+              <Save size={14} aria-hidden="true" /> {owner.saving ? 'Saving…' : 'Save draft'}
+            </button>
+            <button type="button" className="btn btn--primary" onClick={onSubmit} disabled={owner.submitting}>
+              <Send size={14} aria-hidden="true" /> {owner.submitting ? 'Submitting…' : 'Submit for review'}
+            </button>
+          </>
+        )}
+        {!owner.canEdit && owner.menuStatus !== 'PENDING_REVIEW' && (
+          <button type="button" className="btn btn--primary" onClick={onCreate} disabled={owner.saving}>
+            <Plus size={14} aria-hidden="true" /> Create draft
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-function MenuTab({ restaurant }: { restaurant: string }) {
-  if (isSupabaseConfigured()) return <LiveMenuTab restaurant={restaurant} />;
-  return <MenuEditorTab restaurant={restaurant} />;
-}
-
-function MenuEditorTab({ restaurant }: { restaurant: string }) {
-  const menu = getEffectiveMenu(restaurants.find((r) => r.id === restaurant)!);
+function MenuEditorTab({ restaurant, menu: menuProp, onPersist, readOnly }: {
+  restaurant: string;
+  menu?: Menu;
+  onPersist?: (next: Menu) => void;
+  readOnly?: boolean;
+}) {
+  const demoMenu = getEffectiveMenu(restaurants.find((r) => r.id === restaurant)!);
+  const menu = menuProp ?? demoMenu;
   const [newCat, setNewCat] = useState('');
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [dishName, setDishName] = useState('');
@@ -384,7 +426,11 @@ function MenuEditorTab({ restaurant }: { restaurant: string }) {
   const [editPrice, setEditPrice] = useState('');
   const [editDesc, setEditDesc] = useState('');
 
-  const persist = (next: Menu) => saveMenuOverride({ ...next, updatedAt: new Date().toISOString() });
+  const persist = (next: Menu) => {
+    const stamped = { ...next, updatedAt: new Date().toISOString() };
+    if (onPersist) onPersist(stamped);
+    else saveMenuOverride(stamped);
+  };
 
   const addCategory = (e: FormEvent) => {
     e.preventDefault();
@@ -496,10 +542,12 @@ function MenuEditorTab({ restaurant }: { restaurant: string }) {
         <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{menu.categories.length} categories · changes go live immediately (demo)</span>
       </div>
 
-      <form className="admin-inline-form" onSubmit={addCategory}>
-        <input value={newCat} onChange={(e) => setNewCat(e.target.value)} placeholder="New category name, e.g. Starters" aria-label="New category name" />
-        <button type="submit" className="btn btn--primary btn--sm"><Plus size={13} aria-hidden="true" /> Add category</button>
-      </form>
+      {!readOnly && (
+        <form className="admin-inline-form" onSubmit={addCategory}>
+          <input value={newCat} onChange={(e) => setNewCat(e.target.value)} placeholder="New category name, e.g. Starters" aria-label="New category name" />
+          <button type="submit" className="btn btn--primary btn--sm"><Plus size={13} aria-hidden="true" /> Add category</button>
+        </form>
+      )}
 
       {menu.categories.length === 0 && (
         <div className="menu-empty">
@@ -541,30 +589,34 @@ function MenuEditorTab({ restaurant }: { restaurant: string }) {
                       {d.featured && <span className="dish__tag">Chef's pick</span>}
                       {d.isSignature && <span className="dish__tag dish__tag--signature">Signature</span>}
                     </div>
-                    <div className="menu-dish-admin__actions">
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => moveDish(cat.id, d.id, -1)} aria-label={`Move ${d.name} up`}><ArrowUp size={12} /></button>
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => moveDish(cat.id, d.id, 1)} aria-label={`Move ${d.name} down`}><ArrowDown size={12} /></button>
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => startEdit(cat.id, d)} aria-label={`Edit ${d.name}`}>Edit</button>
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleSignature(cat.id, d.id)} aria-label={d.isSignature ? 'Remove signature mark' : 'Mark as signature'}>{d.isSignature ? 'Unsign' : 'Sign'}</button>
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleFeatured(cat.id, d.id)} aria-label={d.featured ? 'Unfeature' : 'Feature'}>{d.featured ? 'Unfeature' : 'Feature'}</button>
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleDish(cat.id, d.id)} aria-label={d.available ? 'Mark unavailable' : 'Mark available'}>{d.available ? 'Hide' : 'Show'}</button>
-                      <button type="button" className="btn btn--subtle btn--sm" onClick={() => removeDish(cat.id, d.id)} aria-label={`Delete ${d.name}`}><Trash2 size={12} /></button>
-                    </div>
+                    {!readOnly && (
+                      <div className="menu-dish-admin__actions">
+                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => moveDish(cat.id, d.id, -1)} aria-label={`Move ${d.name} up`}><ArrowUp size={12} /></button>
+                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => moveDish(cat.id, d.id, 1)} aria-label={`Move ${d.name} down`}><ArrowDown size={12} /></button>
+                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => startEdit(cat.id, d)} aria-label={`Edit ${d.name}`}>Edit</button>
+                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleSignature(cat.id, d.id)} aria-label={d.isSignature ? 'Remove signature mark' : 'Mark as signature'}>{d.isSignature ? 'Unsign' : 'Sign'}</button>
+                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleFeatured(cat.id, d.id)} aria-label={d.featured ? 'Unfeature' : 'Feature'}>{d.featured ? 'Unfeature' : 'Feature'}</button>
+                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleDish(cat.id, d.id)} aria-label={d.available ? 'Mark unavailable' : 'Mark available'}>{d.available ? 'Hide' : 'Show'}</button>
+                        <button type="button" className="btn btn--subtle btn--sm" onClick={() => removeDish(cat.id, d.id)} aria-label={`Delete ${d.name}`}><Trash2 size={12} /></button>
+                      </div>
+                    )}
                   </>
                 )}
               </li>
             ))}
           </ul>
-          {addingTo === cat.id ? (
-            <form className="admin-inline-form" onSubmit={(e) => addDish(e, cat.id)}>
-              <input value={dishName} onChange={(e) => setDishName(e.target.value)} placeholder="Dish name" aria-label="Dish name" />
-              <input value={dishPrice} onChange={(e) => setDishPrice(e.target.value)} inputMode="numeric" placeholder="Price" aria-label="Price" className="admin-price-input" />
-              <input value={dishDesc} onChange={(e) => setDishDesc(e.target.value)} placeholder="Short description (optional)" aria-label="Description" />
-              <button type="submit" className="btn btn--primary btn--sm"><Plus size={12} aria-hidden="true" /> Add</button>
-              <button type="button" className="btn btn--subtle btn--sm" onClick={() => setAddingTo(null)}>Cancel</button>
-            </form>
-          ) : (
-            <button type="button" className="btn btn--ghost btn--sm" onClick={() => setAddingTo(cat.id)}><Plus size={12} aria-hidden="true" /> Add dish to {cat.name}</button>
+          {!readOnly && (
+            addingTo === cat.id ? (
+              <form className="admin-inline-form" onSubmit={(e) => addDish(e, cat.id)}>
+                <input value={dishName} onChange={(e) => setDishName(e.target.value)} placeholder="Dish name" aria-label="Dish name" />
+                <input value={dishPrice} onChange={(e) => setDishPrice(e.target.value)} inputMode="numeric" placeholder="Price" aria-label="Price" className="admin-price-input" />
+                <input value={dishDesc} onChange={(e) => setDishDesc(e.target.value)} placeholder="Short description (optional)" aria-label="Description" />
+                <button type="submit" className="btn btn--primary btn--sm"><Plus size={12} aria-hidden="true" /> Add</button>
+                <button type="button" className="btn btn--subtle btn--sm" onClick={() => setAddingTo(null)}>Cancel</button>
+              </form>
+            ) : (
+              <button type="button" className="btn btn--ghost btn--sm" onClick={() => setAddingTo(cat.id)}><Plus size={12} aria-hidden="true" /> Add dish to {cat.name}</button>
+            )
           )}
         </div>
       ))}
@@ -802,7 +854,13 @@ function AttributesTab({ restaurantId, restaurantName }: { restaurantId: string;
         ))}
       </div>
       <p className="t-xs" style={{ color: 'var(--ink-faint)' }}>
-        Provenance: {effective.provenance === 'seed' ? 'curated by Khabo Kothay' : effective.provenance === 'verified' ? 'derived from verified database attributes' : 'seed + approved restaurant suggestions'}.
+        Provenance: {effective.provenance === 'seed'
+          ? 'curated by Khabo Kothay'
+          : effective.provenance === 'derived'
+            ? 'derived from the venue’s own attributes (heuristic, not verified)'
+            : effective.provenance === 'verified'
+              ? 'independently verified by Khabo Kothay'
+              : 'seed + approved restaurant suggestions'}.
       </p>
 
       <h3 style={{ marginTop: 'var(--s5)' }}>Suggest a change</h3>

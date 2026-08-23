@@ -2,6 +2,7 @@ import { requireSupabase } from './client';
 import type {
   FavoritesRow,
   ImageReferencesRow,
+  Json,
   MenuItemsRow,
   MenusRow,
   PriceObservationsRow,
@@ -257,6 +258,28 @@ export async function selectMenusForRestaurant(restaurantId: string): Promise<Me
   return data ?? [];
 }
 
+/** A single menu row by id (executive review uses this to anchor a detail load). */
+export async function selectMenuById(menuId: string): Promise<MenusRow | null> {
+  const { data, error } = await (await requireSupabase())
+    .from('menus')
+    .select('*')
+    .eq('id', menuId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** All menus in a given lifecycle status — used by the executive review queue. */
+export async function selectMenusByStatus(status: MenusRow['status']): Promise<MenusRow[]> {
+  const { data, error } = await (await requireSupabase())
+    .from('menus')
+    .select('*')
+    .eq('status', status)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function selectMenuItemsForMenu(menuId: string): Promise<MenuItemsRow[]> {
   const { data, error } = await (await requireSupabase())
     .from('menu_items')
@@ -291,6 +314,51 @@ export async function selectMenuItemsForMenus(menuIds: string[]): Promise<MenuIt
 
 export async function selectPriceObservationsForItems(itemIds: string[]): Promise<PriceObservationsRow[]> {
   return inPages<PriceObservationsRow>('price_observations', 'menu_item_id', itemIds, 'observed_at');
+}
+
+/**
+ * Owner / KK write path for the 4.3C menu lifecycle. `insertMenu` creates a
+ * DRAFT (or any status the caller is permitted to write under RLS); `updateMenu`
+ * applies a PATCH (status transitions, audit columns). Both are row-level and
+ * type narrow — aggregate composition stays in the repository/transformer layer.
+ * They do not run unless Supabase is configured.
+ */
+export async function insertMenu(menu: Omit<MenusRow, 'id'>): Promise<MenusRow> {
+  const { data, error } = await (await requireSupabase())
+    .from('menus')
+    .insert(menu)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateMenu(menuId: string, patch: Partial<MenusRow>): Promise<MenusRow | null> {
+  const { data, error } = await (await requireSupabase())
+    .from('menus')
+    .update(patch)
+    .eq('id', menuId)
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Owner menu content write — proxies to the `upsert_menu_content` RPC, which
+ * atomically replaces a menu's items + price observations within a single
+ * transaction. The function runs SECURITY INVOKER, so RLS still scopes every
+ * statement to the calling owner's restaurant (see PROPOSED_1_12). `items` and
+ * `observations` are plain JSON arrays shaped by `ownerMenuToContent`.
+ */
+export async function upsertMenuContent(menuId: string, items: Json[], observations: Json[]): Promise<void> {
+  const supabase = await requireSupabase();
+  const { error } = await supabase.rpc('upsert_menu_content', {
+    p_menu_id: menuId,
+    p_items: items,
+    p_observations: observations,
+  });
+  if (error) throw error;
 }
 
 /* ------------------------------------------------------------------ */
@@ -352,9 +420,24 @@ export async function selectReviewSignalsForRestaurant(restaurantId: string): Pr
   return data ?? [];
 }
 
+/**
+ * Verification records for one restaurant, read through the anon-safe
+ * `verification_records_public` view (see PROPOSED_1_7_verification_public_view.sql).
+ *
+ * The base `verification_records` table stays RLS-restricted (anon reads
+ * denied) so admin/owner data never leaks. The view projects only the public
+ * columns (field_name, field_value, status, verification_source, verified_at)
+ * and runs as the view owner (security_invoker = false), so the frontend can
+ * render a "verified address" badge on detail pages without any admin access.
+ */
 export async function selectVerificationRecordsForRestaurant(restaurantId: string): Promise<VerificationRecordsRow[]> {
+  // Read through the anon-safe `verification_records_public` view. The cast to
+  // the `verification_records` table name is type-only (erased at runtime, so
+  // PostgREST still targets the view); the view's row shape matches the table
+  // exactly. We avoid registering the view in the generated `Database` type to
+  // keep the fragile Views/insert inference untouched (PROPOSED_1_7 creates it).
   const { data, error } = await (await requireSupabase())
-    .from('verification_records')
+    .from('verification_records_public' as 'verification_records')
     .select('*')
     .eq('restaurant_id', restaurantId);
   if (error) throw error;

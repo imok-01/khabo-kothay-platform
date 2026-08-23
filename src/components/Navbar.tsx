@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Soup, Search, Heart, Bookmark, Menu, X, UserCircle2, ShieldCheck, Store, Info, HelpCircle, Mail, UtensilsCrossed, Compass, PenLine, LogOut, Settings, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { Soup, Heart, Bookmark, Menu, X, UserCircle2, ShieldCheck, Store, Info, UtensilsCrossed, Compass, BookOpen, PenLine, LogOut, Settings, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { useFavorites } from '../context/FavoritesContext';
 import { useSaved } from '../context/SavedContext';
 import { useAuth } from '../context/AuthContext';
 import { roleViewOf, type RoleView } from '../domain/auth';
 import { useOwnerRestaurant } from '../hooks/useOwnerRestaurant';
+import { useRestaurants } from '../hooks/useRestaurants';
+import SearchBar from './SearchBar';
 
 /**
  * Role-aware primary navigation.
@@ -20,7 +22,6 @@ import { useOwnerRestaurant } from '../hooks/useOwnerRestaurant';
  * menu — never permanently in the bar.
  */
 export default function Navbar() {
-  const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
@@ -29,6 +30,7 @@ export default function Navbar() {
   const { favoriteIds } = useFavorites();
   const { savedIds } = useSaved();
   const { session, user, logout } = useAuth();
+  const { data: restaurantData } = useRestaurants();
 
   const view: RoleView = roleViewOf(session?.role);
   const signedIn = Boolean(session);
@@ -66,13 +68,6 @@ export default function Navbar() {
       document.removeEventListener('keydown', onKey);
     };
   }, [accountOpen]);
-
-  const submitSearch = (e: FormEvent) => {
-    e.preventDefault();
-    const q = query.trim();
-    setMenuOpen(false);
-    navigate(q ? `/explore?q=${encodeURIComponent(q)}` : '/explore');
-  };
 
   const handleLogout = () => {
     setAccountOpen(false);
@@ -123,28 +118,21 @@ export default function Navbar() {
             </span>
           </Link>
 
-          <form className="nav__search" onSubmit={submitSearch} role="search">
-            <span className="nav__search-icon" aria-hidden="true"><Search size={15} /></span>
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search restaurants, cuisines…"
-              aria-label="Search restaurants"
-            />
-          </form>
+          <SearchBar variant="nav" restaurants={restaurantData ?? []} />
 
           <nav className="nav__links" aria-label="Main navigation">
             {view === 'guest' && (
               <>
                 <NavLink to="/" end className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Home</NavLink>
                 <NavLink to="/explore" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Explore</NavLink>
+                <NavLink to="/discover" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Discover</NavLink>
               </>
             )}
             {view === 'customer' && (
               <>
                 <NavLink to="/" end className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Home</NavLink>
                 <NavLink to="/explore" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Explore</NavLink>
+                <NavLink to="/discover" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Discover</NavLink>
                 <NavLink to="/favorites" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>
                   <Heart size={15} aria-hidden="true" />
                   Favourites
@@ -174,6 +162,7 @@ export default function Navbar() {
               <>
                 <NavLink to="/" end className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Home</NavLink>
                 <NavLink to="/explore" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Explore</NavLink>
+                <NavLink to="/discover" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>Discover</NavLink>
                 <NavLink to="/admin" className={({ isActive }) => `nav__link nav__link--role ${isActive ? 'nav__link--active' : ''}`}>
                   <ShieldCheck size={15} aria-hidden="true" /> Admin
                 </NavLink>
@@ -260,18 +249,19 @@ export default function Navbar() {
                 <X size={18} />
               </button>
             </div>
-            <form onSubmit={submitSearch} role="search">
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search restaurants…"
-                aria-label="Search restaurants"
-              />
-            </form>
+            <SearchBar
+              variant="nav"
+              formClassName="nav__search-mobile"
+              restaurants={restaurantData ?? []}
+              placeholder="Search restaurants…"
+              onNavigate={() => setMenuOpen(false)}
+            />
             <div className="nav__mobile-section">
               <span>Discover</span>
-              <NavLink to="/explore" onClick={() => setMenuOpen(false)}><UtensilsCrossed size={15} aria-hidden="true" /> Explore restaurants</NavLink>
+              <NavLink to="/discover" onClick={() => setMenuOpen(false)}><Compass size={15} aria-hidden="true" /> Discover</NavLink>
+              <NavLink to="/explore" onClick={() => setMenuOpen(false)}><UtensilsCrossed size={15} aria-hidden="true" /> Search restaurants</NavLink>
+              <NavLink to="/guides" onClick={() => setMenuOpen(false)}><BookOpen size={15} aria-hidden="true" /> Guides</NavLink>
+              <NavLink to="/discover" onClick={() => setMenuOpen(false)}><UtensilsCrossed size={15} aria-hidden="true" /> Cuisines &amp; areas</NavLink>
               <NavLink to="/saved" onClick={() => setMenuOpen(false)}>
                 <Bookmark size={15} aria-hidden="true" />
                 Saved {savedIds.length > 0 && `(${savedIds.length})`}
@@ -282,7 +272,7 @@ export default function Navbar() {
               </NavLink>
             </div>
             <div className="nav__mobile-section">
-              <span>Account</span>
+              <span>Personal</span>
               {signedIn ? (
                 <>
                   <NavLink to="/profile" onClick={() => setMenuOpen(false)}><UserCircle2 size={15} aria-hidden="true" /> Profile</NavLink>
@@ -312,13 +302,6 @@ export default function Navbar() {
                 <NavLink to="/partners/how-listings-work" onClick={() => setMenuOpen(false)}><Info size={15} aria-hidden="true" /> How listings work</NavLink>
               </div>
             )}
-            <div className="nav__mobile-section">
-              <span>Company</span>
-              <NavLink to="/about" onClick={() => setMenuOpen(false)}><Info size={15} aria-hidden="true" /> About Khabo Kothay</NavLink>
-              <NavLink to="/how-it-works" onClick={() => setMenuOpen(false)}><Compass size={15} aria-hidden="true" /> How it works</NavLink>
-              <NavLink to="/faq" onClick={() => setMenuOpen(false)}><HelpCircle size={15} aria-hidden="true" /> FAQ</NavLink>
-              <NavLink to="/contact" onClick={() => setMenuOpen(false)}><Mail size={15} aria-hidden="true" /> Contact &amp; feedback</NavLink>
-            </div>
           </div>
         </>
       )}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Dices, MapPin, ArrowRight, Star, Utensils, HeartHandshake, Wallet, History, BadgePercent, Sparkles, UserRound } from 'lucide-react';
 import { CUISINES, NEIGHBORHOODS } from '../hooks/useTaxonomy';
 import type { Restaurant } from '../types';
@@ -15,11 +15,12 @@ import { derivePreferences, mergeProfileIntoPreferences } from '../lib/preferenc
 import { useAuth } from '../context/AuthContext';
 import { distanceKm } from '../lib/geo';
 import { isOpenNow } from '../lib/openHours';
-import { getAllOffers } from '../hooks/useOffers';
+import { getAllOffers, OFFERS_ENABLED } from '../hooks/useOffers';
 import { collections } from '../hooks/useCollections';
 import { effectiveRating } from '../lib/ratings';
 import { selectRestaurantPhotos } from '../lib/photos';
 import RestaurantCard from '../components/RestaurantCard';
+import SearchBar from '../components/SearchBar';
 import RestaurantImage from '../components/RestaurantImage';
 import SectionHeading from '../components/SectionHeading';
 import DiscoveryBuilder from '../components/DiscoveryBuilder';
@@ -37,6 +38,11 @@ export default function HomePage() {
 
   const [surpriseMode, setSurpriseMode] = useState<SurpriseMode>('any');
   const [surprise, setSurprise] = useState<{ restaurant: Restaurant; match: MatchResult; label: string } | null>(null);
+
+  // Direct search entry (with autocomplete) is provided by <SearchBar/> below.
+  // It reuses the existing /search system — no new search logic. Pre-fills from
+  // the URL so a user returning with ?q= sees their term.
+  const [searchParams] = useSearchParams();
 
   const preferences = useMemo(() => {
     const derived = derivePreferences(favoriteIds, recentIds);
@@ -131,8 +137,10 @@ export default function HomePage() {
             Khabo <em>Kothay?</em>
           </h1>
           <p className="hero__subtitle">
-            Tell us what you're craving — budget, area, mood, when — and we'll point you to the right table.
+            Search by dish, restaurant or area — or tell us what you're craving and we'll guide you.
           </p>
+            <SearchBar variant="hero" restaurants={restaurants} initialQuery={searchParams.get('q') ?? ''} />
+          <p className="hero__guided">…or refine your discovery:</p>
           <DiscoveryBuilder restaurants={restaurants} geo={{ status: geo.status, reference: geo.reference, request: geo.request }} />
           <QuickShortcuts />
           <dl className="hero__stats">
@@ -203,7 +211,7 @@ export default function HomePage() {
             eyebrow={preferences.preferredCuisines.length > 0 ? 'Personalised for you' : 'The city agrees'}
             title={personalizedTitle}
             lede={preferences.preferredCuisines.length > 0 ? 'Ranked for your taste, budget and usual haunts — with honest reasons for every match.' : 'The most-loved tables across Dhaka right now.'}
-            action={{ label: 'See all', to: '/explore' }}
+            action={{ label: 'See all', to: '/discover' }}
           />
           {status === 'loading' && restaurants.length === 0 ? (
             <SkeletonGrid count={4} />
@@ -236,8 +244,8 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Today's offers */}
-      {offers.length > 0 && (
+      {/* Today's offers — hidden unless real, verified offers are enabled */}
+      {OFFERS_ENABLED && offers.length > 0 && (
         <section className="section section--tint">
           <div className="section__inner">
             <SectionHeading eyebrow="Limited-time demo deals" title="Today's offers" lede="Clear terms, validity and demo-only labelling — never a vague 'special offer'." action={{ label: 'Browse offers', to: '/explore' }} />
@@ -292,7 +300,7 @@ export default function HomePage() {
               eyebrow="Farther, but worth it"
               title="Worth the trip"
               lede="A little out of the way, unusually strong — worth crossing the city for."
-              action={{ label: 'All highly rated', to: '/explore?sortBy=rating' }}
+              action={{ label: 'All highly rated', to: '/guides' }}
             />
             <div className="grid">
               {trip.map((r) => (
@@ -306,14 +314,13 @@ export default function HomePage() {
       {/* Collections */}
       <section className="section">
         <div className="section__inner">
-          <SectionHeading eyebrow="Curated for Dhaka" title="Collections" lede="Editorial lists built from real data — first dates, late nights, comfort food and the classics." action={{ label: 'Browse explore', to: '/explore' }} />
+          <SectionHeading eyebrow="Curated for Dhaka" title="Collections" lede="Editorial lists built from real data — first dates, late nights, comfort food and the classics." action={{ label: 'Browse guides', to: '/guides' }} />
           <div className="collection-grid">
             {collections.map((c) => {
               const cover = restaurants.find((r) => r.id === c.coverRestaurantId);
               const count = restaurants.filter(c.match).length;
-              const params = new URLSearchParams(c.exploreParams).toString();
               return (
-                <Link key={c.slug} to={`/explore?${params}`} className="collection-card">
+                  <Link key={c.slug} to={`/guides/${c.slug}`} className="collection-card">
                   <div className="collection-card__media">
                     {cover && <RestaurantImage source={leadPhoto(cover)} name={c.title} width={560} />}
                   </div>
@@ -340,7 +347,7 @@ export default function HomePage() {
               .map(({ c, count }, i) => (
                 <Link
                   key={c}
-                  to={`/explore?cuisine=${encodeURIComponent(c)}`}
+                  to={`/cuisine/${encodeURIComponent(c)}`}
                   className={`tile ${i === 0 ? 'tile--featured' : ''}`}
                 >
                   <div className="tile__media">
@@ -365,7 +372,7 @@ export default function HomePage() {
               const inArea = restaurants.filter((r) => r.location === n);
               const cover = inArea[0];
               return (
-                <Link key={n} to={`/explore?location=${encodeURIComponent(n)}`} className="tile tile--location">
+                <Link key={n}                   to={`/area/${encodeURIComponent(n)}`} className="tile tile--location">
                   <div className="tile__media">
                     {cover && <RestaurantImage source={leadPhoto(cover)} name={n} width={160} fallback="monogram" />}
                   </div>

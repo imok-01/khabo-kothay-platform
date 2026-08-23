@@ -148,6 +148,59 @@ function parseWeeklyHours(
   return rows.length > 0 ? rows : null;
 }
 
+/** "4 am" → "4:00 AM"; "6:30 pm" → "6:30 PM". Only normalises; never invents. */
+function normalizeScrapedTime(raw: string): string | null {
+  const m = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i.exec(raw.trim());
+  if (!m) return null;
+  let hour = Number(m[1]) % 12;
+  if (m[3].toLowerCase() === 'pm') hour += 12;
+  const min = m[2] ? Number(m[2]) : 0;
+  const meridiem = hour >= 12 ? 'PM' : 'AM';
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h12}:${String(min).padStart(2, '0')} ${meridiem}`;
+}
+
+/** Expand a day token only when it is unambiguous ("sat" → "Saturday"). */
+function expandScrapedDay(token: string): string | undefined {
+  return DAY_ALIASES[token.toLowerCase()];
+}
+
+/**
+ * Renders a Google-scrape opening-hours fragment as one honest summary row.
+ *
+ * The import stored Google's snapshot strings verbatim, e.g.
+ * "Open Closes 1 am", "Closed Opens 12 pm Sat",
+ * "Closes soon 11:30 pm · Opens 12 pm", "Open 24 hours". These are NOT a
+ * complete weekly schedule, so they never render as per-day rows — they
+ * render as a single "Hours" row composed only from tokens that actually
+ * appear in the recorded string (status, closing time, opening time, and a
+ * day only when spelled out fully). Returns null when nothing recognizable
+ * is present, letting the UI keep the honest "Hours being verified" state.
+ */
+export function formatScrapedHours(hours: string): WeekHourRow | null {
+  if (!hours) return null;
+  const s = hours.trim();
+  if (/^open\s+24\s*hours/i.test(s)) return { day: 'Hours', label: 'Open 24 hours' };
+
+  const parts: string[] = [];
+  if (/^open\b/i.test(s) && !/closes\s+soon/i.test(s)) parts.push('Open');
+  if (/^closed\b/i.test(s)) parts.push('Closed');
+
+  const closeM = s.match(/closes(?:\s+soon)?\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*([a-z]{2,9})?/i);
+  if (closeM) {
+    const time = normalizeScrapedTime(closeM[1]);
+    if (time) parts.push(`Closes ${time}${closeM[2] ? ` ${expandScrapedDay(closeM[2]) ?? closeM[2]}` : ''}`);
+  }
+
+  const openM = s.match(/opens\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*([a-z]{2,9})?/i);
+  if (openM) {
+    const time = normalizeScrapedTime(openM[1]);
+    if (time) parts.push(`Opens ${time}${openM[2] ? ` ${expandScrapedDay(openM[2]) ?? ''}`.trimEnd() : ''}`);
+  }
+
+  return parts.length > 0 ? { day: 'Hours', label: parts.join(' · ') } : null;
+}
+
 /**
  * Renders a stored opening-hours string for display.
  *

@@ -66,13 +66,22 @@ export interface Restaurant {
   lng: number;
   signatureDishes: string[];
   /**
-   * Google Places data (rating, reviews, photos…). Absent in demo mode — we
-   * never fabricate Google content. Populated by a future Places repository.
+   * Google Places enrichment (rating, reviewCount, photos, mapsUri). This is
+   * EXTERNAL data linked from our import/enrichment pipeline — Khabo Kothay
+   * never fabricates Google content. Note that `reviews` text is generally
+   * NOT carried (only summary rating/counts/photos are); treat the counts as
+   * directional signals, not Khabo Kothay-verified facts. Populated by a
+   * future Places repository.
    */
   google?: ExternalPlaceData;
   /** Khabo Kothay's own community data — ratings, reviews, signals. */
   khabo: KhaboPlaceData;
-  /** Readiness: typed menu support (populated by a future menu system). */
+  /**
+   * @deprecated Conflicting legacy menu model. Menus are served by the live
+   * `Menu` type in `domain/menu.ts` via `menuService`/`useRestaurantMenu`,
+   * loaded on the detail page only. This field is never populated. Do not
+   * read it; use the menu service instead.
+   */
   menu?: MenuInfo;
   /** Readiness: our own timestamped price observations, if we ever record them. */
   priceObservations?: PriceObservation[];
@@ -86,7 +95,10 @@ export interface Restaurant {
   /**
    * Structured recommendation metadata — Khabo Kothay executive-approved
    * specialties, occasions, food characteristics and dining features. Populated
-   * at load from the intelligence layer; never derived from free text.
+   * at load from the intelligence layer. May be a curated 'seed', an approved
+   * 'suggested' set, or a frontend 'derived' heuristic from the venue's own
+   * attributes; see `RestaurantIntelligence.provenance` — never present it as
+   * independently verified unless provenance is 'verified'.
    */
   intelligence?: RestaurantIntelligence;
 }

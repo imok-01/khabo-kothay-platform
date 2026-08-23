@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatOpeningHours, isOpenNow, minutesUntilOpen, openNowLabel, parseOpenHours } from '../openHours';
+import { formatOpeningHours, formatScrapedHours, isOpenNow, minutesUntilOpen, openNowLabel, parseOpenHours } from '../openHours';
 
 const at = (h: number, m = 0) => new Date(2026, 6, 15, h, m); // fixed Wednesday
 
@@ -122,5 +122,64 @@ describe('formatOpeningHours', () => {
 
   it('returns null for a weekly map with any unparseable segment', () => {
     expect(formatOpeningHours('Saturday: 11:00 AM – 12:00 AM; Sunday: unknown')).toBeNull();
+  });
+});
+
+describe('formatScrapedHours', () => {
+  it('renders "Open Closes <time>" fragments', () => {
+    expect(formatScrapedHours('Open Closes 1 am')).toEqual({
+      day: 'Hours',
+      label: 'Open · Closes 1:00 AM',
+    });
+    expect(formatScrapedHours('Open Closes 12:30 am')).toEqual({
+      day: 'Hours',
+      label: 'Open · Closes 12:30 AM',
+    });
+    expect(formatScrapedHours('Open Closes 4 pm')).toEqual({
+      day: 'Hours',
+      label: 'Open · Closes 4:00 PM',
+    });
+  });
+
+  it('renders "Closed Opens <time> <day>" fragments', () => {
+    expect(formatScrapedHours('Closed Opens 12 pm Sat')).toEqual({
+      day: 'Hours',
+      label: 'Closed · Opens 12:00 PM Saturday',
+    });
+    expect(formatScrapedHours('Closed Opens 10:30 am Sat')).toEqual({
+      day: 'Hours',
+      label: 'Closed · Opens 10:30 AM Saturday',
+    });
+  });
+
+  it('renders "Closes soon <time> · Opens <time>" fragments', () => {
+    expect(formatScrapedHours('Closes soon 12 am · Opens 12 pm Sa')).toEqual({
+      day: 'Hours',
+      label: 'Closes 12:00 AM · Opens 12:00 PM',
+    });
+    expect(formatScrapedHours('Closes soon 11:30 pm · Opens 6 am S')).toEqual({
+      day: 'Hours',
+      label: 'Closes 11:30 PM · Opens 6:00 AM',
+    });
+  });
+
+  it('renders "Open 24 hours"', () => {
+    expect(formatScrapedHours('Open 24 hours')).toEqual({
+      day: 'Hours',
+      label: 'Open 24 hours',
+    });
+  });
+
+  it('keeps a fully spelled day on the closing side', () => {
+    expect(formatScrapedHours('Open Closes 5 am Sat')).toEqual({
+      day: 'Hours',
+      label: 'Open · Closes 5:00 AM Saturday',
+    });
+  });
+
+  it('returns null for non-scrape text', () => {
+    expect(formatScrapedHours('')).toBeNull();
+    expect(formatScrapedHours('Saturday: 11:00 AM – 12:00 AM; Sunday: Closed')).toBeNull();
+    expect(formatScrapedHours('completely unrelated')).toBeNull();
   });
 });

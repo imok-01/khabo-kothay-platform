@@ -138,13 +138,20 @@ export interface RestaurantIntelligence {
   foodCharacteristics: FoodCharacteristic[];
   diningFeatures: DiningFeature[];
   /**
-   * Provenance of the current metadata. 'seed' = curated by Khabo Kothay;
-   * 'suggested' = a restaurant-admin suggestion merged after executive
-   * approval; 'verified' = derived on the frontend from verified database
-   * attributes (cuisines / mealTypes / signatureDishes). Kept so the UI can
-   * be honest about who defined the attributes.
+   * Provenance of the current metadata:
+   *  - 'seed'      = curated by Khabo Kothay (the executive seed table);
+   *  - 'suggested' = a restaurant-admin suggestion merged after executive
+   *                  approval;
+   *  - 'derived'   = computed on the frontend from the venue's own database
+   *                  attributes (cuisines / mealTypes / signatureDishes /
+   *                  dining booleans). It is a heuristic, NOT an independent
+   *                  Khabo Kothay verification — the UI must not present it as
+   *                  "verified".
+   *  - 'verified'  = reserved for attributes confirmed by a Khabo Kothay
+   *                  verification process. No production data carries this yet.
+   * Kept so the UI can be honest about who defined the attributes.
    */
-  provenance: 'seed' | 'suggested' | 'verified';
+  provenance: 'seed' | 'suggested' | 'derived' | 'verified';
 }
 
 /** A pending restaurant-admin request to change recommendation attributes. */

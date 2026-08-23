@@ -2,10 +2,14 @@ import type { RestaurantImageSource } from '../domain/images';
 import { unsplashPhotoUrl } from '../repositories/ImageProvider';
 
 /**
- * Curated placeholder photography mapped per restaurant. All photo IDs were
- * verified against the Unsplash CDN; imagery is demo placeholder data that a
- * real image backend can replace without changing components (see
- * src/repositories/ImageProvider.ts).
+ * LEGACY / NON-PRODUCTION FIXTURE — Kolkata demo placeholder photography.
+ *
+ * Keys are Kolkata restaurant ids (bhojohori-manna, trincas, …) that do NOT
+ * exist in the production Dhaka catalogue, so this table matches no live
+ * venue; the app falls back to the Google cover photo / a default image.
+ *
+ * Imagery is demo placeholder data that a real image backend can replace
+ * without changing components (see src/repositories/ImageProvider.ts).
  */
 const UNSPLASH_LICENSE = 'Unsplash License';
 

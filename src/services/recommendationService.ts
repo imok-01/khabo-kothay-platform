@@ -7,6 +7,7 @@ import { getOffersForRestaurant } from '../repositories/OfferProvider';
 import { getEffectiveIntelligence } from '../lib/intelligence';
 import { formatCurrency } from '../lib/format';
 import { effectiveRating, effectiveReviewCount } from '../lib/ratings';
+import { tokenizeQuery } from '../lib/filter';
 
 /**
  * Deterministic, explainable match scoring.
@@ -48,6 +49,10 @@ const W = {
   distance: 4,
   party: 8,
   dining: 5,
+  // Query relevance — a single explainable signal derived only from lightweight,
+  // in-memory fields. `search` is the max achievable; the earned credit scales
+  // with how directly the query hits the most specific field.
+  search: 12,
 };
 
 /**
@@ -120,6 +125,48 @@ export function matchScore(r: Restaurant, ctx: RecommendationContext): MatchResu
   if (int?.specialty) {
     const hit = eff.specialties.includes(int.specialty);
     add('specialty', hit ? W.specialty : 0, hit ? `Known for ${int.specialty}` : null, W.specialty);
+  }
+  // Free-text query relevance — matches ONLY lightweight in-memory fields
+  // (name, tagline, location, address, cuisines, specialties, signature
+  // dishes). Never touches menu items, price observations or verification
+  // records. Tokens are matched with OR semantics (consistent with
+  // filterRestaurants) so "best biryani" still finds biryani places, and the
+  // reason names the real matched signal — answering "why?" honestly.
+  const queryTokens = int?.query ? tokenizeQuery(int.query) : [];
+  if (queryTokens.length > 0) {
+    const name = r.name.toLowerCase();
+    const tagline = (r.tagline ?? '').toLowerCase();
+    const location = r.location.toLowerCase();
+    const address = (r.address ?? '').toLowerCase();
+    const cuisines = r.cuisines.join(' ').toLowerCase();
+    const specialties = eff.specialties.join(' ').toLowerCase();
+    const signatures = r.signatureDishes.join(' ').toLowerCase();
+    // Most-specific field first; the first field any token hits wins.
+    const ranked: Array<{ test: (t: string) => boolean; label: string; earned: number }> = [
+      { test: (t) => name.includes(t), label: 'Name match', earned: W.search },
+      { test: (t) => cuisines.includes(t), label: 'Cuisine match', earned: W.search },
+      { test: (t) => specialties.includes(t), label: 'Specialty match', earned: Math.round(W.search * 0.85) },
+      { test: (t) => signatures.includes(t), label: 'Dish match', earned: Math.round(W.search * 0.85) },
+      { test: (t) => location.includes(t), label: 'Location match', earned: Math.round(W.search * 0.65) },
+      { test: (t) => address.includes(t), label: 'Address match', earned: Math.round(W.search * 0.5) },
+      { test: (t) => tagline.includes(t), label: 'Description match', earned: Math.round(W.search * 0.4) },
+    ];
+    let bestLabel: string | null = null;
+    let bestEarned = 0;
+    for (const field of ranked) {
+      if (queryTokens.some((t) => field.test(t))) {
+        bestLabel = field.label;
+        bestEarned = field.earned;
+        break;
+      }
+    }
+    if (!bestLabel) {
+      // Tokens present but none landed in a single field — still a genuine
+      // result via the combined haystack, so credit it modestly.
+      bestLabel = 'Matches your search';
+      bestEarned = Math.round(W.search * 0.35);
+    }
+    add('search', bestEarned, bestLabel, W.search);
   }
   // Budget — explicit intent first, then the user's preferred tier. Venues
   // with unknown pricing (priceForTwo <= 0) are never credited a budget match.

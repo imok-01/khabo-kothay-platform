@@ -22,6 +22,7 @@ import { useRestaurants } from '../hooks/useRestaurants';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
+import { track } from '../lib/analytics';
 import { derivePreferences, mergeProfileIntoPreferences } from '../lib/preferences';
 import { hasPersonalizationSignals, matchScore } from '../hooks/useRecommendations';
 import type { DiningIntent, RecommendationContext } from '../domain/recommendation';
@@ -117,6 +118,12 @@ export default function ExplorePage() {
     else next.delete(key);
     setParams(next, { replace: true });
     if (closeDrawer) setFiltersOpen(false);
+    // Pilot measurement — don't fire on free-text query keystrokes
+    // (those are captured separately as search_submitted on Enter).
+    if (key !== 'q') {
+      if (key === 'sortBy') track('sort_changed', { value });
+      else track('filter_applied', { key, value });
+    }
   };
 
   const setQueryValue = (value: string) => setParam('q', value.trim(), false);
@@ -191,12 +198,13 @@ export default function ExplorePage() {
       dining: (dining as DiningIntent['dining']) || undefined,
       availability: (availability as DiningIntent['availability']) || undefined,
       openNow: criteria.openNow || undefined,
+      query: criteria.query,
     }),
     [criteria, veg, partySize, dining, availability],
   );
 
   const intentActive =
-    Boolean(intent.cuisine || intent.specialty || intent.budget || intent.location || intent.mealType || intent.vibe || intent.diet || intent.partySize || intent.dining || intent.availability || intent.openNow);
+    Boolean(intent.cuisine || intent.specialty || intent.budget || intent.location || intent.mealType || intent.vibe || intent.diet || intent.partySize || intent.dining || intent.availability || intent.openNow || intent.query);
 
   const recCtx: RecommendationContext = useMemo(
     () => ({
@@ -353,6 +361,9 @@ export default function ExplorePage() {
                 type="search"
                 value={query}
                 onChange={(e) => setQueryValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') track('search_submitted', { query: query.trim() });
+                }}
                 placeholder={`Try “biryani under ${MARKET.currencySymbol}500 near me”…`}
               />
             </div>
@@ -574,9 +585,10 @@ export default function ExplorePage() {
                 <button
                   type="button"
                   className="btn btn--ghost explore__map-toggle"
-                  onClick={() => {
-                    const next = mapMode === 'list' ? 'map' : 'list';
-                    setMapMode(next);
+                onClick={() => {
+                  const next = mapMode === 'list' ? 'map' : 'list';
+                  track('map_toggled', { mode: next });
+                  setMapMode(next);
                     // The map panel replaces the list in the layout, so bring
                     // it into view when toggling from a scrolled position.
                     if (next === 'map') {
@@ -648,7 +660,7 @@ export default function ExplorePage() {
                 title="No matches found"
                 message={
                   uncovered.length > 0
-                    ? `These filters aren't covered by the catalogue yet: ${uncovered.join(', ')}. Remove them to see results.`
+                    ? `We don't have ${uncovered.join(', ').toLowerCase()} data for every Dhaka spot yet, so that filter hid all results. Remove it${query ? ` or search “${query}” by name` : ''} to see places.`
                     : activeFilters.length > 0
                       ? 'Nothing fits that combination right now. Try loosening a filter or two.'
                       : 'Try a different search or neighbourhood.'

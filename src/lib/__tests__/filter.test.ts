@@ -185,3 +185,63 @@ describe('uncoveredFilters', () => {
     expect(uncoveredFilters(restaurants, { budget: 'Budget', maxPriceForTwo: 300 })).toEqual([]);
   });
 });
+
+describe('search quality alignment (production-like thin data)', () => {
+  // The live Dhaka catalogue is a thin Google import: cuisines/signatureDishes/
+  // vibes are often empty. Simulate that with a list where those fields are
+  // empty so we can verify graceful, honest alignment.
+  const prod = (over: Partial<Restaurant>): Restaurant => ({
+    ...restaurants[0],
+    cuisines: [],
+    vibes: [],
+    signatureDishes: [],
+    intelligence: undefined,
+    khabo: { rating: 0, reviewCount: 0, reviews: [], photos: [], tags: [], highlights: [], signals: [], visitCount: 0, featured: false },
+    isFamilyFriendly: false,
+    hasOutdoorSeating: false,
+    ...over,
+  });
+
+  const biryaniHouse = prod({
+    id: 'biryani-house',
+    name: 'Biryani House',
+    location: 'Gulshan',
+    address: 'Gulshan 2, Dhaka',
+    isFamilyFriendly: true,
+  });
+  const pizzaPlace = prod({ id: 'pizza-place', name: 'Pizza Place', location: 'Banani', address: 'Banani, Dhaka' });
+  const list = [biryaniHouse, pizzaPlace];
+
+  it('degrades a cuisine filter to a name/address text match when cuisines are unpopulated', () => {
+    const res = filterRestaurants(list, { cuisine: 'Biryani' });
+    expect(res.map((r) => r.id)).toContain('biryani-house');
+  });
+
+  it('does not invent cuisine matches absent from name/address', () => {
+    expect(filterRestaurants(list, { cuisine: 'Korean' })).toHaveLength(0);
+  });
+
+  it('aligns the Family vibe onto the real isFamilyFriendly attribute', () => {
+    expect(filterRestaurants(list, { vibe: 'Family' }).map((r) => r.id)).toContain('biryani-house');
+  });
+
+  it('honestly excludes a vibe with no data and no real attribute', () => {
+    expect(filterRestaurants(list, { vibe: 'Date night' })).toHaveLength(0);
+  });
+
+  it('matches leftover tokens with OR semantics (best biryani → biryani)', () => {
+    expect(filterRestaurants(list, { query: 'best biryani' }).map((r) => r.id)).toContain('biryani-house');
+  });
+
+  it('does not let a stopword-only leftover filter out results', () => {
+    expect(filterRestaurants(list, { query: 'best restaurant' })).toHaveLength(2);
+  });
+
+  it('matches either token in a multi-word query', () => {
+    expect(filterRestaurants(list, { query: 'biryani pizza' })).toHaveLength(2);
+  });
+
+  it('reports an unsupported cuisine honestly in uncoveredFilters', () => {
+    expect(uncoveredFilters(list, { cuisine: 'Korean' })).toEqual(['Cuisine: Korean']);
+  });
+});

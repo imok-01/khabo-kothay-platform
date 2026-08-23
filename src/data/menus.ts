@@ -2,10 +2,27 @@ import type { Menu, MenuCategory, MenuItem, PriceSnapshot } from '../domain/menu
 import type { Restaurant } from '../types';
 
 /**
- * Seed menu data. Price history here is clearly *demo/seed* data — it is not
- * claimed to be a verified historical record. The structure (snapshots with
- * source, recordedBy, status) is exactly what a future recording system
- * would produce.
+ * LEGACY / NON-PRODUCTION FIXTURE — Kolkata demo seed menus.
+ *
+ * Every entry is keyed to a Kolkata restaurant id (arsalan, bhojohori-manna,
+ * …). NONE of these ids exist in the production Dhaka catalogue, so
+ * `getMenuForRestaurant` returns an empty menu for every live venue. It is
+ * retained only as the menu-system fallback shape and for the test suite.
+ *
+ * Seed price history here is clearly *demo/seed* data — it is not claimed to
+ * be a verified historical record. The structure (snapshots with source,
+ * recordedBy, status) is exactly what a future recording system would
+ * produce.
+ *
+ * Do NOT extend this for production. Populate the real menu layer instead.
+ *
+ * Production note (isolation contract):
+ *  - These are Kolkata FIXTURES only — never shown for Dhaka production
+ *    restaurants. Their ids must never collide with production restaurant ids
+ *    (guarded by src/data/__tests__/menuIsolation.test.ts).
+ *  - Production menus come from Supabase. When a venue has no Supabase menu,
+ *    the correct, honest fallback is an EMPTY menu ("Menu data not verified
+ *    yet") — never a demo seed.
  */
 
 let seq = 0;

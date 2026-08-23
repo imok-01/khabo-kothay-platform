@@ -161,53 +161,7 @@ async function loadRestaurants(viteServer) {
   return list;
 }
 
-function restaurantDescription(r) {
-  const loc = r.location || 'Dhaka';
-  const bits = [];
-  if (r.address) bits.push(r.address);
-  if (r.cuisines.length > 0) bits.push(r.cuisines.join(', '));
-  if (r.budget) bits.push(`${budgetSymbol(r.budget)} ${r.budget}`);
-  let desc = `Discover ${r.name} in ${loc}`;
-  if (bits.length > 0) desc += ` — ${bits.join(' · ')}.`;
-  if (r.google?.rating && r.google.reviewCount > 0) {
-    desc += ` Rated ${r.google.rating} stars by ${r.google.reviewCount} Google reviewers.`;
-  }
-  return desc.slice(0, 320);
-}
-
-function restaurantJsonLd(r) {
-  const data = {
-    '@context': 'https://schema.org',
-    '@type': 'Restaurant',
-    name: r.name,
-    url: `${CANONICAL_ORIGIN}/restaurant/${r.id}`,
-  };
-  const img = photoAtWidth(r.google?.photos?.[0]?.imageUrl ?? '', 1200);
-  if (img) data.image = img;
-  if (r.address || r.location) {
-    data.address = {
-      '@type': 'PostalAddress',
-      ...(r.address ? { streetAddress: r.address } : {}),
-      ...(r.location ? { addressLocality: r.location } : {}),
-      addressCountry: 'BD',
-    };
-  }
-  if (r.lat && r.lng) data.geo = { '@type': 'GeoCoordinates', latitude: r.lat, longitude: r.lng };
-  if (Array.isArray(r.cuisines) && r.cuisines.length > 0) data.servesCuisine = r.cuisines;
-  if (r.budget) data.priceRange = budgetSymbol(r.budget);
-  if (r.google?.rating && r.google.reviewCount > 0) {
-    data.aggregateRating = {
-      '@type': 'AggregateRating',
-      ratingValue: r.google.rating,
-      reviewCount: r.google.reviewCount,
-      bestRating: 5,
-    };
-  }
-  // Guard against `</script>` breaking out of the JSON-LD block.
-  return JSON.stringify(data).replace(/</g, '\\u003c');
-}
-
-function buildRoutes(restaurants) {
+function buildRoutes(restaurants, buildRestaurantMeta) {
   return [
     {
       path: '/',
@@ -221,13 +175,18 @@ function buildRoutes(restaurants) {
       description:
         'Explore all restaurants in Dhaka — filter by neighbourhood, budget, cuisine, rating, meal type and more.',
     },
-    ...restaurants.map((r) => ({
-      path: `/restaurant/${r.id}`,
-      title: `${r.name} · Khabo Kothay BD`,
-      description: restaurantDescription(r),
-      ogImage: photoAtWidth(r.google?.photos?.[0]?.imageUrl ?? '', 1200),
-      jsonLd: restaurantJsonLd(r),
-    })),
+    ...restaurants.map((r) => {
+      const ogImage = photoAtWidth(r.google?.photos?.[0]?.imageUrl ?? '', 1200);
+      const meta = buildRestaurantMeta(r, { origin: CANONICAL_ORIGIN, image: ogImage });
+      return {
+        path: `/restaurant/${r.id}`,
+        title: meta.title,
+        description: meta.description,
+        ogType: meta.ogType,
+        ogImage: meta.ogImage,
+        jsonLd: JSON.stringify(meta.jsonLd).replace(/</g, '\\u003c'),
+      };
+    }),
     ...[
       {
         path: '/about',
@@ -300,11 +259,15 @@ function injectHead(html, route) {
   const extras = [
     `<link rel="canonical" href="${canonical}" />`,
     `<meta property="og:site_name" content="Khabo Kothay BD" />`,
-    `<meta property="og:type" content="website" />`,
+    `<meta property="og:type" content="${route.ogType ?? 'website'}" />`,
     `<meta property="og:title" content="${escapeHtml(route.title)}" />`,
     `<meta property="og:description" content="${escapeHtml(route.description)}" />`,
     `<meta property="og:url" content="${canonical}" />`,
     route.ogImage ? `<meta property="og:image" content="${escapeHtml(route.ogImage)}" />` : '',
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:title" content="${escapeHtml(route.title)}" />`,
+    `<meta name="twitter:description" content="${escapeHtml(route.description)}" />`,
+    route.ogImage ? `<meta name="twitter:image" content="${escapeHtml(route.ogImage)}" />` : '',
     route.jsonLd ? `<script type="application/ld+json">${route.jsonLd}</script>` : '',
   ]
     .filter(Boolean)
@@ -379,13 +342,17 @@ async function main() {
     appType: 'custom',
   });
 
+  // Shared restaurant-metadata builder — the same module the client uses — so
+  // the crawler-facing HTML can never drift from the runtime <head>.
+  const { buildRestaurantMeta } = await viteServer.ssrLoadModule('/src/lib/restaurantMeta.ts');
+
   let done = 0;
   let fallbackWritten = 0;
   const failures = [];
 
   try {
     const restaurants = await loadRestaurants(viteServer);
-    let routes = buildRoutes(restaurants);
+    let routes = buildRoutes(restaurants, buildRestaurantMeta);
     if (only) {
       routes = routes.filter((r) => only.split(',').some((p) => r.path === p.trim() || r.path.startsWith(p.trim())));
       console.log(`[prerender] PRERENDER_ONLY filter — ${routes.length} route(s)`);

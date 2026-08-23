@@ -21,10 +21,16 @@ import {
  *   - No automatic background polling. Ever.
  *
  * Storage:
- *   - Snapshots live in memory for the session only (Map keyed by place ID).
- *     Google content is never written to localStorage/IndexedDB — respecting
- *     current Places caching/storage restrictions. A page reload simply
- *     refetches on demand.
+ *   - Snapshots live in an in-memory Map keyed by place ID (fast, primary).
+ *   - A best-effort, guarded copy is persisted to localStorage so the LAST
+ *     KNOWN snapshot survives a page reload ("last known cache") and the app
+ *     can serve enrichment without a network call. Transient refresh meta is
+ *     reset to 'idle' on hydrate — freshness is always derived from
+ *     snapshot.fetchedAt. This is a client-side cache boundary only; KK never
+ *     treats Google content as source of truth, and the backend is swappable
+ *     to a `restaurant_google_cache` table later without changing callers.
+ *   - Persistence is guarded (SSR/prerender/quota/parse errors are ignored) —
+ *     caching never throws and never blocks the page.
  *
  * Cost control:
  *   - Field masks are explicit and minimal (see googlePlacesClient).
@@ -47,6 +53,52 @@ interface StoreEntry {
 const store = new Map<string, StoreEntry>();
 const inFlight = new Map<string, Promise<LiveGoogleSnapshot | null>>();
 const listeners = new Set<() => void>();
+
+/* ------------------------------------------------------------------ */
+/* Persistence (last-known cache) — guarded, client-side only          */
+/* ------------------------------------------------------------------ */
+
+const CACHE_KEY = 'khabo-kothay:google-cache';
+
+/** Persist snapshots to localStorage (best-effort). Only entries that have a
+ *  snapshot are written; transient refresh meta is reset to 'idle' so a reload
+ *  never shows a stale failure state. Never throws. */
+function persistGoogleCache(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const serialized: Record<string, unknown> = {};
+    for (const [placeId, entry] of store.entries()) {
+      if (entry.snapshot) {
+        serialized[placeId] = { snapshot: entry.snapshot, meta: { status: 'idle' } };
+      }
+    }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(serialized));
+  } catch {
+    // Quota exceeded, serialization error, or storage unavailable — ignore.
+  }
+}
+
+/** Load any previously persisted snapshots into the in-memory store. Runs once
+ *  at module load. Never throws; corrupt/absent cache is ignored. */
+export function hydrateGoogleCache(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, StoreEntry>;
+    for (const [placeId, entry] of Object.entries(parsed)) {
+      if (entry?.snapshot) store.set(placeId, { snapshot: entry.snapshot, meta: { status: 'idle' } });
+    }
+  } catch {
+    // Corrupt cache — start fresh.
+  }
+}
+
+/** Write an entry to the in-memory store and persist the cache. */
+function writeStore(placeId: string, entry: StoreEntry): void {
+  store.set(placeId, entry);
+  persistGoogleCache();
+}
 
 /** Stable idle metadata — returned for untracked place IDs (avoids re-render loops). */
 const IDLE_META: GoogleRefreshMeta = { status: 'idle' };
@@ -82,7 +134,7 @@ function emit(): void {
 function setMeta(placeId: string, meta: GoogleRefreshMeta): void {
   const entry = store.get(placeId) ?? { meta: { status: 'idle' as const } };
   entry.meta = { ...entry.meta, ...meta };
-  store.set(placeId, entry);
+  writeStore(placeId, entry);
   emit();
 }
 
@@ -118,7 +170,7 @@ export async function refreshGooglePlaceData(
     try {
       const raw = options.summary ? await fetchPlaceSummary(placeId) : await fetchPlaceDetails(placeId);
       const snapshot = normalizePlaceDetails(raw, placeId);
-      store.set(placeId, {
+      writeStore(placeId, {
         snapshot,
         meta: {
           status: 'updated',
@@ -183,4 +235,15 @@ export function resetGoogleRefreshStoreForTests(): void {
   store.clear();
   inFlight.clear();
   listeners.clear();
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem(CACHE_KEY);
+    } catch {
+      // ignore
+    }
+  }
 }
+
+// Populate the in-memory store with any previously persisted last-known
+// snapshots (guarded; no-op when storage is unavailable, e.g. SSR/prerender).
+hydrateGoogleCache();

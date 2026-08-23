@@ -34,6 +34,18 @@ export interface RestaurantRepository {
   byIdSync(id: string): Restaurant | undefined;
 }
 
+/**
+ * Enforce the catalogue/detail data contract: strip heavy, detail-only data
+ * (currently KK community review *text*) from a restaurant before it enters
+ * any catalogue / search / card surface. Summary signals such as
+ * `reviewCount` are preserved — only the review bodies are removed. This is
+ * the single enforcement point so the boundary is provable and testable.
+ */
+export function toCatalogueView(r: Restaurant): Restaurant {
+  if (r.khabo.reviews.length === 0) return r;
+  return { ...r, khabo: { ...r.khabo, reviews: [] } };
+}
+
 /* ------------------------------------------------------------------ */
 /* Mock implementation (current static source)                         */
 /* ------------------------------------------------------------------ */
@@ -59,7 +71,9 @@ export const mockRestaurantRepository: RestaurantRepository = {
   // Executive-approved profile drafts override the base record at this seam,
   // so Explore cards, detail pages and Home all see the same published data.
   allSync: () =>
-    attachIntelligenceToAll(seedRestaurants.map((r) => withMenuEstimate(applyApprovedDraft({ ...r })))),
+    attachIntelligenceToAll(
+      seedRestaurants.map((r) => toCatalogueView(withMenuEstimate(applyApprovedDraft({ ...r })))),
+    ),
   byIdSync: (id) => {
     const found = seedRestaurants.find((r) => r.id === id);
     return found ? attachIntelligence(withMenuEstimate(applyApprovedDraft({ ...found }))) : undefined;
@@ -99,8 +113,10 @@ async function fetchBundle(restaurantId: string): Promise<RestaurantDbBundleRows
   images: Awaited<ReturnType<typeof queries.selectImagesForRestaurant>>;
   reviewSignals: Awaited<ReturnType<typeof queries.selectReviewSignalsForRestaurant>>;
   userReviews: Awaited<ReturnType<typeof queries.selectUserReviewsForRestaurant>>;
+  /** Public verification records (via the anon-safe view) — drives `address_verified`. */
+  verificationRecords: Awaited<ReturnType<typeof queries.selectVerificationRecordsForRestaurant>>;
 }> {
-  const [restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews] =
+  const [restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews, verificationRecords] =
     await Promise.all([
       queries.selectRestaurantById(restaurantId),
       queries.selectSourcesForRestaurant(restaurantId),
@@ -110,11 +126,17 @@ async function fetchBundle(restaurantId: string): Promise<RestaurantDbBundleRows
       queries.selectImagesForRestaurant(restaurantId),
       queries.selectReviewSignalsForRestaurant(restaurantId),
       queries.selectUserReviewsForRestaurant(restaurantId),
+      // Anon-safe read of the public verification view. If the view is not yet
+      // deployed, the table is RLS-restricted, or the query otherwise fails,
+      // degrade gracefully to no records — the detail page must never break on
+      // a missing verification badge. `address_verified` simply stays null
+      // until the view (PROPOSED_1_7) is applied.
+      queries.selectVerificationRecordsForRestaurant(restaurantId).catch(() => []),
     ]);
 
   // Menus are deliberately NOT part of the restaurant aggregate — they flow
   // through menuService → menuRepository (see mapRestaurantRows).
-  return { restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews };
+  return { restaurant, sources, attributes, aliases, tags, images, reviewSignals, userReviews, verificationRecords };
 }
 
 class SupabaseRestaurantRepository implements RestaurantRepository {
@@ -139,19 +161,25 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
     const ids = rows.map((r) => r.id);
 
     // Batched fetch: one request per table (chunked) instead of an N+1
-    // fan-out per restaurant. 206 restaurants x 8 tables would otherwise
-    // fire ~1,600 parallel requests and exhaust the browser connection pool
+    // fan-out per restaurant. 206 restaurants x 7 tables would otherwise
+    // fire ~1,400 parallel requests and exhaust the browser connection pool
     // (ERR_INSUFFICIENT_RESOURCES).
     // NOTE: menu_items and price_observations are no longer fetched here.
     // The menuEstimate is read from the stored restaurant_attributes.
-    const [sources, aliases, attributes, tags, images, reviewSignals, userReviews] = await Promise.all([
+    // `restaurant_tags` is also excluded — the `Restaurant` domain object has
+    // no `tags` field and `mapRestaurantRows` never reads it, so fetching it
+    // on the catalogue load was dead egress.
+    // `userReviews` (KK community review *text*) is deliberately NOT fetched
+    // here — review text is detail-only (loaded via fetchBundle on the
+    // restaurant detail page). Fetching it into the catalogue would be heavy
+    // egress with no discovery value; the catalogue carries only the summary
+    // `reviewCount`. Enforced below by toCatalogueView.
+    const [sources, aliases, attributes, images, reviewSignals] = await Promise.all([
       queries.selectSourcesForRestaurants(ids),
       queries.selectRestaurantAliasesForRestaurants(ids),
       queries.selectAttributesForRestaurants(ids),
-      queries.selectTagsForRestaurants(ids),
       queries.selectImagesForRestaurants(ids),
       queries.selectReviewSignalsForRestaurants(ids),
-      queries.selectUserReviewsForRestaurants(ids),
     ]);
 
     const byRestaurant = <T extends { restaurant_id: string }>(list: T[]): Map<string, T[]> => {
@@ -166,25 +194,23 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
     const sourcesMap = byRestaurant(sources);
     const aliasesMap = byRestaurant(aliases);
     const attributesMap = byRestaurant(attributes);
-    const tagsMap = byRestaurant(tags);
     const imagesMap = byRestaurant(images);
     const signalsMap = byRestaurant(reviewSignals);
-    const reviewsMap = byRestaurant(userReviews);
 
     return rows
       .map((row) =>
-        attachIntelligence(
-          mapRestaurantRows({
-            restaurant: row,
-            sources: sourcesMap.get(row.id) ?? [],
-            aliases: aliasesMap.get(row.id) ?? [],
-            attributes: attributesMap.get(row.id) ?? [],
-            tags: tagsMap.get(row.id) ?? [],
-            images: imagesMap.get(row.id) ?? [],
-            reviewSignals: signalsMap.get(row.id) ?? [],
-            userReviews: reviewsMap.get(row.id) ?? [],
-            // menuEstimate is now read from attributes by the transformer
-          }),
+        toCatalogueView(
+          attachIntelligence(
+            mapRestaurantRows({
+              restaurant: row,
+              sources: sourcesMap.get(row.id) ?? [],
+              aliases: aliasesMap.get(row.id) ?? [],
+              attributes: attributesMap.get(row.id) ?? [],
+              images: imagesMap.get(row.id) ?? [],
+              reviewSignals: signalsMap.get(row.id) ?? [],
+              // userReviews intentionally omitted — detail-only.
+            }),
+          ),
         ),
       );
   }
@@ -224,6 +250,17 @@ export async function resolveRestaurantUuid(id: string): Promise<string | null> 
   const pairs = await queries.selectRestaurantIds();
   const match = pairs.find((p) => slugify(p.name) === id);
   return match?.id ?? null;
+}
+
+/**
+ * Reverse of `resolveRestaurantUuid`: given a database UUID, return the
+ * frontend route slug. Used by the owner-restaurant resolution so a session
+ * carrying `roles.restaurant_id` (a UUID) can be mapped back to the `Restaurant`
+ * domain object (which is keyed by slug). Tries a direct UUID lookup first.
+ */
+export async function resolveRestaurantSlug(uuid: string): Promise<string | null> {
+  const row = await queries.selectRestaurantById(uuid);
+  return row ? slugify(row.name) : null;
 }
 
 /** Active repository — Supabase when configured, the mock otherwise. */

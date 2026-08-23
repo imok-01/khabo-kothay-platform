@@ -664,7 +664,8 @@ button {
   font-weight: 600;
 }
 
-.nav__search {
+.nav__search,
+.nav__search-mobile {
   flex: 1;
   max-width: 420px;
   display: flex;
@@ -677,14 +678,16 @@ button {
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 
-.nav__search:focus-within {
+.nav__search:focus-within,
+.nav__search-mobile:focus-within {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .nav__search-icon { color: var(--ink-faint); display: flex; }
 
-.nav__search input {
+.nav__search input,
+.nav__search-mobile input {
   border: none;
   background: transparent;
   outline: none;
@@ -818,6 +821,67 @@ button {
   color: var(--ink-soft);
   max-width: 620px;
   margin: 0 auto var(--s6);
+}
+
+.hero__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 620px;
+  margin: 0 auto var(--s5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 6px 6px 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.hero__search-icon {
+  display: inline-flex;
+  color: var(--ink-faint);
+  flex: none;
+}
+
+.hero__search-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font-size: 1rem;
+  color: var(--ink);
+  padding: 10px 4px;
+  outline: none;
+}
+
+.hero__search-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.hero__search-btn {
+  white-space: nowrap;
+  flex: none;
+}
+
+.hero__guided {
+  font-size: var(--fs-sm);
+  color: var(--ink-faint);
+  margin: var(--s6) 0 var(--s2);
+}
+
+@media (max-width: 560px) {
+  .hero__search {
+    flex-wrap: wrap;
+    border-radius: 16px;
+    padding: 10px;
+    gap: 10px;
+  }
+  .hero__search-input {
+    flex-basis: 100%;
+    width: 100%;
+  }
+  .hero__search-btn {
+    width: 100%;
+  }
 }
 
 .hero__stats {
@@ -3203,4 +3267,67 @@ button {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
+}
+
+/* Search autocomplete — lightweight, zero-egress suggestions. */
+.search-suggest {
+  position: relative;
+  width: 100%;
+}
+
+.search-suggest__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+  text-align: left;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.search-suggest__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.search-suggest__item--active,
+.search-suggest__item:hover {
+  background: var(--bg-soft);
+}
+
+.search-suggest__type {
+  flex: none;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.search-suggest__label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

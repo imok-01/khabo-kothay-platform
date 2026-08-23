@@ -14,7 +14,7 @@ export default function MobileNav() {
   return (
     <nav className="mobile-nav" aria-label="Primary (mobile)">
       <div className="mobile-nav__links">
-        <NavLink to="/" end className={({ isActive }) => `mobile-nav__link ${isActive ? 'mobile-nav__link--active' : ''}`}>
+        <NavLink to="/discover" className={({ isActive }) => `mobile-nav__link ${isActive ? 'mobile-nav__link--active' : ''}`}>
           <Home size={20} aria-hidden="true" />
           Discover
         </NavLink>

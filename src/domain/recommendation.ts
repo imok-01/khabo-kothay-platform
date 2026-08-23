@@ -26,6 +26,9 @@ export interface DiningIntent {
   /** availability: 'open' | 'soon' | 'later' — derived from recorded hours. */
   availability?: 'open' | 'soon' | 'later';
   openNow?: boolean;
+  /** Free-text search term (leftover after structured NL parsing), matched
+   *  only against lightweight, in-memory fields — never heavy tables. */
+  query?: string;
 }
 
 /** Scoring dimensions — every reason maps back to exactly one of these. */
@@ -44,7 +47,8 @@ export type MatchDimension =
   | 'preference'
   | 'distance'
   | 'party'
-  | 'dining';
+  | 'dining'
+  | 'search';
 
 export const DIMENSION_LABEL: Record<MatchDimension, string> = {
   cuisine: 'Cuisine',
@@ -62,6 +66,7 @@ export const DIMENSION_LABEL: Record<MatchDimension, string> = {
   distance: 'Distance',
   party: 'Group size',
   dining: 'Dining mode',
+  search: 'Search',
 };
 
 export interface MatchReason {

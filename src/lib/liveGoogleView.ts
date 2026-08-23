@@ -42,7 +42,11 @@ export function mergeLiveGoogle(
     rating: snapshot.rating ?? base.rating,
     reviewCount: snapshot.userRatingCount ?? base.reviewCount,
     reviews,
-    address: snapshot.formattedAddress ?? base.address,
+    // Curated/imported address wins over the live Google formatted address —
+    // the live string is raw Google data that may be truncated (e.g. "The
+    // Westin, Main"). Live Google fills the gap only when nothing curated
+    // exists. The page's formatAddress priority mirrors this rule.
+    address: base.address ?? snapshot.formattedAddress,
     website: snapshot.websiteUri ?? base.website,
     phone: snapshot.phone ?? base.phone,
     openingHours: snapshot.currentHours?.weekdayText.join(', ') || snapshot.regularHours?.weekdayText.join(', ') || base.openingHours,

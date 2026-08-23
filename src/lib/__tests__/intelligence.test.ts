@@ -133,7 +133,7 @@ describe('deriveIntelligence', () => {
     expect(eff.diningFeatures).toContain('Delivery');
     expect(eff.diningFeatures).toContain('Family friendly');
     expect(eff.diningFeatures).not.toContain('Outdoor seating');
-    expect(eff.provenance).toBe('verified');
+    expect(eff.provenance).toBe('derived');
   });
 
   it('never invents claims for unmatched attributes', () => {
@@ -155,7 +155,7 @@ describe('deriveIntelligence', () => {
     expect(eff.bestFor).toEqual([]);
     expect(eff.foodCharacteristics).toEqual([]);
     expect(eff.diningFeatures).toEqual([]);
-    expect(eff.provenance).toBe('verified');
+    expect(eff.provenance).toBe('derived');
   });
 });
 
@@ -189,7 +189,7 @@ describe('getEffectiveIntelligence with a Restaurant object', () => {
     expect(eff.specialties).toContain('Seafood');
     expect(eff.specialties).toContain('Desserts');
     expect(eff.foodCharacteristics).toContain('Dessert-focused');
-    expect(eff.provenance).toBe('verified');
+    expect(eff.provenance).toBe('derived');
   });
 
   it('keeps the curated seed authoritative when one exists', () => {

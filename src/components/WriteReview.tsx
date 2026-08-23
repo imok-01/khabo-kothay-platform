@@ -6,7 +6,6 @@ import { uid } from '../lib/uid';
 import type { UserReview } from '../domain/review';
 import { reviewService } from '../hooks/useReviews';
 import { grantFirstReviewReward } from '../lib/rewards';
-import { DEFAULT_REWARD_CONFIG } from '../domain/rewards';
 
 const RATING_LABELS = ['', 'Dreadful', 'Meh', 'Okay', 'Good', 'Excellent'];
 
@@ -29,7 +28,7 @@ export default function WriteReview({ restaurant, onChanged }: WriteReviewProps)
       <div className="write-review write-review--locked">
         <p>
           <Star size={13} aria-hidden="true" /> Love this place?{' '}
-          <a href={`/login`} onClick={(e) => { e.preventDefault(); window.location.href = '/login'; }}>Sign in</a> to leave a Khabo Kothay review.
+          <a href={`/login`} onClick={(e) => { e.preventDefault(); window.location.href = '/login'; }}>Sign in</a> to save a private note.
         </p>
       </div>
     );
@@ -78,7 +77,7 @@ export default function WriteReview({ restaurant, onChanged }: WriteReviewProps)
   if (mine) {
     return (
       <div className="write-review write-review--done">
-        <p><Check size={13} aria-hidden="true" /> You reviewed this place — thanks! <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>(+{DEFAULT_REWARD_CONFIG.review} tokens once, for your first review)</span></p>
+        <p><Check size={13} aria-hidden="true" /> You saved a note about this place — thanks! <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>(saved on this device only)</span></p>
         <div className="write-review__actions">
           <button type="button" className="btn btn--ghost btn--sm" onClick={() => { setRating(mine.rating); setComment(mine.comment); setDish(mine.favoriteDishes?.[0] ?? ''); setOpen(true); }}>
             <Pencil size={12} aria-hidden="true" /> Edit
@@ -94,10 +93,10 @@ export default function WriteReview({ restaurant, onChanged }: WriteReviewProps)
   if (!open) {
     return (
       <div className="write-review">
-        <button type="button" className="btn btn--ghost btn--sm" onClick={() => setOpen(true)}>
-          <Star size={12} aria-hidden="true" /> Write a review
-        </button>
-        <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>Earn +{DEFAULT_REWARD_CONFIG.review} tokens for your first review</span>
+          <button type="button" className="btn btn--ghost btn--sm" onClick={() => setOpen(true)}>
+            <Star size={12} aria-hidden="true" /> Write a note
+          </button>
+          <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>Saved on this device only — not shared publicly yet.</span>
       </div>
     );
   }
@@ -145,11 +144,11 @@ export default function WriteReview({ restaurant, onChanged }: WriteReviewProps)
       {error && <p className="form-error" role="alert">{error}</p>}
 
       <div className="write-review__actions">
-        <button type="submit" className="btn btn--primary btn--sm">Submit review</button>
+        <button type="submit" className="btn btn--primary btn--sm">Save note</button>
         <button type="button" className="btn btn--subtle btn--sm" onClick={() => setOpen(false)}>Cancel</button>
       </div>
       <p className="t-xs" style={{ color: 'var(--ink-faint)' }}>
-        Your review belongs to Khabo Kothay — it is not sent to Google and won't affect Google ratings.
+        Your note is saved on this device only for now — it isn't shared publicly yet, and isn't sent to Google.
       </p>
     </form>
   );

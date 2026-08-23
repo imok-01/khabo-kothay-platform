@@ -170,6 +170,64 @@ describe('intent ranking (guest)', () => {
   });
 });
 
+describe('free-text query relevance', () => {
+  it('a name match is surfaced as a real, specific reason', () => {
+    const c = ctx({ query: 'arsalan' });
+    const search = matchScore(byId('arsalan'), c).reasons.find((r) => r.dimension === 'search');
+    expect(search).toBeDefined();
+    expect(search!.label).toBe('Name match');
+  });
+
+  it('a cuisine match is surfaced even when the name lacks the term', () => {
+    const c = ctx({ query: 'biryani' });
+    const search = matchScore(byId('arsalan'), c).reasons.find((r) => r.dimension === 'search');
+    expect(search).toBeDefined();
+    expect(search!.label).toBe('Cuisine match');
+  });
+
+  it('a signature-dish match is surfaced as a dish or specialty reason', () => {
+    const c = ctx({ query: 'reshmi kebab' });
+    const search = matchScore(byId('arsalan'), c).reasons.find((r) => r.dimension === 'search');
+    expect(search).toBeDefined();
+    expect(['Dish match', 'Specialty match']).toContain(search!.label);
+  });
+
+  it('a location match is surfaced when the query hits the area', () => {
+    const c = ctx({ query: 'park street' });
+    const search = matchScore(byId('mainland-china'), c).reasons.find((r) => r.dimension === 'search');
+    expect(search).toBeDefined();
+    expect(search!.label).toBe('Location match');
+  });
+
+  it('a whitespace-only query adds no search signal (no false relevance)', () => {
+    const m = matchScore(byId('arsalan'), ctx({ query: '   ' }));
+    expect(m.reasons.some((r) => r.dimension === 'search')).toBe(false);
+  });
+
+  it('no query means no search dimension — structured ranking is unchanged', () => {
+    const m = matchScore(byId('arsalan'), ctx({}));
+    expect(m.reasons.some((r) => r.dimension === 'search')).toBe(false);
+  });
+
+  it('a genuine query improves the score over the no-query baseline', () => {
+    const withQuery = matchScore(byId('arsalan'), ctx({ query: 'arsalan' }));
+    const baseline = matchScore(byId('arsalan'), ctx({}));
+    expect(withQuery.reasons.some((r) => r.dimension === 'search')).toBe(true);
+    expect(withQuery.score).toBeGreaterThanOrEqual(baseline.score);
+  });
+
+  it('tokenizes a leftover query so the right field is credited (best biryani → Cuisine match)', () => {
+    const search = matchScore(byId('arsalan'), ctx({ query: 'best biryani' })).reasons.find((r) => r.dimension === 'search');
+    expect(search).toBeDefined();
+    expect(search!.label).toBe('Cuisine match');
+  });
+
+  it('does not emit a search reason for a stopword-only query', () => {
+    const m = matchScore(byId('arsalan'), ctx({ query: 'best' }));
+    expect(m.reasons.some((r) => r.dimension === 'search')).toBe(false);
+  });
+});
+
 describe('personalisation', () => {
   it('CASE 2 — a real profile turns on personal scoring and shifts the ranking', () => {
     const c = ctx(

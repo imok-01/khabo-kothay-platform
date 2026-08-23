@@ -1,6 +1,6 @@
 import type { Restaurant } from '../types';
 import type { BestFor, DiningFeature, FoodCharacteristic, RestaurantIntelligence, Specialty } from '../domain/intelligence';
-import { seedIntelligence } from '../data/intelligence';
+import { legacySeedIntelligence } from '../data/intelligence';
 import { getSuggestions } from '../store/demoDb';
 
 const FIELDS = ['specialties', 'bestFor', 'foodCharacteristics', 'diningFeatures'] as const;
@@ -10,23 +10,25 @@ function empty(provenance: RestaurantIntelligence['provenance']): RestaurantInte
 }
 
 /* ------------------------------------------------------------------ */
-/* Verified-attribute derivation                                       */
+/* Attribute derivation (heuristic — NOT independent verification)     */
 /* ------------------------------------------------------------------ */
 
 /**
- * Derived intelligence — built ONLY from verified database attributes the
- * transformer already carries (cuisines, mealTypes, signatureDishes, and the
+ * Derived intelligence — built ONLY from the attributes the venue already
+ * carries in the database (cuisines, mealTypes, signatureDishes, and the
  * dining booleans). Every value lands in a controlled vocabulary term, and
- * each is backed by a literal, verified fact:
+ * each is backed by a literal database fact:
  *
  *  - cuisine 'Pizza' → specialty 'Pizza' (a Pizza venue is known for pizza)
  *  - mealType 'Dessert' → specialty 'Desserts' + 'Dessert-focused'
  *  - a signature dish literally containing a curated token (e.g. "Kacchi
- *    Biryani" → 'Biryani') → that specialty
+ *    Biryani' → 'Biryani') → that specialty
  *
  * Signature-dish matching is a STRICT token allowlist — never fuzzy text, and
  * never a description scrape. Unmapped dishes contribute nothing rather than
- * a guessed claim.
+ * a guessed claim. The result is tagged provenance 'derived' (see
+ * RestaurantIntelligence) — it is a heuristic, not a Khabo Kothay-verified
+ * fact.
  */
 const CUISINE_SPECIALTIES: Record<string, Specialty> = {
   Pizza: 'Pizza',
@@ -82,9 +84,21 @@ function unique<T>(values: T[]): T[] {
 }
 
 /**
- * Map the verified attributes a restaurant already carries into structured
- * recommendation metadata. Returns an all-empty (provenance 'verified')
- * object when there is nothing to derive — it never invents.
+ * Map the attributes a restaurant already carries into structured
+ * recommendation metadata. This is a heuristic derivation, NOT an independent
+ * Khabo Kothay verification, so it is tagged provenance 'derived'.
+ *
+ * Every value lands in a controlled vocabulary term backed by a literal
+ * database fact:
+ *  - cuisine 'Pizza' → specialty 'Pizza'
+ *  - mealType 'Dessert;…' → specialty / bestFor / characteristic terms
+ *  - a signature dish literally containing a curated token (e.g. "Kacchi
+ *    Biryani" → 'Biryani') → that specialty
+ *
+ * Signature-dish matching is a STRICT token allowlist — never fuzzy text, and
+ * never a description scrape. Unmapped dishes contribute nothing rather than
+ * a guessed claim. Returns an all-empty (provenance 'derived') object when
+ * there is nothing to derive — it never invents.
  */
 export function deriveIntelligence(r: Restaurant): RestaurantIntelligence {
   const specialties = unique<Specialty>([
@@ -107,7 +121,7 @@ export function deriveIntelligence(r: Restaurant): RestaurantIntelligence {
     ...(r.isFamilyFriendly ? ['Family friendly' as const] : []),
   ]);
 
-  return { specialties, bestFor, foodCharacteristics, diningFeatures, provenance: 'verified' };
+  return { specialties, bestFor, foodCharacteristics, diningFeatures, provenance: 'derived' };
 }
 
 /**
@@ -126,7 +140,7 @@ export function deriveIntelligence(r: Restaurant): RestaurantIntelligence {
  */
 export function getEffectiveIntelligence(restaurant: Restaurant | string): RestaurantIntelligence {
   const id = typeof restaurant === 'string' ? restaurant : restaurant.id;
-  const seed = seedIntelligence(id);
+  const seed = legacySeedIntelligence(id);
   const derived = typeof restaurant === 'string' ? undefined : deriveIntelligence(restaurant);
 
   const base: RestaurantIntelligence = seed

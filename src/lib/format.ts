@@ -36,7 +36,7 @@ function isPlusCode(value: string): boolean {
  * plus code. Such values are presented as an address only when nothing better
  * exists; otherwise they are omitted in favour of the honest fallback.
  */
-function isPoorAddress(value: string): boolean {
+export function isPoorAddress(value: string): boolean {
   if (isPlusCode(value)) return true;
   if (/^(?:\d+[a-z]?\s+)?(?:rd|road|lane|ave|avenue|st|street)(?:\s+(?:no\.?|nr\.?)\s*\d*|\s*\d+)?$/i.test(value)) {
     return true;

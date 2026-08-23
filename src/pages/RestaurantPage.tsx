@@ -5,7 +5,6 @@ import {
   MapPin,
   Navigation,
   Globe,
-  CalendarCheck,
   Check,
   ChefHat,
   BadgePercent,
@@ -14,14 +13,17 @@ import {
   ThumbsUp,
   ExternalLink,
   Languages,
+  Phone,
 } from 'lucide-react';
 import type { Restaurant } from '../types';
-import { formatAddress, formatCurrency, pluralize } from '../lib/format';
+import { cleanAddressSegment, formatAddress, formatCurrency, isPoorAddress, pluralize } from '../lib/format';
 import { recommendSimilar } from '../lib/recommendations';
-import { formatOpeningHours, openNowLabel } from '../lib/openHours';
-import { estimateCostForTwo } from '../lib/costEstimate';
-import { budgetDisplay, priceForTwoDisplay } from '../lib/priceDisplay';
-import { usePageTitle } from '../lib/usePageTitle';
+import { formatOpeningHours, formatScrapedHours, openNowLabel } from '../lib/openHours';
+import { priceForTwoDisplay, priceSummary } from '../lib/priceDisplay';
+import { usePageMeta } from '../lib/usePageMeta';
+import { buildRestaurantMeta } from '../lib/restaurantMeta';
+import { MARKET } from '../lib/market';
+import { track } from '../lib/analytics';
 import { useFavorites } from '../context/FavoritesContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { useRestaurant } from '../hooks/useRestaurants';
@@ -30,7 +32,7 @@ import { useDiscoveryFacts } from '../hooks/useDiscoveryFacts';
 import { useReviewSamples } from '../hooks/useReviewSamples';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { selectRestaurantPhotos } from '../lib/photos';
-import { getOffersForRestaurant } from '../hooks/useOffers';
+import { getOffersForRestaurant, OFFERS_ENABLED } from '../hooks/useOffers';
 import { distanceKm } from '../lib/geo';
 import { googleMapsDirectionsUrl, googleMapsEmbedUrl, googleMapsPlaceUrl, googleMapsReviewsUrl } from '../lib/maps';
 import { effectiveRating, effectiveReviewCount } from '../lib/ratings';
@@ -52,7 +54,7 @@ import { priceChange } from '../lib/menu';
 import type { MenuItem } from '../domain/menu';
 import WriteReview from '../components/WriteReview';
 import { useRestaurantDrafts } from '../hooks/useDrafts';
-import { useUserReviews } from '../hooks/useReviews';
+import { useUserReviews, upsertFlag } from '../hooks/useReviews';
 import { applyApprovedDraft } from '../lib/restaurantDraft';
 import { useLiveGoogle } from '../hooks/useLiveGoogle';
 import { businessStatusLabel, liveOpenNowLabel, mergeLiveGoogle } from '../lib/liveGoogleView';
@@ -69,10 +71,12 @@ export default function RestaurantPage() {
   const navigate = useNavigate();
   const userReviews = useUserReviews();
   useRestaurantDrafts(); // re-render when an approved profile draft lands
-  const [bookingRequested, setBookingRequested] = useState(false);
   const [priceDish, setPriceDish] = useState<MenuItem | null>(null);
   const [requestingOrigin, setRequestingOrigin] = useState(false);
-  usePageTitle(restaurant ? restaurant.name : 'Restaurant not found');
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<string | null>(null);
+  const [reportDone, setReportDone] = useState(false);
+  // Per-page SEO/social metadata is wired below, once gallery photos resolve.
 
   // Live Google data — on-demand refresh keyed by the stable Place ID. Runs
   // before any early return so the hook order stays stable.
@@ -84,6 +88,11 @@ export default function RestaurantPage() {
     if (restaurant) addRecent(restaurant.id);
   }, [restaurant, addRecent]);
 
+  // Pilot measurement: record a restaurant view (coarse id only, no PII).
+  useEffect(() => {
+    if (restaurant) track('restaurant_viewed', { id: restaurant.id });
+  }, [restaurant]);
+
   // Gallery photos come from a source-aware selector: real Google photos →
   // Khabo Kothay community photos → clearly-labelled demo placeholders.
   const gallery = restaurant ? selectRestaurantPhotos(restaurant, 'gallery') : { photos: [], leadSource: 'demo' as const };
@@ -94,6 +103,20 @@ export default function RestaurantPage() {
       : gallery.leadSource === 'khabo'
         ? 'Khabo Kothay photos'
         : 'Demo photos';
+
+  // Per-restaurant SEO + social metadata, built by the shared builder that the
+  // prerender pipeline also uses (single source of truth — no drift between the
+  // crawler-facing HTML and the runtime <head>). Derived only from real fields;
+  // ratings are emitted only when a genuine Google review count exists.
+  const pageMeta = useMemo(() => {
+    if (!restaurant) return {};
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const lead = images[0]?.imageUrl;
+    const image = lead && origin ? new URL(lead, origin).href : lead;
+    return buildRestaurantMeta(restaurant, { origin, image });
+  }, [restaurant, images]);
+
+  usePageMeta(pageMeta);
 
 
 
@@ -170,24 +193,39 @@ export default function RestaurantPage() {
   const offers = getOffersForRestaurant(effective.id);
   const myReviewsHere = userReviews.filter((r) => r.restaurantId === effective.id);
 
-  // Budget stat — verified from a curated price, menu-estimated otherwise,
-  // never a fabricated tier.
-  const budgetStat = budgetDisplay(restaurant);
-
   // Clean, source-verified address lines (street → area → city).
-  // Priority: verified address > Google live address > display address
+  // Priority: verified address (verification_records) > curated display
+  // address (address_display ?? address) > live Google address as a last
+  // resort only. The raw Google-scraped address must never override the
+  // curated/verified address on the page.
   const verifiedAddress = displayRestaurant.address_verified;
   const addressLines = formatAddress({
-    address: verifiedAddress || googleView?.address || displayRestaurant.address,
+    address: verifiedAddress || displayRestaurant.address || googleView?.address,
     location: displayRestaurant.location,
     city: displayRestaurant.city,
     isVerified: !!verifiedAddress,
   });
+  // Honest sub-note: "Verified address" when a verified value is shown;
+  // otherwise the remaining address lines; nothing when a complete recorded
+  // address is displayed; "Address to be verified" only when there is no
+  // usable address at all (the raw value is a fragment/plus code).
+  const hasUsableAddress = Boolean(
+    (verifiedAddress || displayRestaurant.address) &&
+      !isPoorAddress(cleanAddressSegment(verifiedAddress || displayRestaurant.address || '')),
+  );
+  const addressNote = verifiedAddress
+    ? 'Address verified'
+    : addressLines.slice(1).join(', ') || (hasUsableAddress ? '' : 'Address to be verified');
 
   // Graceful hours display: weekly maps render per-day, single ranges render
   // one neutral row, and unparseable strings say "Hours being verified".
+  // Recorded Google-scrape fragments ("Open Closes 1 am", "Closed Opens
+  // 12 pm Sat") render as one honest summary row rather than being hidden.
   const rawHours = googleView?.openingHours || displayRestaurant.openingHours;
-  const hoursRows = formatOpeningHours(rawHours);
+  const structuredHours = formatOpeningHours(rawHours);
+  const scrapedRow = formatScrapedHours(rawHours);
+  const hoursRows = structuredHours ?? (scrapedRow ? [scrapedRow] : null);
+  const hoursFromScrape = !structuredHours && Boolean(scrapedRow);
   const hoursValue = hoursRows
     ? hoursRows.length > 1
       ? `${hoursRows[0].day} ${hoursRows[0].label} · ${hoursRows.length} days`
@@ -196,9 +234,9 @@ export default function RestaurantPage() {
       ? 'Hours being verified'
       : 'Not recorded';
 
-  // Estimated cost for two — derived from the loaded menu (or the estimate
-  // already attached at the repository seam), never labelled verified.
-  const costEstimate = restaurant.menuEstimate ?? estimateCostForTwo(menuState.menu);
+  // Honest "how expensive?" summary — composes the budget tier, the verified
+  // price-for-two, and the menu-derived estimate with no invented ranges.
+  const priceSummaryData = priceSummary(restaurant, menuState.menu);
 
   const hasCommunityContent = effective.khabo.signals.length > 0 || effective.khabo.tags.length > 0;
   // Approved discovery facts render in their own section only when present;
@@ -269,8 +307,13 @@ export default function RestaurantPage() {
           )}
 
           <div className="detail__chips">
+            {restaurant.location && (
+              <Link to={`/area/${encodeURIComponent(restaurant.location)}`} className="chip chip--link">
+                <MapPin size={13} aria-hidden="true" /> {restaurant.location}
+              </Link>
+            )}
             {restaurant.cuisines.map((c) => (
-              <Link key={c} to={`/explore?cuisine=${encodeURIComponent(c)}`} className="chip chip--link">
+              <Link key={c} to={`/cuisine/${encodeURIComponent(c)}`} className="chip chip--link">
                 {c}
               </Link>
             ))}
@@ -280,7 +323,7 @@ export default function RestaurantPage() {
               </Link>
             ))}
             {restaurant.vibes.map((v) => (
-              <Link key={v} to={`/explore?vibe=${encodeURIComponent(v)}`} className="chip chip--vibe chip--link">
+              <Link key={v} to={`/explore?vibe=${encodeURIComponent(v)}`} className="chip chip--link">
                 {v === 'Family' ? 'Family friendly' : v}
               </Link>
             ))}
@@ -288,60 +331,56 @@ export default function RestaurantPage() {
 
           {/* Primary actions */}
           <div className="detail__actions">
-            <button
-              type="button"
+            <span
               className="btn btn--primary"
-              onClick={() => setBookingRequested(true)}
-              disabled={bookingRequested}
+              aria-disabled="true"
+              style={{ cursor: 'not-allowed', opacity: 0.65 }}
+              title="Reservations are not available in this preview"
             >
-              <CalendarCheck size={15} aria-hidden="true" />
-              {bookingRequested ? 'Requested' : 'Reserve a table'}
-            </button>
+              Reservations coming soon
+            </span>
             <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost">
               <Navigation size={15} aria-hidden="true" /> Directions
             </a>
+            {googleView?.phone && (
+              <a href={`tel:${googleView.phone}`} className="btn btn--ghost">
+                <Phone size={15} aria-hidden="true" /> Call
+              </a>
+            )}
             {websiteUrl && (
               <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost">
                 <Globe size={15} aria-hidden="true" /> Website
               </a>
             )}
-            <ShareButton url={`/restaurant/${restaurant.id}`} />
+            <ShareButton
+              url={`/restaurant/${restaurant.id}`}
+              title={restaurant.name}
+              text={restaurant.tagline || `${restaurant.cuisines.slice(0, 2).join(', ')} restaurant in ${restaurant.location || MARKET.city}`}
+            />
           </div>
 
           <div className="detail__stats">
             <div className="stat">
-              <span className="stat__label">Budget</span>
-              <span className="stat__value">{budgetStat.label}</span>
-              {budgetStat.sub && <span className="stat__sub">{budgetStat.sub}</span>}
-            </div>
-            <div className="stat">
-              <span className="stat__label">Cost for two</span>
-              <span className="stat__value">
-                {restaurant.priceForTwo > 0
-                  ? formatCurrency(restaurant.priceForTwo)
-                  : costEstimate
-                    ? `${formatCurrency(costEstimate.low)} – ${formatCurrency(costEstimate.high)}`
-                    : 'Not listed'}
-              </span>
-              <span className="stat__sub">
-                {restaurant.priceForTwo > 0
-                  ? 'approx. without drinks'
-                  : costEstimate
-                    ? 'Estimated from menu prices · not verified'
-                    : 'no listed price range yet'}
-              </span>
+              <span className="stat__label">How expensive?</span>
+              <span className="stat__value">{priceSummaryData.tierLabel}</span>
+              <span className="stat__sub">{priceSummaryData.spendLabel}</span>
+              {priceSummaryData.perPersonLabel && (
+                <span className="stat__sub">{priceSummaryData.perPersonLabel}</span>
+              )}
+              <span className="stat__sub stat__sub--note">{priceSummaryData.evidence}</span>
             </div>
             <div className="stat">
               <span className="stat__label">Location</span>
               <span className="stat__value"><MapPin size={14} style={{ verticalAlign: '-2px' }} aria-hidden="true" /> {addressLines[0] ?? (displayRestaurant.location || 'Dhaka')}</span>
-              <span className="stat__sub">{addressLines.slice(1).join(', ') || 'Address to be verified'}</span>
+              <span className="stat__sub">{addressNote}</span>
             </div>
             <div className="stat">
               <span className="stat__label">Hours</span>
               <span className="stat__value">{hoursValue}</span>
               <span className="stat__sub">
-                {businessStatus && businessStatus !== 'Operational' ? `${businessStatus} · ` : ''}
-                {openStatus ?? (rawHours ? (displayRestaurant.hasDelivery ? 'Delivery available' : 'Dine-in only') : 'Hours being verified')}
+                {hoursFromScrape
+                  ? 'Recorded hours — confirm with restaurant'
+                  : `${businessStatus && businessStatus !== 'Operational' ? `${businessStatus} · ` : ''}${openStatus ?? (rawHours ? (displayRestaurant.hasDelivery ? 'Delivery available' : 'Dine-in only') : 'Hours being verified')}`}
               </span>
             </div>
           </div>
@@ -399,6 +438,7 @@ export default function RestaurantPage() {
               )}
             </section>
 
+            {OFFERS_ENABLED && (
             <section id="offers" className="detail__section">
               <h2>Offers</h2>
               {offers.length > 0 ? (
@@ -445,7 +485,8 @@ export default function RestaurantPage() {
                   No verified offers currently listed.
                 </p>
               )}
-            </section>
+              </section>
+            )}
 
             <MenuSection
               restaurant={restaurant}
@@ -459,17 +500,20 @@ export default function RestaurantPage() {
 
             <section className="detail__section">
               <div className="detail__section-head">
-                <h2>Khabo Kothay reviews</h2>
-                {restaurant.khabo.reviewCount > 0 && (
-                  <span className="detail__section-sub">
-                    {restaurant.khabo.reviewCount.toLocaleString('en-IN')} community reviews · our readers, not Google
-                  </span>
-                )}
+                <h2>Your notes</h2>
+                <span className="detail__section-sub">
+                  Notes you save stay on this device only — not shared publicly yet.
+                </span>
               </div>
               <WriteReview restaurant={restaurant} onChanged={() => undefined} />
-              {restaurant.khabo.reviews.length === 0 && myReviewsHere.length === 0 && (
+              {myReviewsHere.length === 0 && (
                 <p className="t-sm" style={{ color: 'var(--ink-soft)', marginBottom: 'var(--s3)' }}>
-                  Be the first to review this restaurant on Khabo Kothay.
+                  Save a private note about this place. It's stored on this device only and isn't shared publicly yet.
+                </p>
+              )}
+              {myReviewsHere.length > 0 && (
+                <p className="t-sm" style={{ color: 'var(--ink-soft)', marginBottom: 'var(--s2)' }}>
+                  Your private notes (saved on this device only):
                 </p>
               )}
               <div className="reviews">
@@ -499,50 +543,6 @@ export default function RestaurantPage() {
                     )}
                     <div className="review__foot">
                       <span className="review__helpful"><ThumbsUp size={11} aria-hidden="true" /> {r.helpfulCount} found this helpful</span>
-                    </div>
-                  </blockquote>
-                ))}
-                {restaurant.khabo.reviews.map((r) => (
-                  <blockquote key={r.id} className="review">
-                    <div className="review__head">
-                      <span className="review__avatar" aria-hidden="true">{r.author.charAt(0)}</span>
-                      <div>
-                        <strong>{r.author}</strong>
-                        <RatingStars rating={r.rating} />
-                      </div>
-                      {r.visitStatus && (
-                        <span className={`visit-badge ${r.visitStatus === 'regular' ? 'visit-badge--regular' : ''}`}>
-                          <Check size={11} aria-hidden="true" />
-                          {r.visitStatus === 'regular' ? 'Regular' : 'Visited'}
-                          {r.visitCount ? ` · ${r.visitCount}×` : ''}
-                        </span>
-                      )}
-                      <span className="review__date">{r.date}</span>
-                    </div>
-                    {([['Food', r.foodRating], ['Service', r.serviceRating], ['Value', r.valueRating], ['Ambience', r.ambienceRating]] as const)
-                      .filter(([, v]) => v !== undefined)
-                      .length > 0 && (
-                      <div className="review__subratings">
-                        {([['Food', r.foodRating], ['Service', r.serviceRating], ['Value', r.valueRating], ['Ambience', r.ambienceRating]] as const)
-                          .filter(([, v]) => v !== undefined)
-                          .map(([label, v]) => (
-                            <span key={label} className="chip chip--meal">{label} {v}</span>
-                          ))}
-                      </div>
-                    )}
-                    <p>“{r.comment}”</p>
-                    {r.favoriteDishes && r.favoriteDishes.length > 0 && (
-                      <p className="review__dishes">
-                        <span className="review__dishes-label">Ordered:</span>
-                        {r.favoriteDishes.map((d) => (
-                          <span key={d} className="chip">{d}</span>
-                        ))}
-                      </p>
-                    )}
-                    <div className="review__foot">
-                      <span className="review__helpful">
-                        <ThumbsUp size={11} aria-hidden="true" /> {r.helpfulCount} found this helpful
-                      </span>
                     </div>
                   </blockquote>
                 ))}
@@ -599,6 +599,63 @@ export default function RestaurantPage() {
                 )}
               </section>
             )}
+
+            <section className="detail__section">
+              <h2>Report incorrect information</h2>
+              {reportDone ? (
+                <p className="t-sm" style={{ color: 'var(--success)' }}>
+                  Thanks — we've logged this and an editor will review it.
+                </p>
+              ) : reportOpen ? (
+                <div className="report-form">
+                  <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>What's wrong with this listing?</p>
+                  <div className="chip-row">
+                    {['Wrong address', 'Wrong hours', 'Wrong menu', 'Closed restaurant', 'Other'].map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        className={`chip chip--select ${reportReason === reason ? 'chip--active' : ''}`}
+                        onClick={() => setReportReason(reason)}
+                        aria-pressed={reportReason === reason}
+                      >
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="write-review__actions">
+                    <button
+                      type="button"
+                      className="btn btn--primary btn--sm"
+                      disabled={!reportReason}
+                      onClick={() => {
+                        if (!reportReason) return;
+                        upsertFlag({
+                          id: `flag-${restaurant.id}-${reportReason.toLowerCase().replace(/\s+/g, '-')}`,
+                          targetType: 'restaurant',
+                          targetId: restaurant.id,
+                          reason: reportReason,
+                          status: 'pending',
+                          at: new Date().toISOString(),
+                        });
+                        track('report_submitted', { id: restaurant.id, reason: reportReason });
+                        setReportOpen(false);
+                        setReportDone(true);
+                      }}
+                    >
+                      Submit report
+                    </button>
+                    <button type="button" className="btn btn--subtle btn--sm" onClick={() => setReportOpen(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" className="btn btn--ghost btn--sm" onClick={() => setReportOpen(true)}>
+                  Report incorrect information
+                </button>
+              )}
+            </section>
+
           </div>
 
           <aside className="detail__aside">
@@ -606,7 +663,18 @@ export default function RestaurantPage() {
               <h3>Know before you go</h3>
               <ul className="info-card__list">
                 <li><span><MapPin size={12} aria-hidden="true" /> Neighbourhood</span><strong>{displayRestaurant.location || 'Dhaka'}</strong></li>
-                <li><span>Address</span><strong>{addressLines.join(', ') || 'To be verified'}</strong></li>
+                <li>
+                  <span>Address</span>
+                  <strong>{addressLines.join(', ') || 'To be verified'}</strong>
+                  {verifiedAddress && (
+                    <span
+                      className="verify-note"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 2, color: 'var(--success)', fontSize: '0.75rem', fontWeight: 600 }}
+                    >
+                      <Check size={12} aria-hidden="true" /> Address verified
+                    </span>
+                  )}
+                </li>
                 <li><span>Hours</span><strong>
                   {hoursRows ? (
                     hoursRows.length > 1 ? (
@@ -633,23 +701,8 @@ export default function RestaurantPage() {
                   <strong>{[!restaurant.vegUnknown && restaurant.isVeg && 'Veg', restaurant.hasOutdoorSeating && 'Outdoor seating', restaurant.hasDelivery && 'Delivery', restaurant.isFamilyFriendly && 'Family friendly'].filter(Boolean).join(' · ') || (restaurant.hasDelivery ? 'Dine-in & delivery' : 'Dine-in')}</strong>
                 </li>
               </ul>
-              {bookingRequested ? (
-                <div className="booking-confirm" role="status" aria-live="polite">
-                  <Check size={16} style={{ display: 'block', margin: '0 auto 4px', color: 'var(--primary-strong)' }} aria-hidden="true" />
-                  <strong>Booking requested!</strong>
-                  <p>This is a demo — no table was actually booked.</p>
-                </div>
-              ) : (
-                <button type="button" className="btn btn--primary btn--block" onClick={() => setBookingRequested(true)}>
-                  <CalendarCheck size={15} aria-hidden="true" /> Reserve a table
-                </button>
-              )}
               <p className="info-card__note">
-                {restaurant.khabo.reviewCount > 0 ? (
-                  <>{restaurant.khabo.reviewCount.toLocaleString('en-IN')} {pluralize(restaurant.khabo.reviewCount, 'review')} · {restaurant.khabo.rating.toFixed(1)}★ Khabo Kothay average</>
-                ) : (
-                  <>{effectiveReviewCount(restaurant).toLocaleString('en-IN')} {pluralize(effectiveReviewCount(restaurant), 'review')} · {effectiveRating(restaurant).toFixed(1)}★ on Google</>
-                )}
+                {effectiveReviewCount(restaurant).toLocaleString('en-IN')} {pluralize(effectiveReviewCount(restaurant), 'review')} · {effectiveRating(restaurant).toFixed(1)}★ on Google
               </p>
             </div>
 

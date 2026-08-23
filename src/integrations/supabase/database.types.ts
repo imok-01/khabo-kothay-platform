@@ -43,7 +43,7 @@ export type VerificationStatus =
 
 export type LifecycleStatus = 'ACTIVE' | 'ARCHIVED' | 'REMOVED';
 
-export type MenuStatus = 'ACTIVE' | 'ARCHIVED' | 'UNKNOWN';
+export type MenuStatus = 'ACTIVE' | 'ARCHIVED' | 'DRAFT' | 'PENDING_REVIEW' | 'PUBLISHED' | 'UNKNOWN';
 
 export type ImageStatus = 'ACTIVE' | 'PENDING' | 'REJECTED' | 'ARCHIVED';
 
@@ -124,6 +124,16 @@ export type MenusRow = {
   title: string | null;
   status: MenuStatus;
   source_id: string | null;
+  version: number | null;
+  parent_menu_id: string | null;
+  effective_from: string | null;
+  effective_to: string | null;
+  created_by: string | null;
+  published_by: string | null;
+  published_at: string | null;
+  modified_by: string | null;
+  submitted_by: string | null;
+  submitted_at: string | null;
   created_at: string | null;
 }
 
@@ -133,6 +143,11 @@ export type MenuItemsRow = {
   item_name: string;
   description: string | null;
   category: string | null;
+  available: boolean | null;
+  featured: boolean | null;
+  is_signature: boolean | null;
+  image_url: string | null;
+  last_verified_at: string | null;
   created_at: string | null;
 }
 
@@ -225,6 +240,7 @@ export type RolesRow = {
   id: string;
   user_id: string;
   role_name: string;
+  restaurant_id: string | null;
 }
 
 export type SavedRestaurantsRow = {
@@ -386,7 +402,16 @@ export type Database = {
     // key space would make the Views/Functions overloads ambiguously match
     // table names and break insert typing.
     Views: { [_ in never]: never };
-    Functions: { [_ in never]: never };
+    Functions: {
+      upsert_menu_content: {
+        Args: {
+          p_menu_id: string;
+          p_items: Json;
+          p_observations: Json;
+        };
+        Returns: undefined;
+      };
+    };
     Enums: {
       restaurant_status: RestaurantStatus;
       verification_status: VerificationStatus;

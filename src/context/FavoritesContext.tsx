@@ -12,6 +12,7 @@ import { grantFavouriteReward, grantCuisineDiscovery } from '../lib/rewards';
 import { favoritesService } from '../services/favoritesService';
 import { restaurantService } from '../services/restaurantService';
 import { getSession } from '../store/demoDb';
+import { track } from '../lib/analytics';
 
 interface FavoritesContextValue {
   favoriteIds: string[];
@@ -49,6 +50,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     setFavoriteIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+    // Pilot measurement (coarse id only, no PII).
+    track(adding ? 'saved' : 'unsaved', { id });
     // Rewards only when a signed-in user ADDS a favourite (never on remove,
     // never for anonymous browsing). Capped at the ledger level.
     if (!adding) return;

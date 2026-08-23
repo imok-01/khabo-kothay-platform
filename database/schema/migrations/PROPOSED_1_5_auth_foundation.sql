@@ -85,7 +85,7 @@ CREATE POLICY user_reviews_read ON user_reviews
 
 DROP POLICY IF EXISTS user_reviews_write ON user_reviews;
 CREATE POLICY user_reviews_write ON user_reviews
-    FOR INSERT, UPDATE, DELETE USING (auth.uid() = user_id);
+    FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- roles: Users can read their own roles
 DROP POLICY IF EXISTS roles_own ON roles;

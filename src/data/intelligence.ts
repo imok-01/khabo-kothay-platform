@@ -1,13 +1,18 @@
 import type { RestaurantIntelligence } from '../domain/intelligence';
 
 /**
- * Executive-approved baseline recommendation metadata for every restaurant.
+ * LEGACY / NON-PRODUCTION FIXTURE — Kolkata demo seed intelligence.
  *
- * This is the Khabo Kothay curated layer — it is NOT derived from free text.
- * A restaurant mentioning "biryani" in its description does not become a
- * biryani specialist here; only the attributes in this table count, and the
- * recommendation engine reads exactly this (plus executive-approved
- * restaurant suggestions). Everything is 'seed' provenance.
+ * Every entry here is keyed to a Kolkata restaurant id (bhojohori-manna,
+ * trincas, arsalan, …). NONE of these ids exist in the production Dhaka
+ * catalogue, so this table is effectively dead on the live app: the
+ * recommendation engine falls through to `deriveIntelligence` for every
+ * Dhaka venue. It is retained only as the executive-seed baseline fallback
+ * shape and for the test suite.
+ *
+ * Do NOT extend this for production. Build the real Khabo Kothay intelligence
+ * layer (curated seed served from the database) instead. Everything here is
+ * 'seed' provenance by construction.
  *
  * Structured so a future backend can serve the same shape from a database.
  */
@@ -219,6 +224,10 @@ export const SEED_INTELLIGENCE: Record<string, RestaurantIntelligence> = {
   },
 };
 
-export function seedIntelligence(restaurantId: string): RestaurantIntelligence | undefined {
+/**
+ * @deprecated Legacy Kolkata-demo lookup. Prefer the real (database-backed)
+ * intelligence layer. Returns `undefined` for every production Dhaka venue.
+ */
+export function legacySeedIntelligence(restaurantId: string): RestaurantIntelligence | undefined {
   return SEED_INTELLIGENCE[restaurantId];
 }

@@ -6,9 +6,16 @@ import Footer from './components/Footer';
 import CompareTray from './components/CompareTray';
 import ErrorBoundary from './components/ErrorBoundary';
 import RequireRole from './components/RequireRole';
+import { trackSessionStart } from './lib/analytics';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const ExplorePage = lazy(() => import('./pages/ExplorePage'));
+const DiscoverPage = lazy(() => import('./pages/DiscoverPage'));
+const GuidesPage = lazy(() => import('./pages/GuidesPage'));
+const GuidesDetailPage = lazy(() => import('./pages/GuidesDetailPage'));
+const CuisinePage = lazy(() => import('./pages/CuisinePage'));
+const AreaPage = lazy(() => import('./pages/AreaPage'));
+const ForYouPage = lazy(() => import('./pages/ForYouPage'));
 const RestaurantPage = lazy(() => import('./pages/RestaurantPage'));
 const FavoritesPage = lazy(() => import('./pages/FavoritesPage'));
 const SavedPage = lazy(() => import('./pages/SavedPage'));
@@ -49,6 +56,10 @@ function RouteFallback() {
 }
 
 export default function App() {
+  useEffect(() => {
+    trackSessionStart();
+  }, []);
+
   return (
     <div className="app">
       <a href="#main-content" className="skip-link">Skip to content</a>
@@ -61,6 +72,13 @@ export default function App() {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/explore" element={<ExplorePage />} />
+              <Route path="/search" element={<ExplorePage />} />
+              <Route path="/discover" element={<DiscoverPage />} />
+              <Route path="/guides" element={<GuidesPage />} />
+              <Route path="/guides/:slug" element={<GuidesDetailPage />} />
+              <Route path="/cuisine/:slug" element={<CuisinePage />} />
+              <Route path="/area/:slug" element={<AreaPage />} />
+              <Route path="/for-you" element={<ForYouPage />} />
               <Route path="/restaurant/:id" element={<RestaurantPage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/saved" element={<SavedPage />} />

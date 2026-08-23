@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Soup, UtensilsCrossed, MapPin, Heart, Bookmark, Star, Info, Compass, HelpCircle, Mail, FileText, ShieldCheck, Store, PenLine, BookOpen, AtSign, Share2 } from 'lucide-react';
+import { Soup, UtensilsCrossed, Heart, Bookmark, Info, Compass, HelpCircle, Mail, FileText, ShieldCheck, Store, PenLine, BookOpen, AtSign, Share2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { roleViewOf } from '../domain/auth';
 
@@ -30,9 +30,9 @@ export default function Footer() {
         </div>
         <div className="footer__col">
           <h4>Discover</h4>
-          <Link to="/explore"><UtensilsCrossed size={14} aria-hidden="true" /> Explore restaurants</Link>
-          <Link to="/explore"><MapPin size={14} aria-hidden="true" /> Cuisines</Link>
-          <Link to="/explore"><Star size={14} aria-hidden="true" /> Collections</Link>
+          <Link to="/discover"><Compass size={14} aria-hidden="true" /> Discover hub</Link>
+          <Link to="/explore"><UtensilsCrossed size={14} aria-hidden="true" /> Search restaurants</Link>
+          <Link to="/guides"><BookOpen size={14} aria-hidden="true" /> Guides</Link>
           <Link to="/saved"><Bookmark size={14} aria-hidden="true" /> Saved</Link>
           <Link to="/favorites"><Heart size={14} aria-hidden="true" /> Favourites</Link>
         </div>

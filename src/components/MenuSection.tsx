@@ -78,7 +78,7 @@ export default function MenuSection({ restaurant, menu, menuStatus, onRetryMenu,
       <div className="detail__section-head">
         <h2>Menu</h2>
         <span className="detail__section-sub">
-          <UtensilsCrossed size={12} aria-hidden="true" /> {menuStatus === 'ready' && menu ? `${menu.categories.length} categories · ${totalDishes} dishes · prices as recorded` : 'prices as recorded'}
+          <UtensilsCrossed size={12} aria-hidden="true" /> {menuStatus === 'ready' && menu && totalDishes > 0 ? `${menuSourceLabel(menu)} · ${menu.categories.length} categories · ${totalDishes} dishes` : 'prices as recorded'}
         </span>
       </div>
 
@@ -231,6 +231,35 @@ export default function MenuSection({ restaurant, menu, menuStatus, onRetryMenu,
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * Confidence label derived strictly from each dish's recorded `source` —
+ * never invented. "Verified menu" is shown only when every dish is sourced
+ * from a verified record; otherwise the dominant real source is named.
+ */
+function menuSourceLabel(menu: Menu): string {
+  const counts: Record<string, number> = {};
+  for (const c of menu.categories) {
+    for (const d of c.dishes) {
+      counts[d.source] = (counts[d.source] ?? 0) + 1;
+    }
+  }
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const allVerified = entries.length === 1 && entries[0][0] === 'verified';
+  if (allVerified) return 'Verified menu';
+  const top = entries[0];
+  if (!top) return 'Menu available';
+  switch (top[0]) {
+    case 'restaurant':
+      return 'Menu from the restaurant';
+    case 'website':
+      return 'Menu from the restaurant website';
+    case 'khabo-recorded':
+      return 'Menu recorded by Khabo Kothay';
+    default:
+      return 'Menu available';
+  }
+}
 
 function MenuDishRow({ dish, categoryLabel, showSignatureTag, onPriceHistory }: {
   dish: MenuItem;

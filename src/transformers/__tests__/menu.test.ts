@@ -10,11 +10,21 @@ function bundle(): MenuDbBundle {
     status: 'ACTIVE',
     source_id: 'src-web',
     created_at: '2026-01-01T00:00:00Z',
+    version: null,
+    parent_menu_id: null,
+    effective_from: null,
+    effective_to: null,
+    created_by: null,
+    published_by: null,
+    published_at: null,
+    modified_by: null,
+    submitted_by: null,
+    submitted_at: null,
   };
   const items: MenuItemsRow[] = [
-    { id: 'item-1', menu_id: 'menu-1', item_name: 'Chicken Biryani', description: 'Fragrant basmati', category: 'Biryani', created_at: null },
-    { id: 'item-2', menu_id: 'menu-1', item_name: 'Mutton Biryani', description: null, category: 'Biryani', created_at: null },
-    { id: 'item-3', menu_id: 'menu-1', item_name: 'Firni', description: null, category: null, created_at: null },
+    { id: 'item-1', menu_id: 'menu-1', item_name: 'Chicken Biryani', description: 'Fragrant basmati', category: 'Biryani', created_at: null, available: null, featured: null, is_signature: null, image_url: null, last_verified_at: null },
+    { id: 'item-2', menu_id: 'menu-1', item_name: 'Mutton Biryani', description: null, category: 'Biryani', created_at: null, available: null, featured: null, is_signature: null, image_url: null, last_verified_at: null },
+    { id: 'item-3', menu_id: 'menu-1', item_name: 'Firni', description: null, category: null, created_at: null, available: null, featured: null, is_signature: null, image_url: null, last_verified_at: null },
   ];
   const observations: PriceObservationsRow[] = [
     { id: 'obs-1', menu_item_id: 'item-1', price: 280, currency: 'BDT', source_id: 'src-web', observed_at: '2025-06-10T00:00:00Z', raw_price: 'Tk 280', verification_status: 'UNVERIFIED' },
@@ -89,6 +99,109 @@ describe('mapMenuRows', () => {
     expect(biryani.priceHistory).toHaveLength(1);
     expect(biryani.priceHistory[0].price).toBe(280);
     expect(biryani.price).toBe(280);
+  });
+
+  it('prefers the PUBLISHED menu over ACTIVE when both exist', () => {
+    const b = bundle();
+    b.menus = [
+      { ...b.menus[0], id: 'menu-active', status: 'ACTIVE' },
+      { ...b.menus[0], id: 'menu-pub', status: 'PUBLISHED' },
+    ];
+    b.itemsByMenu = { 'menu-pub': b.itemsByMenu['menu-1'], 'menu-active': [] };
+    const menu = mapMenuRows(b)!;
+    // Only the PUBLISHED menu's items are shown.
+    expect(menu.categories.length).toBeGreaterThan(0);
+  });
+
+  it('falls back to ACTIVE when no PUBLISHED menu exists (pre-version data)', () => {
+    const b = bundle();
+    b.menus = [{ ...b.menus[0], id: 'menu-only', status: 'ACTIVE' }];
+    b.itemsByMenu = { 'menu-only': b.itemsByMenu['menu-1'] };
+    const menu = mapMenuRows(b)!;
+    expect(menu.categories.length).toBeGreaterThan(0);
+  });
+
+  it('reads availability, featured, signature and image from menu_items rows', () => {
+    const b = bundle();
+    const items = b.itemsByMenu['menu-1'];
+    b.itemsByMenu = {
+      'menu-1': items.map((it, i) =>
+        i === 0
+          ? { ...it, available: false, featured: true, is_signature: true, image_url: 'https://img/biryani.jpg' }
+          : { ...it, available: true, featured: false, is_signature: false, image_url: null },
+      ),
+    };
+    const menu = mapMenuRows(b)!;
+    const biryani = menu.categories.find((c) => c.name === 'Biryani')!;
+    const chicken = biryani.dishes.find((d) => d.name === 'Chicken Biryani')!;
+    expect(chicken.available).toBe(false);
+    expect(chicken.featured).toBe(true);
+    expect(chicken.isSignature).toBe(true);
+    expect(chicken.imageUrl).toBe('https://img/biryani.jpg');
+    const mutton = biryani.dishes.find((d) => d.name === 'Mutton Biryani')!;
+    expect(mutton.available).toBe(true);
+    expect(mutton.featured).toBe(false);
+    expect(mutton.isSignature).toBe(false);
+    expect(mutton.imageUrl).toBeUndefined();
+  });
+
+  it('maps legacy menu_items rows lacking enrichment columns with safe defaults', () => {
+    const b = bundle();
+    // Simulate a pre-4.3B row that has none of the new enrichment columns.
+    const legacyItems = b.itemsByMenu['menu-1'].map((it) => {
+      const { available, featured, is_signature, image_url, last_verified_at, ...rest } = it;
+      return rest as unknown as MenuItemsRow;
+    });
+    b.itemsByMenu = { 'menu-1': legacyItems };
+    const menu = mapMenuRows(b)!;
+    const biryani = menu.categories.find((c) => c.name === 'Biryani')!;
+    const chicken = biryani.dishes.find((d) => d.name === 'Chicken Biryani')!;
+    // Missing columns fall back to safe defaults, never throwing.
+    expect(chicken.available).toBe(true);
+    expect(chicken.featured).toBe(false);
+    expect(chicken.isSignature).toBe(false);
+    expect(chicken.imageUrl).toBeUndefined();
+  });
+
+  // ---- 4.3C public-read safety: lifecycle statuses must never leak ---------
+
+  it('returns the PUBLISHED menu when only a PUBLISHED row exists', () => {
+    const b = bundle();
+    b.menus = [{ ...b.menus[0], id: 'menu-pub', status: 'PUBLISHED' }];
+    b.itemsByMenu = { 'menu-pub': b.itemsByMenu['menu-1'] };
+    const menu = mapMenuRows(b);
+    expect(menu).toBeDefined();
+    expect(menu!.categories.length).toBeGreaterThan(0);
+  });
+
+  it('never surfaces a DRAFT menu to the public read', () => {
+    const b = bundle();
+    b.menus = [{ ...b.menus[0], id: 'menu-draft', status: 'DRAFT' }];
+    b.itemsByMenu = { 'menu-draft': b.itemsByMenu['menu-1'] };
+    expect(mapMenuRows(b)).toBeUndefined();
+  });
+
+  it('never surfaces PENDING_REVIEW or ARCHIVED menus to the public read', () => {
+    const b = bundle();
+    b.menus = [
+      { ...b.menus[0], id: 'm-pr', status: 'PENDING_REVIEW' },
+      { ...b.menus[0], id: 'm-arch', status: 'ARCHIVED' },
+    ];
+    b.itemsByMenu = { 'm-pr': [], 'm-arch': b.itemsByMenu['menu-1'] };
+    expect(mapMenuRows(b)).toBeUndefined();
+  });
+
+  it('keeps the PUBLISHED menu public while a sibling DRAFT is being edited', () => {
+    const b = bundle();
+    b.menus = [
+      { ...b.menus[0], id: 'm-pub', status: 'PUBLISHED' },
+      { ...b.menus[0], id: 'm-draft', status: 'DRAFT', parent_menu_id: 'm-pub' },
+    ];
+    // The draft carries no items; the published menu carries the real ones.
+    b.itemsByMenu = { 'm-pub': b.itemsByMenu['menu-1'], 'm-draft': [] };
+    const menu = mapMenuRows(b);
+    expect(menu).toBeDefined();
+    expect(menu!.categories.length).toBeGreaterThan(0);
   });
 });
 

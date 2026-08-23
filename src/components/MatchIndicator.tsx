@@ -10,6 +10,7 @@ import {
   Leaf,
   MapPin,
   Navigation,
+  Search,
   Sparkles,
   Star,
   Users,
@@ -51,6 +52,7 @@ const DIMENSION_ICON: Record<MatchDimension, LucideIcon> = {
   distance: Navigation,
   party: Users,
   dining: UtensilsCrossed,
+  search: Search,
 };
 
 /**

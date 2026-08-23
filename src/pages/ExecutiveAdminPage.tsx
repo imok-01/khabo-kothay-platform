@@ -1,8 +1,9 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   LayoutDashboard, Store, Users, MessageSquareQuote, BadgePercent, LineChart, ShieldCheck,
   Check, X, Flag, History, TrendingUp, TrendingDown, ExternalLink, Sparkles, RefreshCw,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePageTitle } from '../lib/usePageTitle';
@@ -20,13 +21,15 @@ import { getEffectiveMenu } from '../lib/menu';
 import { priceChange } from '../lib/menu';
 import { getAllOffers } from '../hooks/useOffers';
 import { formatCurrency } from '../lib/format';
+import { menuService } from '../services/menuService';
+import { diffMenus } from '../transformers/menu';
 import { effectiveRating } from '../lib/ratings';
 import { DEMO_ACCOUNT_CREDENTIALS } from '../hooks/useAccounts';
 import type { Menu } from '../domain/menu';
 import GoogleRefreshButton from '../components/GoogleRefreshButton';
 import { isGooglePlacesConfigured, refreshGoogleBulk } from '../hooks/useGoogleRefresh';
 
-type Tab = 'dashboard' | 'restaurants' | 'users' | 'reviews' | 'offers' | 'prices' | 'intelligence';
+type Tab = 'dashboard' | 'restaurants' | 'users' | 'reviews' | 'offers' | 'prices' | 'intelligence' | 'menus';
 
 export default function ExecutiveAdminPage() {
   usePageTitle('Khabo Kothay executive');
@@ -61,8 +64,9 @@ export default function ExecutiveAdminPage() {
     { key: 'users', label: 'Users', icon: <Users size={15} /> },
     { key: 'reviews', label: 'Reviews', icon: <MessageSquareQuote size={15} /> },
     { key: 'offers', label: 'Offers', icon: <BadgePercent size={15} /> },
-    { key: 'prices', label: 'Price history', icon: <LineChart size={15} /> },
+     { key: 'prices', label: 'Price history', icon: <LineChart size={15} /> },
     { key: 'intelligence', label: 'Recommendations', icon: <Sparkles size={15} /> },
+    { key: 'menus', label: 'Menu reviews', icon: <ClipboardCheck size={15} /> },
   ];
 
   return (
@@ -99,6 +103,7 @@ export default function ExecutiveAdminPage() {
           {tab === 'offers' && <OffersTab />}
           {tab === 'prices' && <PricesTab />}
           {tab === 'intelligence' && <IntelligenceTab />}
+          {tab === 'menus' && <MenuReviewsTab />}
         </div>
       </div>
     </main>
@@ -572,6 +577,242 @@ function IntelligenceTab() {
       <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s3)' }}>
         Approved changes apply immediately to match scores across the app. Current live metadata for any venue is visible in its restaurant admin → Discovery tags.
       </p>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Menu review queue — executive approves/rejects owner submissions   */
+/* ------------------------------------------------------------------ */
+
+type ReviewRow = {
+  menuId: string;
+  restaurantId: string;
+  restaurantName: string;
+  title: string | null;
+  submittedAt: string | null;
+  submittedBy: string | null;
+};
+
+function MenuReviewsTab() {
+  const { session } = useAuth();
+  const [reviews, setReviews] = useState<ReviewRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pair, setPair] = useState<{ submitted: import('../domain/menu').Menu | null; published: import('../domain/menu').Menu | null } | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [acting, setActing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await menuService.fetchPendingMenuReviews();
+      setReviews(rows);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load submissions.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const select = async (menuId: string) => {
+    if (selectedId === menuId) {
+      setSelectedId(null);
+      setPair(null);
+      return;
+    }
+    setSelectedId(menuId);
+    setDetailLoading(true);
+    setPair(null);
+    try {
+      const p = await menuService.fetchMenuReviewPair(menuId);
+      setPair(p);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load submission.');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const decide = async (approve: boolean) => {
+    if (!selectedId || !session) return;
+    setActing(true);
+    setError(null);
+    try {
+      if (approve) await menuService.approveMenu(selectedId, session.id);
+      else await menuService.rejectMenu(selectedId, session.id);
+      setSelectedId(null);
+      setPair(null);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Action failed.');
+    } finally {
+      setActing(false);
+    }
+  };
+
+  if (loading) {
+    return <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Loading submissions…</p>;
+  }
+
+  return (
+    <div className="panel">
+      <div className="panel__head">
+        <h2>Menu reviews</h2>
+        <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{reviews.length} awaiting decision</span>
+      </div>
+
+      {error && <p className="admin-banner admin-banner--error" role="alert">{error}</p>}
+
+      {reviews.length === 0 ? (
+        <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
+          No menu submissions awaiting review. Owner-edited menus appear here once submitted.
+        </p>
+      ) : (
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
+              <tr><th>Restaurant</th><th>Submitted</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              {reviews.map((r) => {
+                const open = selectedId === r.menuId;
+                const diff = pair && open && pair.submitted
+                  ? diffMenus(pair.submitted, pair.published)
+                  : null;
+                return (
+                  <Fragment key={r.menuId}>
+                    <tr>
+                      <td>
+                        <strong>{r.restaurantName}</strong>
+                        {r.title && <span className="t-xs" style={{ color: 'var(--ink-faint)', display: 'block' }}>{r.title}</span>}
+                      </td>
+                      <td className="t-sm" style={{ color: 'var(--ink-soft)' }}>
+                        {r.submittedAt ? new Date(r.submittedAt).toLocaleString('en-IN') : '—'}
+                      </td>
+                      <td><span className="admin-status admin-status--pending">pending review</span></td>
+                      <td>
+                        <span className="admin-table__actions">
+                          <button type="button" className="btn btn--ghost btn--sm" onClick={() => select(r.menuId)} disabled={acting}>
+                            {open ? 'Hide' : 'Review'}
+                          </button>
+                        </span>
+                      </td>
+                    </tr>
+                    {open && (
+                      <tr className="admin-draft-row">
+                        <td colSpan={4}>
+                          {detailLoading ? (
+                            <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Loading submission…</p>
+                          ) : pair?.submitted ? (
+                            <MenuReviewDetail
+                              submittedTitle={r.title}
+                              publishedTitle={pair.published ? 'Current published menu' : 'No published menu yet'}
+                              diff={diff}
+                              onApprove={() => decide(true)}
+                              onReject={() => decide(false)}
+                              acting={acting}
+                            />
+                          ) : (
+                            <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Could not load this submission.</p>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MenuReviewDetail({
+  submittedTitle,
+  publishedTitle,
+  diff,
+  onApprove,
+  onReject,
+  acting,
+}: {
+  submittedTitle: string | null;
+  publishedTitle: string;
+  diff: ReturnType<typeof diffMenus> | null;
+  onApprove: () => void;
+  onReject: () => void;
+  acting: boolean;
+}) {
+  return (
+    <div className="admin-draft-detail">
+      <div className="admin-review-summary">
+        <strong>Awaiting review — submitted menu vs published</strong>
+        {diff && (
+          <span className="t-xs" style={{ color: 'var(--ink-faint)', marginLeft: 'var(--s3)' }}>
+            {diff.addedCount} added · {diff.removedCount} removed · {diff.changedCount} changed
+          </span>
+        )}
+      </div>
+      <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s2)' }}>
+        Submitted: <strong>{submittedTitle ?? 'Untitled'}</strong> &nbsp;↔&nbsp; Published: <strong>{publishedTitle}</strong>
+      </p>
+
+      {diff && diff.categories.length > 0 ? (
+        <div className="menu-review-diff">
+          {diff.categories.map((cat) => (
+            <div key={cat.name} className="menu-review-cat">
+              <h4 className="menu-review-cat__name">{cat.name}</h4>
+              <ul className="menu-review-dishes">
+                {cat.dishes.map((d) => (
+                  <li
+                    key={`${cat.name}-${d.name}`}
+                    className={`menu-review-dish menu-review-dish--${d.status}`}
+                  >
+                    <span className="menu-review-dish__name">{d.name}</span>
+                    {d.status === 'added' && <span className="admin-status admin-status--approved">added</span>}
+                    {d.status === 'removed' && <span className="admin-status admin-status--rejected">removed</span>}
+                    {d.status === 'changed' && <span className="admin-status admin-status--pending">changed</span>}
+                    {d.status === 'unchanged' && <span className="t-xs" style={{ color: 'var(--ink-faint)' }}>unchanged</span>}
+                    {d.changes.length > 0 && (
+                      <span className="admin-draft-diff">
+                        {d.changes.map((c) => (
+                          <span key={c.field} className="menu-review-change">
+                            <span className="admin-draft-field">{c.field}</span>{' '}
+                            <span className="admin-draft-old">{c.from}</span> →{' '}
+                            <span className="admin-draft-new">{c.to}</span>
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s2)' }}>
+          No field-level differences detected (submitted menu matches the published one).
+        </p>
+      )}
+
+      <div className="admin-table__actions" style={{ marginTop: 'var(--s3)' }}>
+        <button type="button" className="btn btn--primary btn--sm" onClick={onApprove} disabled={acting}>
+          <Check size={12} aria-hidden="true" /> Approve &amp; publish
+        </button>
+        <button type="button" className="btn btn--subtle btn--sm" onClick={onReject} disabled={acting}>
+          <X size={12} aria-hidden="true" /> Reject
+        </button>
+      </div>
     </div>
   );
 }
