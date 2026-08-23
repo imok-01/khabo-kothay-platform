@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Dices, MapPin, ArrowRight, Star, Utensils, HeartHandshake, Wallet, History, BadgePercent, Sparkles, UserRound } from 'lucide-react';
 import { CUISINES, NEIGHBORHOODS } from '../hooks/useTaxonomy';
 import type { Restaurant } from '../types';
@@ -20,9 +20,9 @@ import { collections } from '../hooks/useCollections';
 import { effectiveRating } from '../lib/ratings';
 import { selectRestaurantPhotos } from '../lib/photos';
 import RestaurantCard from '../components/RestaurantCard';
-import SearchBar from '../components/SearchBar';
 import RestaurantImage from '../components/RestaurantImage';
 import SectionHeading from '../components/SectionHeading';
+import DiscoveryBuilder from '../components/DiscoveryBuilder';
 import QuickShortcuts from '../components/QuickShortcuts';
 import FetchError from '../components/FetchError';
 import { SkeletonGrid } from '../components/Skeleton';
@@ -37,11 +37,6 @@ export default function HomePage() {
 
   const [surpriseMode, setSurpriseMode] = useState<SurpriseMode>('any');
   const [surprise, setSurprise] = useState<{ restaurant: Restaurant; match: MatchResult; label: string } | null>(null);
-
-  // Direct search entry (with autocomplete) is provided by <SearchBar/> below.
-  // It reuses the existing /search system — no new search logic. Pre-fills from
-  // the URL so a user returning with ?q= sees their term.
-  const [searchParams] = useSearchParams();
 
   const preferences = useMemo(() => {
     const derived = derivePreferences(favoriteIds, recentIds);
@@ -136,9 +131,14 @@ export default function HomePage() {
             Khabo <em>Kothay?</em>
           </h1>
           <p className="hero__subtitle">
-            Search by dish, restaurant or area — or tell us what you're craving and we'll guide you.
+            Tell us what you're craving and we'll guide you.
           </p>
-            <SearchBar variant="hero" restaurants={restaurants} initialQuery={searchParams.get('q') ?? ''} />
+
+          <DiscoveryBuilder
+            restaurants={restaurants}
+            geo={{ status: geo.status, reference: geo.reference, request: geo.request }}
+          />
+
           <QuickShortcuts />
           <dl className="hero__stats">
             <div><dt>{restaurants.length > 0 ? `${restaurants.length}+` : '–'}</dt><dd>restaurants</dd></div>
