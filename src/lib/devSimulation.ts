@@ -16,8 +16,15 @@ export function isDevSimulation(): boolean {
   // Unit tests always exercise the real mock repositories, so never treat the
   // test run as a dev simulation even if the flag leaks in.
   if (import.meta.env.MODE === 'test') return false;
-  // DIAGNOSTIC: force true to isolate whether env injection is the blocker.
-  return true;
+  // Gate on the project-level environment (VITE_APP_ENV), NOT the Vite build
+  // MODE. The DEV Vercel project is shipped as a *production build*
+  // (import.meta.env.MODE === 'production') but is a *non-production
+  // environment* (VITE_APP_ENV === 'development'). This is the same
+  // discriminator assertDevSimulationNotProduction() and the dev-auth guard
+  // use, so a flag set on the real production project still fails loudly while
+  // the dev project (and a local `npm run dev`) activate the simulation.
+  const appEnv = import.meta.env.VITE_APP_ENV || 'production';
+  return import.meta.env.VITE_DEV_SIMULATION === 'true' && appEnv !== 'production';
 }
 
 /**
