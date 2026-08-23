@@ -23,7 +23,6 @@ import RestaurantCard from '../components/RestaurantCard';
 import SearchBar from '../components/SearchBar';
 import RestaurantImage from '../components/RestaurantImage';
 import SectionHeading from '../components/SectionHeading';
-import DiscoveryBuilder from '../components/DiscoveryBuilder';
 import QuickShortcuts from '../components/QuickShortcuts';
 import FetchError from '../components/FetchError';
 import { SkeletonGrid } from '../components/Skeleton';
@@ -140,8 +139,6 @@ export default function HomePage() {
             Search by dish, restaurant or area — or tell us what you're craving and we'll guide you.
           </p>
             <SearchBar variant="hero" restaurants={restaurants} initialQuery={searchParams.get('q') ?? ''} />
-          <p className="hero__guided">…or refine your discovery:</p>
-          <DiscoveryBuilder restaurants={restaurants} geo={{ status: geo.status, reference: geo.reference, request: geo.request }} />
           <QuickShortcuts />
           <dl className="hero__stats">
             <div><dt>{restaurants.length > 0 ? `${restaurants.length}+` : '–'}</dt><dd>restaurants</dd></div>
@@ -339,11 +336,12 @@ export default function HomePage() {
       {/* Cuisines */}
       <section className="section section--tint">
         <div className="section__inner">
-          <SectionHeading eyebrow="What are you craving?" title="Browse by cuisine" lede="Every kitchen in the city, one craving at a time." action={{ label: 'All cuisines', to: '/discover' }} />
+          <SectionHeading eyebrow="What are you craving?" title="Browse by cuisine" lede="Every kitchen in the city, one craving at a time." action={{ label: 'View all cuisines', to: '/discover' }} />
           <div className="tile-grid tile-grid--cuisines">
             {CUISINES.filter((c) => restaurants.some((r) => r.cuisines.includes(c)))
               .map((c) => ({ c, count: restaurants.filter((r) => r.cuisines.includes(c)).length }))
               .sort((a, b) => b.count - a.count)
+              .slice(0, 3)
               .map(({ c, count }, i) => (
                 <Link
                   key={c}

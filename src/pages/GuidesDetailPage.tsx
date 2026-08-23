@@ -45,16 +45,19 @@ export default function GuidesDetailPage() {
   const cover = data?.find((r) => r.id === collection.coverRestaurantId);
   const others = collections.filter((c) => c.slug !== collection.slug).slice(0, 4);
   const exploreHref = '/explore?' + new URLSearchParams(collection.exploreParams).toString();
+  const byId = useMemo(() => new Map((data ?? []).map((r) => [r.id, r])), [data]);
 
   return (
     <main>
       <section className="hero hero--compact">
-        <div className="hero__inner">
-          <span className="hero__eyebrow"><BookOpen size={14} aria-hidden="true" /> Guide</span>
-          <h1 className="hero__title">{collection.title}</h1>
-          <p className="hero__subtitle">{collection.description}</p>
+        <div className="hero__inner hero__inner--split">
+          <div className="hero__copy">
+            <span className="hero__eyebrow"><BookOpen size={14} aria-hidden="true" /> Restaurant shortlist</span>
+            <h1 className="hero__title">{collection.title}</h1>
+            <p className="hero__subtitle">{collection.description}</p>
+          </div>
           {cover && (
-            <div className="surprise__art" style={{ marginTop: '1.25rem', maxWidth: 420 }}>
+            <div className="hero__media">
               <RestaurantImage source={leadPhoto(cover)} name={cover.name} width={420} />
             </div>
           )}
@@ -93,15 +96,21 @@ export default function GuidesDetailPage() {
           <div className="section__inner">
             <SectionHeading eyebrow="More to explore" title="Other guides" lede="Keep discovering." />
             <div className="collection-grid">
-              {others.map((c) => (
-                <Link key={c.slug} to={`/guides/${c.slug}`} className="collection-card">
-                  <div className="collection-card__body">
-                    <h3>{c.title}</h3>
-                    <p>{c.description}</p>
-                    <span className="collection-card__count">View guide <ArrowRight size={13} aria-hidden="true" /></span>
-                  </div>
-                </Link>
-              ))}
+              {others.map((c) => {
+                const cover = byId.get(c.coverRestaurantId);
+                return (
+                  <Link key={c.slug} to={`/guides/${c.slug}`} className="collection-card">
+                    <div className="collection-card__media">
+                      {cover && <RestaurantImage source={leadPhoto(cover)} name={c.title} width={560} />}
+                    </div>
+                    <div className="collection-card__body">
+                      <h3>{c.title}</h3>
+                      <p>{c.description}</p>
+                      <span className="collection-card__count">View guide <ArrowRight size={13} aria-hidden="true" /></span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </section>

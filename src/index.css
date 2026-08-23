@@ -868,6 +868,50 @@ button {
   margin: var(--s6) 0 var(--s2);
 }
 
+/* Split hero used on guide detail pages: copy beside the cover photo. */
+.hero__inner--split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  text-align: left;
+  max-width: 1040px;
+}
+
+.hero__inner--split .hero__copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.hero__inner--split .hero__title,
+.hero__inner--split .hero__subtitle {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.hero__inner--split .hero__media {
+  flex: 0 0 auto;
+  width: clamp(180px, 32vw, 360px);
+}
+
+.hero__inner--split .hero__media .img-wrap,
+.hero__inner--split .hero__media .img-fallback {
+  border-radius: var(--radius, 16px);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+}
+
+@media (max-width: 720px) {
+  .hero__inner--split {
+    flex-direction: column-reverse;
+    text-align: center;
+  }
+  .hero__inner--split .hero__media {
+    width: 100%;
+    max-width: 420px;
+  }
+}
+
 @media (max-width: 560px) {
   .hero__search {
     flex-wrap: wrap;

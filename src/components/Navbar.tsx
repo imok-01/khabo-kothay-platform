@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Soup, Bookmark, Menu, X, UserCircle2, ShieldCheck, Store, Info, UtensilsCrossed, Compass, BookOpen, PenLine, LogOut, Settings, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { Soup, Bookmark, Menu, X, UserCircle2, ShieldCheck, Store, Info, UtensilsCrossed, Compass, BookOpen, PenLine, LogOut, Settings, LayoutDashboard, ChevronDown, Heart } from 'lucide-react';
 import { useSaved } from '../context/SavedContext';
 import { useAuth } from '../context/AuthContext';
 import { roleViewOf, type RoleView } from '../domain/auth';
@@ -94,6 +94,7 @@ export default function Navbar() {
     return [
       { to: '/profile', label: 'Profile', icon: UserCircle2 },
         { to: '/saved', label: 'Saved restaurants', icon: Bookmark },
+        { to: '/favorites', label: 'Favourites', icon: Heart },
         { to: '/profile', label: 'Settings', icon: Settings },
     ];
   })();
@@ -257,6 +258,10 @@ export default function Navbar() {
               <NavLink to="/saved" onClick={() => setMenuOpen(false)}>
                 <Bookmark size={15} aria-hidden="true" />
                 Saved {savedIds.length > 0 && `(${savedIds.length})`}
+              </NavLink>
+              <NavLink to="/favorites" onClick={() => setMenuOpen(false)}>
+                <Heart size={15} aria-hidden="true" />
+                Favourites
               </NavLink>
             </div>
             <div className="nav__mobile-section">

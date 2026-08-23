@@ -16,13 +16,21 @@ function leadPhoto(restaurant: Restaurant | undefined) {
 
 const FEATURED_SLUG = 'italian-evenings';
 
-// Presentation-only grouping of the existing collections (the data model has
-// no category field and is auto-generated, so grouping stays in the view).
-const GROUP_DEFS: { label: string; slugs: string[] }[] = [
-  { label: 'By area', slugs: ['top-rated', 'gulshan-dining', 'banani-bites'] },
-  { label: 'By cuisine', slugs: ['chinese-cravings', 'bangladeshi-classics', 'italian-evenings', 'japanese-table'] },
-  { label: 'By occasion & convenience', slugs: ['quick-and-casual', 'delivered'] },
+// Presentation-only grouping of the existing collections. The data model has
+// no category field and is auto-generated, so we derive the group from each
+// collection's `exploreParams` instead of hard-coding slugs — that way a new
+// collection is grouped automatically and never silently dropped.
+const GROUP_ORDER: { key: 'area' | 'cuisine' | 'occasion'; label: string }[] = [
+  { key: 'area', label: 'By area' },
+  { key: 'cuisine', label: 'By cuisine' },
+  { key: 'occasion', label: 'By occasion & convenience' },
 ];
+
+const groupKeyOf = (c: (typeof collections)[number]): 'area' | 'cuisine' | 'occasion' => {
+  if ('location' in c.exploreParams) return 'area';
+  if ('cuisine' in c.exploreParams) return 'cuisine';
+  return 'occasion';
+};
 
 export default function GuidesPage() {
   const { status, data } = useRestaurants();
@@ -33,14 +41,10 @@ export default function GuidesPage() {
   const featured = collections.find((c) => c.slug === FEATURED_SLUG);
 
   const grouped = useMemo(() => {
-    const groups = GROUP_DEFS.map((g) => ({
+    return GROUP_ORDER.map((g) => ({
       label: g.label,
-      items: collections.filter((c) => g.slugs.includes(c.slug) && c.slug !== FEATURED_SLUG),
+      items: collections.filter((c) => c.slug !== FEATURED_SLUG && groupKeyOf(c) === g.key),
     })).filter((g) => g.items.length > 0);
-    const assigned = new Set(GROUP_DEFS.flatMap((g) => g.slugs));
-    const ungrouped = collections.filter((c) => c.slug !== FEATURED_SLUG && !assigned.has(c.slug));
-    if (ungrouped.length) groups.push({ label: 'More guides', items: ungrouped });
-    return groups;
   }, []);
 
   const fcover = featured ? byId.get(featured.coverRestaurantId) : undefined;
