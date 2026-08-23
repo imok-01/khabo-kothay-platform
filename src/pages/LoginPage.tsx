@@ -351,6 +351,7 @@ export default function LoginPage() {
                   { contact: '01912345678', role: 'restaurant_admin', label: 'Restaurant admin · Almajlis Arabian Restaurant' },
                   { contact: '01612345678', role: 'user', label: 'Regular user' },
                   { contact: '01512345678', role: 'user', label: 'Regular user' },
+                  { contact: '01412345678', role: 'restaurant_admin', label: 'Restaurant admin · KK Demo Restaurant' },
                 ].map((acc) => (
                   <button
                     key={acc.contact}

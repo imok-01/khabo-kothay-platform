@@ -1,6 +1,8 @@
 import { offers as seedOffers } from '../data/offers';
 import type { Offer } from '../domain/offers';
 import { getAdminOffers } from '../store/demoDb';
+import { isDevSimulation } from '../lib/devSimulation';
+import { DEV_DEMO_OFFERS } from '../data/devSimulation';
 
 /**
  * OfferProvider abstraction — the UI never imports the mock dataset directly,
@@ -17,6 +19,8 @@ export interface OfferProvider {
 }
 
 function allOffers(): Offer[] {
+  // Isolated dev-simulation offers only exist when the simulation is enabled.
+  const dev = isDevSimulation() ? DEV_DEMO_OFFERS : [];
   const seeded: Offer[] = seedOffers.map((o) => ({ ...o, source: 'seed', status: 'approved' }));
   const admin = getAdminOffers()
     .filter((o) => o.status === 'approved')
@@ -33,7 +37,7 @@ function allOffers(): Offer[] {
       source: 'admin',
       status: 'approved',
     }));
-  return [...seeded, ...admin];
+  return [...dev, ...seeded, ...admin];
 }
 
 const mockOfferProvider: OfferProvider = {

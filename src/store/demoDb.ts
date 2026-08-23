@@ -135,6 +135,14 @@ export function saveUser(user: DemoUser) {
   emit('users');
 }
 
+export function deleteUser(id: string) {
+  const users = getUsers();
+  if (!users.byId[id]) return;
+  delete users.byId[id];
+  write(KEY.users, users);
+  emit('users');
+}
+
 export function getAllUsers(): DemoUser[] {
   return Object.values(getUsers().byId);
 }

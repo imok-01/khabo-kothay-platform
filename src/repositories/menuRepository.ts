@@ -8,6 +8,11 @@ import { isSupabaseConfigured } from '../integrations/supabase/client';
 import * as queries from '../integrations/supabase/queries';
 import { mapMenuRows, mapOwnerMenu, ownerMenuToContent, pickWorkingMenu } from '../transformers/menu';
 import { resolveRestaurantUuid } from './restaurantRepository';
+import { isDevSimulation, assertDevSimulationNotProduction } from '../lib/devSimulation';
+import { DEV_DEMO_RESTAURANT, DEV_DEMO_MENU } from '../data/devSimulation';
+
+// Production safety: never load the dev simulation in a production build.
+assertDevSimulationNotProduction();
 
 /**
  * MenuRepository — the seam between menu data and the UI.
@@ -104,8 +109,16 @@ const demoDraftRegistry = new Map<string, { restaurantId: string; status: MenuSt
 
 /** Demo store implementation: admin-authored override wins over the seed. */
 export const mockMenuRepository: MenuRepository = {
-  getEffectiveMenu: (restaurant) => getMenuOverride(restaurant.id) ?? getMenuForRestaurant(restaurant),
+  getEffectiveMenu: (restaurant) => {
+    if (isDevSimulation() && restaurant.id === DEV_DEMO_RESTAURANT.id) {
+      return getMenuOverride(restaurant.id) ?? DEV_DEMO_MENU;
+    }
+    return getMenuOverride(restaurant.id) ?? getMenuForRestaurant(restaurant);
+  },
   async fetchMenuForRestaurant(restaurantId: string): Promise<Menu | null> {
+    if (isDevSimulation() && restaurantId === DEV_DEMO_RESTAURANT.id) {
+      return getMenuOverride(restaurantId) ?? DEV_DEMO_MENU;
+    }
     const restaurant = seedRestaurants.find((r) => r.id === restaurantId);
     if (!restaurant) return null;
     return getMenuOverride(restaurant.id) ?? getMenuForRestaurant(restaurant);
@@ -134,6 +147,10 @@ export const mockMenuRepository: MenuRepository = {
   },
 
   async fetchOwnerMenu(restaurantId: string): Promise<{ menu: Menu | null; status: MenuStatus | null; menuId: string | null }> {
+    if (isDevSimulation() && restaurantId === DEV_DEMO_RESTAURANT.id) {
+      const override = getMenuOverride(restaurantId);
+      return { menu: override ?? DEV_DEMO_MENU, status: 'PUBLISHED', menuId: override ? 'override' : null };
+    }
     const r = seedRestaurants.find((x) => x.id === restaurantId);
     const menu = r ? getMenuOverride(r.id) ?? getMenuForRestaurant(r) : null;
     return { menu, status: menu ? 'PUBLISHED' : null, menuId: null };
@@ -340,7 +357,9 @@ class SupabaseMenuRepository implements MenuRepository {
   }
 }
 
-/** Active repository — Supabase when configured, the mock otherwise. */
-export const menuRepository: MenuRepository = isSupabaseConfigured()
-  ? new SupabaseMenuRepository()
-  : mockMenuRepository;
+/** Active repository — dev simulation forces the mock store; Supabase otherwise. */
+export const menuRepository: MenuRepository = isDevSimulation()
+  ? mockMenuRepository
+  : isSupabaseConfigured()
+    ? new SupabaseMenuRepository()
+    : mockMenuRepository;

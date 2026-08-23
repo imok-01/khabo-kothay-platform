@@ -4,6 +4,7 @@ import * as queries from '../integrations/supabase/queries';
 import { mapUserProfileRow, type MappedKkUser } from '../transformers/user';
 import type { StoredUsers } from '../store/demoDb';
 import {
+  deleteUser as demoDeleteUser,
   getAllUsers as demoGetAllUsers,
   getSession as demoGetSession,
   getUsers as demoGetUsers,
@@ -28,6 +29,8 @@ export interface UserRepository {
   saveUser(user: DemoUser): void;
   getSession(): SessionUser | null;
   setSession(session: SessionUser | null): void;
+  /** Remove a user by id (used to purge stale shadow accounts). */
+  deleteUser(id: string): void;
   /** Future async path: profile + roles for a Supabase auth user. */
   fetchProfileForUser?(userId: string): Promise<MappedKkUser | null>;
 }
@@ -39,6 +42,7 @@ export const mockUserRepository: UserRepository = {
   saveUser: (user) => demoSaveUser(user),
   getSession: () => demoGetSession(),
   setSession: (session) => demoSetSession(session),
+  deleteUser: (id) => demoDeleteUser(id),
 };
 
 class SupabaseUserRepository implements UserRepository {
@@ -65,6 +69,10 @@ class SupabaseUserRepository implements UserRepository {
 
   setSession(session: SessionUser | null): void {
     demoSetSession(session);
+  }
+
+  deleteUser(id: string): void {
+    demoDeleteUser(id);
   }
 
   async fetchProfileForUser(userId: string): Promise<MappedKkUser | null> {

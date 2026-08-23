@@ -1,6 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AppUser, DemoUser, Role, SessionUser } from '../domain/auth';
-import { seedDemoAccounts } from '../data/demoAccounts';
+import { seedDemoAccounts, seedDevSimulationAccounts, seedKKDemoRestaurantAdmin } from '../data/demoAccounts';
+import { isDevSimulation } from '../lib/devSimulation';
+import { mockSendNotification } from '../lib/devServices';
+import { KK_DEMO_RESTAURANT_ADMIN_ID } from '../data/devSimulation';
 import { ensureDemoStartingBalance } from '../lib/rewards';
 import { isPrerender } from '../lib/prerender';
 import { runDevIdentityCleanup } from '../lib/devIdentityCleanup';
@@ -145,6 +148,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             ensureDemoStartingBalance(u.id);
           }
         }
+
+        // KK Demo Restaurant admin: seed in any dev-auth context (not only when
+        // the full simulation is on) so the "Restaurant admin · KK Demo
+        // Restaurant" demo login resolves to the correct role. The rest of the
+        // simulation (menu / reviews / offers / demo customers) stays gated
+        // behind isDevSimulation() and is untouched here.
+        if (useDevMock) {
+          const kkDemoOwner = await seedKKDemoRestaurantAdmin();
+          // Purge any stale generic account sharing this contact (created by a
+          // previous partial login) so phone-first lookup resolves to the admin
+          // rather than a shadow regular user.
+          for (const u of Object.values(userService.getUsers().byId)) {
+            if (u.id === kkDemoOwner.id) continue;
+            const a = (u.contact || '').replace(/\D/g, '');
+            const b = (kkDemoOwner.contact || '').replace(/\D/g, '');
+            if (a && a === b) userService.deleteUser(u.id);
+          }
+          if (!userService.getUsers().byId[kkDemoOwner.id]) userService.saveUser(kkDemoOwner);
+          ensureDemoStartingBalance(kkDemoOwner.id);
+        }
+
+        // Dev simulation: layer the isolated KK Demo Restaurant accounts
+        // (restaurant admin + demo customers) on top of the base demo accounts.
+        // These only exist when VITE_DEV_SIMULATION is enabled, so production
+        // and plain dev builds are unaffected.
+        if (isDevSimulation()) {
+          const devAccounts = await seedDevSimulationAccounts();
+          for (const acc of devAccounts) {
+            if (!userService.getUsers().byId[acc.id]) userService.saveUser(acc);
+            ensureDemoStartingBalance(acc.id);
+          }
+          // Give the demo customers a realistic wallet: referral rewards and a
+          // sample coupon so the rewards/referrals/coupons surfaces feel alive.
+          const aisha = userService.getUsers().byId['kk-demo-customer-aisha'];
+          if (aisha) {
+            const state = getRewards(aisha.id);
+            saveRewards(aisha.id, {
+              ...state,
+              referrals: aisha.referrals,
+              transactions: [
+                ...state.transactions,
+                { id: 'kk-txn-ref-aisha', delta: 30, reason: 'Referral verified: Tasnim A.', at: '2026-07-10', kind: 'referral' },
+              ],
+              coupons: [
+                ...state.coupons,
+                {
+                  id: 'kk-coupon-aisha-1',
+                  code: 'KKDEMO-AISHA-100',
+                  title: '৳100 OFF Biryani',
+                  value: '৳100 OFF',
+                  description: 'Demo coupon for KK Demo Restaurant.',
+                  minBill: '৳500',
+                  applicable: 'KK Demo Restaurant',
+                  expiresAt: '2026-12-31',
+                  status: 'available',
+                  grantedAt: '2026-07-01',
+                  demoNote: 'Demo coupon — not valid at real venues.',
+                },
+              ],
+            });
+          }
+          const nila = userService.getUsers().byId['kk-demo-customer-nila'];
+          if (nila) {
+            const state = getRewards(nila.id);
+            saveRewards(nila.id, { ...state, referrals: nila.referrals });
+          }
+
+          // External service mocks: the simulation never calls real SMS /
+          // payment / notification vendors — it logs a simulated notification.
+          mockSendNotification(KK_DEMO_RESTAURANT_ADMIN_ID, 'Welcome to the KK Demo Restaurant simulation.');
+        }
+
         // A stored session must reference a user that still exists.
         const current = userService.getSession();
         if (current && !userService.getUsers().byId[current.id]) {

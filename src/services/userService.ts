@@ -15,6 +15,7 @@ export const userService = {
   getUsers: () => userRepository.getUsers(),
   getAllUsers: (): DemoUser[] => userRepository.getAllUsers(),
   saveUser: (user: DemoUser): void => userRepository.saveUser(user),
+  deleteUser: (id: string): void => userRepository.deleteUser(id),
   getSession: (): SessionUser | null => userRepository.getSession(),
   setSession: (session: SessionUser | null): void => userRepository.setSession(session),
 

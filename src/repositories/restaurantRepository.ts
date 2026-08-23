@@ -7,6 +7,11 @@ import { isSupabaseConfigured } from '../integrations/supabase/client';
 import * as queries from '../integrations/supabase/queries';
 import { mapRestaurantRows, slugify } from '../transformers/restaurant';
 import { mockMenuRepository } from './menuRepository';
+import { isDevSimulation, assertDevSimulationNotProduction } from '../lib/devSimulation';
+import { DEV_DEMO_RESTAURANT } from '../data/devSimulation';
+
+// Production safety: never load the dev simulation in a production build.
+assertDevSimulationNotProduction();
 
 /**
  * RestaurantRepository — the single seam between restaurant data and the
@@ -67,15 +72,24 @@ async function withLatency<T>(key: string, produce: () => T): Promise<T> {
   return value;
 }
 
+/**
+ * Catalogue source. In dev simulation the isolated KK Demo Restaurant is
+ * appended (never mutating the 206 real venues); otherwise the static seed is
+ * used untouched.
+ */
+function seedList(): Restaurant[] {
+  return isDevSimulation() ? [...seedRestaurants, DEV_DEMO_RESTAURANT] : seedRestaurants;
+}
+
 export const mockRestaurantRepository: RestaurantRepository = {
   // Executive-approved profile drafts override the base record at this seam,
   // so Explore cards, detail pages and Home all see the same published data.
   allSync: () =>
     attachIntelligenceToAll(
-      seedRestaurants.map((r) => toCatalogueView(withMenuEstimate(applyApprovedDraft({ ...r })))),
+      seedList().map((r) => toCatalogueView(withMenuEstimate(applyApprovedDraft({ ...r })))),
     ),
   byIdSync: (id) => {
-    const found = seedRestaurants.find((r) => r.id === id);
+    const found = seedList().find((r) => r.id === id);
     return found ? attachIntelligence(withMenuEstimate(applyApprovedDraft({ ...found }))) : undefined;
   },
   fetchAll: () => withLatency('restaurants:all', () => mockRestaurantRepository.allSync()),
@@ -263,7 +277,13 @@ export async function resolveRestaurantSlug(uuid: string): Promise<string | null
   return row ? slugify(row.name) : null;
 }
 
-/** Active repository — Supabase when configured, the mock otherwise. */
-export const restaurantRepository: RestaurantRepository = isSupabaseConfigured()
-  ? new SupabaseRestaurantRepository()
-  : mockRestaurantRepository;
+/**
+ * Active repository. In dev simulation we always use the mock source so the
+ * real 206 catalogue (and any configured Supabase backend) is never touched —
+ * the KK Demo Restaurant is layered on top via `seedList()`.
+ */
+export const restaurantRepository: RestaurantRepository = isDevSimulation()
+  ? mockRestaurantRepository
+  : isSupabaseConfigured()
+    ? new SupabaseRestaurantRepository()
+    : mockRestaurantRepository;

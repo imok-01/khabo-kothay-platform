@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { isSupabaseConfigured } from '../integrations/supabase/client';
 import { resolveRestaurantSlug } from '../repositories/restaurantRepository';
 import { getAllRestaurantsSync } from './useRestaurantData';
+import { isDevSimulation } from '../lib/devSimulation';
 import type { Restaurant } from '../types';
 
 /**
@@ -16,7 +17,11 @@ import type { Restaurant } from '../types';
 export function useOwnerRestaurants(
   restaurantIds: string[] | undefined,
 ): { restaurants: Restaurant[]; loading: boolean } {
-  const configured = isSupabaseConfigured();
+  // In the dev simulation the restaurant catalogue is the mock store (which
+  // includes the isolated KK Demo Restaurant keyed by slug), so resolve owned
+  // venues directly from the sync catalogue rather than via Supabase UUIDs.
+  const sim = isDevSimulation();
+  const configured = isSupabaseConfigured() && !sim;
   const [state, setState] = useState<{ restaurants: Restaurant[]; loading: boolean }>(() => {
     if (!configured) {
       return {

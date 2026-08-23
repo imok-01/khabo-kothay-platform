@@ -4,6 +4,11 @@ import { getUserReviews, upsertUserReview, deleteUserReview } from '../store/dem
 import { isSupabaseConfigured } from '../integrations/supabase/client';
 import * as queries from '../integrations/supabase/queries';
 import { mapUserReviewRows } from '../transformers/review';
+import { isDevSimulation, assertDevSimulationNotProduction } from '../lib/devSimulation';
+import { DEV_DEMO_REVIEWS, KK_DEMO_RESTAURANT_ID } from '../data/devSimulation';
+
+// Production safety: never load the dev simulation in a production build.
+assertDevSimulationNotProduction();
 
 /**
  * ReviewRepository — KK community reviews only.
@@ -32,8 +37,12 @@ export interface ReviewRepository {
 
 /** Mock implementation — demo localStorage store. */
 export const mockReviewRepository: ReviewRepository = {
-  getForRestaurant: (restaurantId) => getUserReviews().filter((r) => r.restaurantId === restaurantId),
-  getAll: () => getUserReviews(),
+  getForRestaurant: (restaurantId) => {
+    const stored = getUserReviews().filter((r) => r.restaurantId === restaurantId);
+    const dev = isDevSimulation() && restaurantId === KK_DEMO_RESTAURANT_ID ? DEV_DEMO_REVIEWS : [];
+    return [...stored, ...dev];
+  },
+  getAll: () => [...getUserReviews(), ...(isDevSimulation() ? DEV_DEMO_REVIEWS : [])],
   upsert: (review) => upsertUserReview(review),
   remove: (id) => deleteUserReview(id),
 };
@@ -75,7 +84,9 @@ class SupabaseReviewRepository implements ReviewRepository {
   }
 }
 
-/** Active repository — Supabase when configured, the mock otherwise. */
-export const reviewRepository: ReviewRepository = isSupabaseConfigured()
-  ? new SupabaseReviewRepository()
-  : mockReviewRepository;
+/** Active repository — dev simulation forces the mock store; Supabase otherwise. */
+export const reviewRepository: ReviewRepository = isDevSimulation()
+  ? mockReviewRepository
+  : isSupabaseConfigured()
+    ? new SupabaseReviewRepository()
+    : mockReviewRepository;
