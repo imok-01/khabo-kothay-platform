@@ -11,9 +11,34 @@
  */
 
 import type { User } from '@supabase/supabase-js';
+import { getSupabase } from '../integrations/supabase/client';
 
 const DEV_AUTH_STORAGE_KEY = 'khabo-kothay:dev:auth-session';
 const DEV_USER_IDENTITY_KEY = 'khabo-kothay:dev:user-identity';
+
+/**
+ * Dev-only phone -> Supabase auth email mapping. Used by `ensureSessionForPhone`
+ * to re-establish a real Supabase session for a verified dev-mock phone so that
+ * `auth.uid()`-dependent writes (restaurant applications) succeed in dev. Never
+ * invoked in production because the caller guards it behind VITE_DEV_AUTH_MOCK.
+ */
+const DEV_PHONE_SUPABASE_EMAILS: Record<string, string> = {
+  '+8801612345699': 'applicant.demo@gmail.com',
+};
+
+function normalizePhoneInput(phoneNumber: string): string {
+  let normalized = phoneNumber.trim().replace(/[\s\-()]/g, '');
+  if (normalized.startsWith('+')) normalized = normalized.slice(1);
+  normalized = normalized.replace(/\D/g, '');
+  if (normalized.startsWith('8801') && normalized.length === 13) {
+    return '+' + normalized;
+  } else if (normalized.startsWith('01') && normalized.length === 11) {
+    return '+880' + normalized.slice(1);
+  } else if (normalized.startsWith('1') && normalized.length === 10) {
+    return '+880' + normalized;
+  }
+  return phoneNumber;
+}
 
 /**
  * Generate a UUID v4 using crypto.getRandomValues
@@ -413,6 +438,25 @@ export const developmentOtpAuth = {
   
   canResendOtp(phone: string): boolean {
     return developmentOtpStorage.canResendOtp(phone);
+  },
+
+  /**
+   * Dev-only: re-establish the real Supabase session for a verified dev-mock
+   * phone number so that `auth.uid()`-dependent writes (e.g. inserting a
+   * restaurant application) succeed. Only invoked when VITE_DEV_AUTH_MOCK=true
+   * (see RestaurantApplyPage), so it is inert in production builds.
+   */
+  async ensureSessionForPhone(phone: string): Promise<void> {
+    const supabase = await getSupabase();
+    if (!supabase) return;
+    const normalized = normalizePhoneInput(phone);
+    const email = DEV_PHONE_SUPABASE_EMAILS[normalized];
+    if (!email) return;
+    try {
+      await supabase.auth.signInWithPassword({ email, password: 'demo123' });
+    } catch {
+      // best-effort: caller falls back to a session-expired error if this fails
+    }
   }
 };
 
