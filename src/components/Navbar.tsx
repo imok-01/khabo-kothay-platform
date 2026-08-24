@@ -146,9 +146,6 @@ export default function Navbar() {
                 <NavLink to={ownerRestaurantPath} className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>
                   <Store size={15} aria-hidden="true" /> My restaurant
                 </NavLink>
-                <NavLink to="/manage?tab=profile" className={({ isActive }) => `nav__link ${isActive ? 'nav__link--active' : ''}`}>
-                  <PenLine size={15} aria-hidden="true" /> Update information
-                </NavLink>
               </>
             )}
             {view === 'admin' && (
@@ -291,7 +288,6 @@ export default function Navbar() {
             {view === 'restaurant_owner' && (
               <div className="nav__mobile-section">
                 <span>Restaurant partners</span>
-                <NavLink to="/manage?tab=profile" onClick={() => setMenuOpen(false)}><PenLine size={15} aria-hidden="true" /> Update information</NavLink>
                 <NavLink to="/partners/how-listings-work" onClick={() => setMenuOpen(false)}><Info size={15} aria-hidden="true" /> How listings work</NavLink>
               </div>
             )}

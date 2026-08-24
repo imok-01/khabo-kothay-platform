@@ -11,17 +11,24 @@ export default function LoginPage() {
   const { sendOtp, verifyOtp, resendOtp, canResendOtp, loginWithVerifiedPhone, signup, checkPhoneExists } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const intent = new URLSearchParams(location.search).get('intent');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [mode, setMode] = useState<'login' | 'signup'>(intent === 'partner' ? 'signup' : 'login');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
-  const [signupRole, setSignupRole] = useState<'user' | 'restaurant_admin'>('user');
   const [devOtp, setDevOtp] = useState<string | null>(null);
   const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
   const [timerTick, setTimerTick] = useState(0);
+  // Signup intent: a Food Explorer gets a normal user account; a Restaurant
+  // Partner is routed to the application form after OTP. Crucially, selecting
+  // "Restaurant Partner" NEVER creates a restaurant_admin — ownership is granted
+  // only later by the executive approval workflow.
+  const [signupIntent, setSignupIntent] = useState<'explorer' | 'partner'>(
+    intent === 'partner' ? 'partner' : 'explorer',
+  );
 
   const from = (location.state as { from?: string } | null)?.from ?? '/';
 
@@ -43,7 +50,7 @@ export default function LoginPage() {
     let result: { ok: boolean; error?: string; otp?: string } | null = null;
     if (step === 'phone') {
       // In signup mode, check for duplicate phone BEFORE sending OTP
-      if (mode === 'signup' && checkPhoneExists(phoneNumber)) {
+      if (mode === 'signup' && signupIntent !== 'partner' && checkPhoneExists(phoneNumber)) {
         setError('An account with this phone number already exists. Please sign in.');
         setBusy(false);
         return;
@@ -78,11 +85,18 @@ export default function LoginPage() {
             setError(loginResult.error ?? 'Failed to log in. Please try again.');
           }
         } else if (mode === 'signup') {
-          const signupResult = await signup(name, phoneNumber, signupRole);
-          if (signupResult.ok) {
-            navigate(from, { replace: true });
+          // A restaurant partner applicant may already have a normal user
+          // account. Sign in if one exists; otherwise create a `user` account.
+          // Ownership is never granted here — only via KK executive approval.
+          const target = signupIntent === 'partner' ? '/restaurant/apply' : from;
+          let result = await loginWithVerifiedPhone(phoneNumber);
+          if (!result.ok) {
+            result = await signup(name, phoneNumber, 'user');
+          }
+          if (result.ok) {
+            navigate(target, { replace: true, state: signupIntent === 'partner' ? { phone: phoneNumber } : undefined });
           } else {
-            setError(signupResult.error ?? 'Failed to create account. Please try again.');
+            setError(result.error ?? 'Failed to continue. Please try again.');
           }
         }
       }
@@ -186,7 +200,7 @@ export default function LoginPage() {
               role="tab"
               aria-selected={mode === 'signup'}
               className={`auth-card__tab ${mode === 'signup' ? 'auth-card__tab--active' : ''}`}
-              onClick={() => { setMode('signup'); setStep('phone'); setError(null); setDevOtp(null); setSignupRole('user'); }}
+              onClick={() => { setMode('signup'); setStep('phone'); setError(null); setDevOtp(null); }}
             >
               <UserPlus size={15} aria-hidden="true" /> Create account
             </button>
@@ -228,44 +242,47 @@ export default function LoginPage() {
               <>
 {mode === 'signup' && (
                       <>
-                        <label className="field">
-                          <span className="field__label">Your name</span>
-                          <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" placeholder="e.g. Priya Sen" />
-                        </label>
                         <div className="auth-card__role" role="radiogroup" aria-label="Account type">
                           <span className="field__label">Account type</span>
                           <div className="auth-card__role-options">
                             <button
                               type="button"
                               role="radio"
-                              aria-checked={signupRole === 'user'}
-                              className={`auth-card__role-option ${signupRole === 'user' ? 'auth-card__role-option--active' : ''}`}
-                              onClick={() => setSignupRole('user')}
+                              aria-checked={signupIntent === 'explorer'}
+                              className={`auth-card__role-option ${signupIntent === 'explorer' ? 'auth-card__role-option--active' : ''}`}
+                              onClick={() => setSignupIntent('explorer')}
                             >
                               <UtensilsCrossed size={16} aria-hidden="true" />
                               <span>
-                                <strong>Food explorer</strong>
+                                <strong>Food Explorer</strong>
                                 <small>Discover, save and review restaurants</small>
                               </span>
                             </button>
                             <button
                               type="button"
                               role="radio"
-                              aria-checked={signupRole === 'restaurant_admin'}
-                              className={`auth-card__role-option ${signupRole === 'restaurant_admin' ? 'auth-card__role-option--active' : ''}`}
-                              onClick={() => setSignupRole('restaurant_admin')}
+                              aria-checked={signupIntent === 'partner'}
+                              className={`auth-card__role-option ${signupIntent === 'partner' ? 'auth-card__role-option--active' : ''}`}
+                              onClick={() => setSignupIntent('partner')}
                             >
                               <Store size={16} aria-hidden="true" />
                               <span>
-                                <strong>Restaurant partner</strong>
-                                <small>Manage your restaurant's listing</small>
+                                <strong>Restaurant Partner</strong>
+                                <small>Apply to list your restaurant (approval required)</small>
                               </span>
                             </button>
                           </div>
-                          <p className="auth-card__role-note">
-                            Restaurant partner accounts require Khabo Kothay onboarding.
-                          </p>
                         </div>
+                        <label className="field">
+                          <span className="field__label">Your name</span>
+                          <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" placeholder="e.g. Priya Sen" />
+                        </label>
+                        {signupIntent === 'partner' && (
+                          <div className="dev-hint" role="note">
+                            <Info size={13} aria-hidden="true" />
+                            <span>You're applying to list a restaurant. After submitting, a Khabo Kothay executive will review and activate your ownership.</span>
+                          </div>
+                        )}
                       </>
                     )}
                 <label className="field">
@@ -349,6 +366,7 @@ export default function LoginPage() {
                   { contact: '01712345678', role: 'executive', label: 'Khabo Kothay executive' },
                   { contact: '01812345678', role: 'restaurant_admin', label: 'Restaurant admin · Seasonal Tastes' },
                   { contact: '01912345678', role: 'restaurant_admin', label: 'Restaurant admin · Almajlis Arabian Restaurant' },
+                  { contact: '01412345678', role: 'restaurant_admin', label: 'Restaurant admin · KK Demo Restaurant' },
                   { contact: '01612345678', role: 'user', label: 'Regular user' },
                   { contact: '01512345678', role: 'user', label: 'Regular user' },
                   { contact: '01412345678', role: 'restaurant_admin', label: 'Restaurant admin · KK Demo Restaurant' },
@@ -394,6 +412,9 @@ export default function LoginPage() {
 
           <p className="auth-card__foot">
             Want to just look around? <Link to="/explore">Browse restaurants free</Link>.
+          </p>
+          <p className="auth-card__foot">
+            Are you a restaurant? <Link to="/login?intent=partner">List your venue on Khabo Kothay</Link>.
           </p>
         </div>
       </div>

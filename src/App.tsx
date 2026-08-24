@@ -7,6 +7,7 @@ import CompareTray from './components/CompareTray';
 import ErrorBoundary from './components/ErrorBoundary';
 import RequireRole from './components/RequireRole';
 import { trackSessionStart } from './lib/analytics';
+import { refreshOffers } from './repositories/OfferProvider';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const ExplorePage = lazy(() => import('./pages/ExplorePage'));
@@ -23,6 +24,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const ExecutiveAdminPage = lazy(() => import('./pages/ExecutiveAdminPage'));
 const RestaurantAdminPage = lazy(() => import('./pages/RestaurantAdminPage'));
+const RestaurantApplyPage = lazy(() => import('./pages/RestaurantApplyPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const AboutPage = lazy(() => import('./pages/InfoPages').then((m) => ({ default: m.AboutPage })));
 const HowItWorksPage = lazy(() => import('./pages/InfoPages').then((m) => ({ default: m.HowItWorksPage })));
@@ -58,6 +60,7 @@ function RouteFallback() {
 export default function App() {
   useEffect(() => {
     trackSessionStart();
+    refreshOffers();
   }, []);
 
   return (
@@ -83,6 +86,7 @@ export default function App() {
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/saved" element={<SavedPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/restaurant/apply" element={<RestaurantApplyPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route element={<RequireRole roles={['executive']}><AdminLayout /></RequireRole>}>
                 <Route path="/admin" element={<ExecutiveAdminPage />} />

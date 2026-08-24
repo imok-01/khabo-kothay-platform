@@ -7,6 +7,7 @@ import type {
   MenusRow,
   PriceObservationsRow,
   RestaurantAliasesRow,
+  RestaurantApplicationsRow,
   RestaurantAttributesRow,
   RestaurantDiscoveryFactsRow,
   RestaurantSourcesRow,
@@ -557,4 +558,72 @@ export async function deleteSavedRestaurant(userId: string, restaurantId: string
     .eq('user_id', userId)
     .eq('restaurant_id', restaurantId);
   if (error) throw error;
+}
+
+/* ------------------------------------------------------------------ */
+/* Restaurant onboarding applications (approval-based workflow)          */
+/* ------------------------------------------------------------------ */
+
+export type RestaurantApplicationInsert = Partial<RestaurantApplicationsRow>;
+
+/** The applicant's own submissions. RLS restricts this to `auth.uid()`. */
+export async function selectRestaurantApplicationsForUser(
+  userId: string,
+): Promise<RestaurantApplicationsRow[]> {
+  const { data, error } = await (await requireSupabase())
+    .from('restaurant_applications')
+    .select('*')
+    .eq('applicant_user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** All submissions — executive/admin only (RLS enforces the role). */
+export async function selectAllRestaurantApplications(): Promise<RestaurantApplicationsRow[]> {
+  const { data, error } = await (await requireSupabase())
+    .from('restaurant_applications')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
+ * Submit a new restaurant application. The caller MUST set `applicant_user_id`
+ * to the real authenticated user id (see `getAuthUserId`) so the RLS insert
+ * policy (`auth.uid() = applicant_user_id` + `status = 'PENDING'`) accepts it.
+ */
+export async function insertRestaurantApplication(
+  app: RestaurantApplicationInsert,
+): Promise<RestaurantApplicationsRow> {
+  const { data, error } = await (await requireSupabase())
+    .from('restaurant_applications')
+    .insert(app)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * KK executive review. Delegates to the SECURITY DEFINER RPC, which verifies
+ * the caller is an executive, locks the row, refuses re-approval, and only
+ * creates the restaurant + owner role on APPROVED. Returns the new restaurant
+ * id on approval, otherwise null.
+ *
+ * The reviewer identity is taken from `auth.uid()` inside the function, so the
+ * client cannot forge who approved the application.
+ */
+export async function reviewRestaurantApplication(
+  applicationId: string,
+  status: 'APPROVED' | 'REJECTED' | 'CONTACTED',
+): Promise<string | null> {
+  const { data, error } = await (await requireSupabase())
+    .rpc('review_restaurant_application', {
+      p_application_id: applicationId,
+      p_status: status,
+    });
+  if (error) throw error;
+  return (data as string | null) ?? null;
 }

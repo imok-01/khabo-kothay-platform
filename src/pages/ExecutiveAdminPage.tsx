@@ -1,15 +1,18 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   LayoutDashboard, Store, Users, MessageSquareQuote, BadgePercent, LineChart, ShieldCheck,
   Check, X, Flag, History, TrendingUp, TrendingDown, ExternalLink, Sparkles, RefreshCw,
-  ClipboardCheck,
+  ClipboardCheck, FileCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePageTitle } from '../lib/usePageTitle';
 import type { Restaurant } from '../types';
 import { useUsers, getAllUsers } from '../hooks/useUsers';
 import { useAdminOffers, upsertAdminOffer } from '../hooks/useAdminOffers';
+import { fetchOffers, setDbOfferStatus, deleteDbOffer } from '../repositories/offerRepository';
+import { isSupabaseConfigured } from '../integrations/supabase/client';
+import type { Offer } from '../domain/offers';
 import { useUserReviews, useFlags, upsertFlag } from '../hooks/useReviews';
 import {
   useRestaurantDrafts, upsertRestaurantDraft, useSuggestions, resolveSuggestion, type RestaurantDraft,
@@ -28,8 +31,75 @@ import { DEMO_ACCOUNT_CREDENTIALS } from '../hooks/useAccounts';
 import type { Menu } from '../domain/menu';
 import GoogleRefreshButton from '../components/GoogleRefreshButton';
 import { isGooglePlacesConfigured, refreshGoogleBulk } from '../hooks/useGoogleRefresh';
+import { selectAllRestaurantApplications, reviewRestaurantApplication } from '../integrations/supabase/queries';
+import { applicationStatusLabel, applicationStatusClass } from '../domain/restaurantApplication';
+import type { RestaurantApplicationsRow } from '../integrations/supabase/database.types';
 
-type Tab = 'dashboard' | 'restaurants' | 'users' | 'reviews' | 'offers' | 'prices' | 'intelligence' | 'menus';
+type Tab = 'dashboard' | 'restaurants' | 'users' | 'reviews' | 'offers' | 'prices' | 'intelligence' | 'menus' | 'applications';
+
+/* ------------------------------------------------------------------ */
+/* Executive offer queue — reads owner-submitted offers from Supabase   */
+/* (the `offers` table) so pending submissions are actually visible, and */
+/* approves/rejects them through the same lifecycle (no parallel store). */
+/* ------------------------------------------------------------------ */
+
+function useExecutiveOffers() {
+  const configured = isSupabaseConfigured();
+  const local = useAdminOffers();
+  const [remote, setRemote] = useState<Offer[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const reload = useCallback(async () => {
+    if (!configured) {
+      setRemote(null);
+      return;
+    }
+    setLoading(true);
+    try {
+      setRemote(await fetchOffers());
+    } finally {
+      setLoading(false);
+    }
+  }, [configured]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  // When Supabase is configured the `offers` table is the source of truth;
+  // otherwise fall back to the local demo store (mapped to the same shape).
+  const offers: Offer[] = configured
+    ? (remote ?? [])
+    : local.map<Offer>((o) => ({
+        id: o.id,
+        restaurantId: o.restaurantId,
+        title: o.title,
+        discountLabel: o.discountLabel,
+        value: o.value,
+        validity: o.validity,
+        terms: o.terms,
+        applicableMealTypes: ['Lunch', 'Dinner'],
+        isMock: true,
+        source: 'admin',
+        status: (o.status as Offer['status']) ?? 'approved',
+      }));
+
+  const decide = useCallback(
+    async (id: string, approve: boolean) => {
+      if (configured) {
+        if (approve) await setDbOfferStatus(id, 'approved');
+        else await deleteDbOffer(id);
+        await reload();
+      } else {
+        const o = local.find((x) => x.id === id);
+        if (o) upsertAdminOffer({ ...o, status: approve ? 'approved' : 'rejected' });
+      }
+    },
+    [configured, local, reload],
+  );
+
+  return { offers, loading, decide };
+}
 
 export default function ExecutiveAdminPage() {
   usePageTitle('Khabo Kothay executive');
@@ -67,6 +137,7 @@ export default function ExecutiveAdminPage() {
      { key: 'prices', label: 'Price history', icon: <LineChart size={15} /> },
     { key: 'intelligence', label: 'Recommendations', icon: <Sparkles size={15} /> },
     { key: 'menus', label: 'Menu reviews', icon: <ClipboardCheck size={15} /> },
+    { key: 'applications', label: 'Applications', icon: <FileCheck size={15} /> },
   ];
 
   return (
@@ -104,6 +175,7 @@ export default function ExecutiveAdminPage() {
           {tab === 'prices' && <PricesTab />}
           {tab === 'intelligence' && <IntelligenceTab />}
           {tab === 'menus' && <MenuReviewsTab />}
+          {tab === 'applications' && <ApplicationsTab />}
         </div>
       </div>
     </main>
@@ -114,7 +186,7 @@ export default function ExecutiveAdminPage() {
 
 function DashboardTab() {
   const users = getAllUsers();
-  const adminOffers = useAdminOffers();
+  const { offers: adminOffers } = useExecutiveOffers();
   const userReviews = useUserReviews();
   const flags = useFlags();
   const drafts = useRestaurantDrafts();
@@ -397,18 +469,13 @@ function ReviewsTab() {
 /* ------------------------------------------------------------------ */
 
 function OffersTab() {
-  const adminOffers = useAdminOffers();
+  const { offers: adminOffers, decide, loading } = useExecutiveOffers();
   const pending = adminOffers.filter((o) => o.status === 'pending');
-
-  const decide = (id: string, approve: boolean) => {
-    const o = adminOffers.find((x) => x.id === id);
-    if (!o) return;
-    upsertAdminOffer({ ...o, status: approve ? 'approved' : 'rejected' });
-  };
 
   return (
     <div className="panel">
       <div className="panel__head"><h2>Offer approvals</h2><span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{pending.length} awaiting decision</span></div>
+      {loading && <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Loading offers…</p>}
       <div className="offer-admin-list">
         {pending.map((o) => (
           <div key={o.id} className="offer-admin-row offer-admin-row--detail">
@@ -430,7 +497,7 @@ function OffersTab() {
 
       <h3 style={{ marginTop: 'var(--s5)' }}>Recent decisions</h3>
       <div className="offer-admin-list">
-        {adminOffers.filter((o) => o.status === 'approved' || o.status === 'rejected').slice(0, 8).map((o) => (
+        {adminOffers.filter((o) => o.status === 'approved' || String(o.status) === 'rejected').slice(0, 8).map((o) => (
           <div key={o.id} className="offer-admin-row">
             <div>
               <strong>{o.title}</strong>
@@ -813,6 +880,114 @@ function MenuReviewDetail({
           <X size={12} aria-hidden="true" /> Reject
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Restaurant applications — executive reviews inbound partner requests */
+/* Approval is delegated to the SECURITY DEFINER RPC, so the owner role */
+/* and restaurant row are created server-side only after KK approval.   */
+/* ------------------------------------------------------------------ */
+
+function ApplicationsTab() {
+  const [apps, setApps] = useState<RestaurantApplicationsRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setApps(await selectAllRestaurantApplications());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load applications.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const act = async (id: string, status: 'APPROVED' | 'REJECTED' | 'CONTACTED') => {
+    setActingId(id);
+    setError(null);
+    try {
+      await reviewRestaurantApplication(id, status);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Action failed.');
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  if (loading) {
+    return <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Loading applications…</p>;
+  }
+
+  const pending = apps.filter((a) => a.status === 'PENDING').length;
+
+  return (
+    <div className="panel">
+      <div className="panel__head">
+        <h2>Restaurant applications</h2>
+        <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{pending} awaiting decision</span>
+      </div>
+
+      {error && <p className="admin-banner admin-banner--error" role="alert">{error}</p>}
+
+      {apps.length === 0 ? (
+        <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>No applications submitted yet.</p>
+      ) : (
+        <div className="application-list">
+          {apps.map((a) => (
+            <article key={a.id} className="application-card">
+              <div className="application-card__head">
+                <div>
+                  <strong>{a.restaurant_name}</strong>
+                  <span className="t-xs" style={{ color: 'var(--ink-faint)', display: 'block' }}>{a.area || '—'}</span>
+                </div>
+                <span className={`admin-status ${applicationStatusClass(a.status)}`}>
+                  {applicationStatusLabel(a.status)}
+                </span>
+              </div>
+
+              <dl className="application-card__meta">
+                <div><dt>Applicant</dt><dd>{a.applicant_name} · <span className="t-xs">{a.applicant_role}</span></dd></div>
+                <div><dt>Contact</dt><dd>{a.applicant_phone || a.contact_details || '—'}</dd></div>
+                <div><dt>Address</dt><dd>{a.address || '—'}</dd></div>
+                <div><dt>Cuisine</dt><dd>{a.cuisine || '—'}</dd></div>
+                <div><dt>Website</dt><dd>{a.website || '—'}</dd></div>
+                <div><dt>Submitted</dt><dd>{a.created_at ? new Date(a.created_at).toLocaleString('en-IN') : '—'}</dd></div>
+              </dl>
+
+              {a.notes && <p className="application-card__notes">“{a.notes}”</p>}
+
+              {a.status === 'PENDING' ? (
+                <div className="admin-table__actions" style={{ marginTop: 'var(--s3)' }}>
+                  <button type="button" className="btn btn--primary btn--sm" disabled={actingId === a.id} onClick={() => act(a.id, 'APPROVED')}>
+                    <Check size={12} aria-hidden="true" /> Approve &amp; activate owner
+                  </button>
+                  <button type="button" className="btn btn--ghost btn--sm" disabled={actingId === a.id} onClick={() => act(a.id, 'CONTACTED')}>
+                    Mark contacted
+                  </button>
+                  <button type="button" className="btn btn--subtle btn--sm" disabled={actingId === a.id} onClick={() => act(a.id, 'REJECTED')}>
+                    <X size={12} aria-hidden="true" /> Reject
+                  </button>
+                </div>
+              ) : (
+                <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s3)' }}>
+                  {a.reviewed_at ? `Reviewed ${new Date(a.reviewed_at).toLocaleString('en-IN')}` : 'No review timestamp recorded.'}
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

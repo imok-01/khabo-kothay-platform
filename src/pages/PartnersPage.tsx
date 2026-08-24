@@ -112,6 +112,8 @@ export const PartnersLandingPage = () => {
 
 export const PartnerListPage = () => {
   usePageTitle('List your restaurant · Khabo Kothay');
+  const { session } = useAuth();
+  const isOwner = roleViewOf(session?.role) === 'restaurant_owner';
   return (
     <main className="section section--info">
       <div className="section__inner">
@@ -132,14 +134,27 @@ export const PartnerListPage = () => {
           <section className="info-card">
             <h2>How to get listed</h2>
             <ul className="info-list">
+              <li>Create a Khabo Kothay account and open the restaurant application form.</li>
               <li>Send us your restaurant name, address and contact details.</li>
               <li>Tell us what you serve — cuisines, signature dishes, price range.</li>
-              <li>We review the information before anything goes live.</li>
-              <li>Once published, you can request updates whenever things change.</li>
+              <li>We review the application before ownership access is activated.</li>
+              <li>Once approved, you can manage your listing from your restaurant dashboard.</li>
             </ul>
           </section>
         </div>
-        <ContactCta label="Submit restaurant details" to="/partners/enquiry?type=list" />
+        {isOwner ? (
+          <div className="partner-cta">
+            <div>
+              <h2>You already manage a restaurant on Khabo Kothay</h2>
+              <p>Use your restaurant dashboard to update your listing.</p>
+            </div>
+            <Link to="/manage?tab=profile" className="btn btn--primary">
+              Go to your restaurant dashboard <ArrowRight size={15} aria-hidden="true" />
+            </Link>
+          </div>
+        ) : (
+          <ContactCta label="Start your application" to="/login?intent=partner" />
+        )}
       </div>
     </main>
   );

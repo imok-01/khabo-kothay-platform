@@ -250,6 +250,27 @@ export type SavedRestaurantsRow = {
   created_at: string | null;
 }
 
+export type ApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CONTACTED';
+
+export type RestaurantApplicationsRow = {
+  id: string;
+  applicant_user_id: string;
+  applicant_phone: string;
+  applicant_name: string;
+  applicant_role: string;
+  restaurant_name: string;
+  address: string | null;
+  area: string | null;
+  cuisine: string | null;
+  contact_details: string | null;
+  website: string | null;
+  notes: string | null;
+  status: ApplicationStatus;
+  created_at: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+}
+
 export type ChangeRequestsRow = {
   id: string;
   restaurant_id: string | null;
@@ -385,6 +406,12 @@ export type Database = {
         Update: Partial<SavedRestaurantsRow>;
         Relationships: [];
       };
+      restaurant_applications: {
+        Row: RestaurantApplicationsRow;
+        Insert: Partial<RestaurantApplicationsRow>;
+        Update: Partial<RestaurantApplicationsRow>;
+        Relationships: [];
+      };
       change_requests: {
         Row: ChangeRequestsRow;
         Insert: Partial<ChangeRequestsRow>;
@@ -410,6 +437,13 @@ export type Database = {
           p_observations: Json;
         };
         Returns: undefined;
+      };
+      review_restaurant_application: {
+        Args: {
+          p_application_id: string;
+          p_status: string;
+        };
+        Returns: string;
       };
     };
     Enums: {

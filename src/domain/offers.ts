@@ -19,7 +19,7 @@ export interface Offer {
   /** where this offer came from — seeded demo or a restaurant admin draft */
   source: 'seed' | 'admin';
   /** approval workflow state for admin-created offers */
-  status: 'approved' | 'pending';
+  status: 'approved' | 'pending' | 'expired' | 'draft' | 'scheduled';
   /** start/end dates for admin offers (demo approval window) */
   startDate?: string;
   endDate?: string;

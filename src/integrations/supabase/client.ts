@@ -71,3 +71,20 @@ export async function requireSupabase(): Promise<SupabaseClient<Database>> {
   }
   return client;
 }
+
+/**
+ * Resolve the real Supabase auth user id for the current session, or null when
+ * Supabase is not configured or nobody is signed in. Used to attribute
+ * ownership-sensitive writes (e.g. restaurant applications) to the verified
+ * identity — never the demo/local id — so RLS `auth.uid()` checks hold.
+ */
+export async function getAuthUserId(): Promise<string | null> {
+  const client = await getSupabase();
+  if (!client) return null;
+  try {
+    const { data } = await client.auth.getUser();
+    return data.user?.id ?? null;
+  } catch {
+    return null;
+  }
+}

@@ -10,7 +10,7 @@ import { runDevIdentityCleanup } from '../lib/devIdentityCleanup';
 import { getRewards, saveRewards } from '../store/demoDb';
 import { userService } from '../services/userService';
 import { useUsers } from '../hooks/useUsers';
-import { getSupabase } from '../integrations/supabase/client';
+import { getSupabase, isSupabaseConfigured } from '../integrations/supabase/client';
 import { developmentOtpAuth } from '../lib/developmentOtpAdapter';
 
 // Normalize phone number helper
@@ -58,6 +58,45 @@ const normalizePhone = (phoneNumber: string): string => {
   
   return canonical;
 };
+
+/**
+ * Dev-mock mode keeps a local stable UUID as the session id, but a real Supabase
+ * session may also be active (the dev adapter signs in a real account so RLS
+ * works). When it is, prefer the database `roles` for this verified identity.
+ * This is what lets a restaurant applicant who was approved by a KK executive
+ * appear as an owner on their next login — and it never downgrades the four
+ * seeded owners, whose DB roles match their demo roles.
+ */
+async function applyDatabaseRoles(base: SessionUser): Promise<SessionUser> {
+  if (!isSupabaseConfigured()) return base;
+  try {
+    const supabase = await getSupabase();
+    if (!supabase) return base;
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return base;
+    const { data: roleRows, error } = await supabase
+      .from('roles')
+      .select('role_name, restaurant_id')
+      .eq('user_id', data.user.id);
+    if (error || !roleRows || roleRows.length === 0) return base;
+    const roleName = roleRows[0].role_name;
+    const roleMap: Record<string, Role> = {
+      user: 'user',
+      restaurant_admin: 'restaurant_admin',
+      // The database `roles.role_name` is `restaurant_owner`; the app's session
+      // role vocabulary uses `restaurant_admin`. Map both to the same session role.
+      restaurant_owner: 'restaurant_admin',
+      executive: 'executive',
+    };
+    const role = roleMap[roleName] ?? 'user';
+    const restaurantIds = roleRows
+      .filter((r) => r.restaurant_id)
+      .map((r) => r.restaurant_id as string);
+    return { ...base, role, restaurantIds };
+  } catch {
+    return base;
+  }
+}
 
 interface AuthContextValue {
   /** The signed-in user (null = anonymous). Legacy DemoUser for backward compatibility. */
@@ -290,9 +329,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               role: dbUser.role,
               restaurantIds: dbUser.restaurantIds
             };
-            
-            userService.setSession(sessionUser);
-            setSessionState(sessionUser);
+
+            const resolved = await applyDatabaseRoles(sessionUser);
+            userService.setSession(resolved);
+            setSessionState(resolved);
           }
         } catch (err) {
           console.error('Error initializing dev session:', err);
@@ -572,8 +612,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               role: existingUser.role, 
               restaurantIds: existingUser.restaurantIds 
             };
-            userService.setSession(next);
-            setSessionState(next);
+            const resolved = await applyDatabaseRoles(next);
+            userService.setSession(resolved);
+            setSessionState(resolved);
             return { ok: true };
           } else {
             // No existing account found - do not create a new user on login
@@ -695,13 +736,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         const stableUserId = result.data.session.user.id;
         
+        // SECURITY: a verified phone user must NEVER directly become a
+        // restaurant_admin. Account creation only ever produces a `user`; the
+        // restaurant_owner role is granted later, exclusively by KK executive
+        // approval (see restaurant_applications + review_restaurant_application).
+        const safeRole: Role = role === 'restaurant_admin' ? 'user' : role;
+
         // Create new user in our demo database with the stable UUID identity
         const newUser: DemoUser = {
           id: stableUserId,
           name: name.trim(),
           contact: normalizedPhone,
           passwordHash: '',
-          role,
+          role: safeRole,
           restaurantIds: [],
           createdAt: new Date().toISOString().slice(0, 10),
           profile: { cuisines: [], budget: undefined, diet: 'any', neighbourhoods: [], diningInterests: [] },

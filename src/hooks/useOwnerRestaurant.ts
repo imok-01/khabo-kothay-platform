@@ -1,9 +1,63 @@
 import { useEffect, useState } from 'react';
 import { isSupabaseConfigured } from '../integrations/supabase/client';
 import { resolveRestaurantSlug } from '../repositories/restaurantRepository';
+import { selectRestaurantById } from '../integrations/supabase/queries';
 import { getAllRestaurantsSync } from './useRestaurantData';
 import { isDevSimulation } from '../lib/devSimulation';
 import type { Restaurant } from '../types';
+import type { KhaboPlaceData } from '../domain/place';
+
+/**
+ * Build a minimal `Restaurant` domain object for a venue that exists only in the
+ * database (e.g. a restaurant created through the application→approval flow and
+ * not yet published to the public discovery catalogue). The owner dashboard only
+ * needs id/name plus a few editable fields, so sensible empty defaults are used
+ * for everything else.
+ */
+function restaurantFromDbRow(row: {
+  id: string;
+  name: string;
+  description: string | null;
+  address: string | null;
+  area: string | null;
+  phone: string | null;
+  website: string | null;
+}): Restaurant {
+  const khabo: KhaboPlaceData = {
+    rating: 0,
+    reviewCount: 0,
+    reviews: [],
+    photos: [],
+    tags: [],
+    highlights: [],
+    signals: [],
+    visitCount: 0,
+    featured: false,
+  };
+  return {
+    id: row.id,
+    name: row.name,
+    tagline: '',
+    description: row.description ?? '',
+    cuisines: [],
+    mealTypes: [],
+    budget: 'Budget',
+    priceForTwo: 0,
+    location: row.area ?? '',
+    address: row.address ?? '',
+    openingHours: '',
+    isVeg: false,
+    vegUnknown: true,
+    hasDelivery: false,
+    hasOutdoorSeating: false,
+    isFamilyFriendly: false,
+    vibes: [],
+    lat: 0,
+    lng: 0,
+    signatureDishes: [],
+    khabo,
+  };
+}
 
 /**
  * Owner-venue resolution for navigation / admin surfaces.
@@ -38,11 +92,37 @@ export function useOwnerRestaurants(
     (async () => {
       const list: Restaurant[] = [];
       const all = getAllRestaurantsSync();
-      for (const uuid of restaurantIds ?? []) {
-        const slug = await resolveRestaurantSlug(uuid);
-        if (!slug) continue;
-        const r = all.find((x) => x.id === slug);
-        if (r) list.push(r);
+      for (const id of restaurantIds ?? []) {
+        // The session may carry a database UUID (production admins) or a
+        // catalogue slug (dev/demo admin accounts). A slug is already usable
+        // as the domain key, so resolve the UUID path only when the id is not
+        // already a known catalogue slug.
+        let slug: string | undefined;
+        if (all.some((x) => x.id === id)) {
+          slug = id;
+        } else {
+          try {
+            slug = (await resolveRestaurantSlug(id)) ?? undefined;
+          } catch {
+            slug = undefined;
+          }
+        }
+        if (slug) {
+          const r = all.find((x) => x.id === slug);
+          if (r) {
+            list.push(r);
+            continue;
+          }
+        }
+        // Fallback: a venue that exists only in the database (e.g. created via
+        // the application→approval flow and not yet in the public catalogue).
+        // Resolve it directly so its owner can still manage it.
+        try {
+          const row = await selectRestaurantById(id);
+          if (row) list.push(restaurantFromDbRow(row));
+        } catch {
+          /* ignore unresolvable ids */
+        }
       }
       if (!cancelled) setState({ restaurants: list, loading: false });
     })();

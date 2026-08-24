@@ -38,8 +38,29 @@ describe('validateOfferDraft', () => {
     expect(validateOfferDraft({ ...valid, discountLabel: '' }).errors.discountLabel).toBe('Discount label is required.');
   });
 
-  it('flags suspiciously short value/validity/terms when provided', () => {
-    expect(validateOfferDraft({ ...valid, value: 'abc' }).errors.value).toBe('Value looks too short.');
+  it('accepts numeric/currency/percentage discount labels (no minimum length)', () => {
+    for (const label of ['76', '500', '20', '20%', '৳100 off', '৳250']) {
+      expect(validateOfferDraft({ ...valid, discountLabel: label }).isValid).toBe(true);
+    }
+  });
+
+  it('rejects whitespace-only discount labels', () => {
+    expect(validateOfferDraft({ ...valid, discountLabel: '   ' }).errors.discountLabel).toBe(
+      'Discount label is required.',
+    );
+  });
+
+  it('validates the value by meaning (number present), not character count', () => {
+    // A value with no number is rejected with actionable guidance.
+    expect(validateOfferDraft({ ...valid, value: 'abc' }).errors.value).toBe(
+      'Add the offer value — e.g. 20%, ৳100, or 500.',
+    );
+    // Numeric values (the reported BUG 7 cases) are accepted despite being short.
+    expect(validateOfferDraft({ ...valid, value: '20' }).errors.value).toBeUndefined();
+    expect(validateOfferDraft({ ...valid, value: '100' }).errors.value).toBeUndefined();
+    expect(validateOfferDraft({ ...valid, value: '500' }).errors.value).toBeUndefined();
+    expect(validateOfferDraft({ ...valid, value: 'Save up to ৳400' }).errors.value).toBeUndefined();
+    // Validity and terms still guard against empty/short free text.
     expect(validateOfferDraft({ ...valid, validity: 'x' }).errors.validity).toBe('Validity looks too short.');
     expect(validateOfferDraft({ ...valid, terms: 'short' }).errors.terms).toMatch(/Terms look too short/);
   });

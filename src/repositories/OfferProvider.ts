@@ -3,6 +3,7 @@ import type { Offer } from '../domain/offers';
 import { getAdminOffers } from '../store/demoDb';
 import { isDevSimulation } from '../lib/devSimulation';
 import { DEV_DEMO_OFFERS } from '../data/devSimulation';
+import { fetchOffers } from './offerRepository';
 
 /**
  * OfferProvider abstraction — the UI never imports the mock dataset directly,
@@ -37,8 +38,17 @@ function allOffers(): Offer[] {
       source: 'admin',
       status: 'approved',
     }));
-  return [...dev, ...seeded, ...admin];
+  // Real database-backed offers (e.g. the KK Demo Restaurant) are merged in
+  // after a refreshOffers() call populates this cache.
+  return [...dev, ...seeded, ...admin, ...dbOffersCache];
 }
+
+/** Populate the database-backed offers cache. Call once on app start. */
+export async function refreshOffers(): Promise<void> {
+  dbOffersCache = await fetchOffers();
+}
+
+let dbOffersCache: Offer[] = [];
 
 const mockOfferProvider: OfferProvider = {
   getAll: () => allOffers(),

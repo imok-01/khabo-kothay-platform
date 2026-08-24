@@ -1,8 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  LayoutDashboard, Store, Image, UtensilsCrossed, BadgePercent, MessageSquareQuote, Settings,
-  Plus, Trash2, ArrowUp, ArrowDown, Send, Save, Check, Eye, UploadCloud, Info, Sparkles,
+  LayoutDashboard, Store, Image, UtensilsCrossed, BadgePercent, MessageSquareQuote,
+  Plus, Trash2, ArrowUp, ArrowDown, Send, Save, Check, Eye, Info, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePageTitle } from '../lib/usePageTitle';
@@ -10,9 +10,10 @@ import { getEffectiveMenu } from '../lib/menu';
 import { isSupabaseConfigured } from '../integrations/supabase/client';
 import { restaurants, saveMenuOverride, useMenusVersion } from '../hooks/useRestaurantData';
 import { useOwnerRestaurants } from '../hooks/useOwnerRestaurant';
-import { useOwnerMenu } from '../hooks/useOwnerMenu';
+import { useOwnerMenu, type OwnerMenuState } from '../hooks/useOwnerMenu';
 import { useUserReviews } from '../hooks/useReviews';
-import { useAdminOffers, upsertAdminOffer, deleteAdminOffer, type AdminOfferDraft } from '../hooks/useAdminOffers';
+import { useRestaurantOffers } from '../hooks/useRestaurantOffers';
+import { uploadRestaurantImage, fetchOwnerImages } from '../repositories/imageUploadRepository';
 import {
   getRestaurantDraft, upsertRestaurantDraft, useRestaurantDrafts, useSuggestions, upsertSuggestion,
 } from '../hooks/useDrafts';
@@ -20,11 +21,11 @@ import { uid } from '../lib/uid';
 import { validateOfferDraft } from '../lib/offerValidation';
 import { getEffectiveIntelligence } from '../lib/intelligence';
 import { BEST_FOR, DINING_FEATURES, FOOD_CHARACTERISTICS, SPECIALTIES, type IntelligenceSuggestion } from '../domain/intelligence';
-import { getAllOffers } from '../hooks/useOffers';
+import type { Offer } from '../domain/offers';
 import { formatCurrency } from '../lib/format';
 import type { Menu, MenuItem } from '../domain/menu';
 
-type Tab = 'overview' | 'profile' | 'photos' | 'menu' | 'offers' | 'reviews' | 'attributes' | 'settings';
+type Tab = 'overview' | 'profile' | 'photos' | 'menu' | 'offers' | 'reviews' | 'attributes';
 
 export default function RestaurantAdminPage() {
   usePageTitle('Restaurant admin');
@@ -36,11 +37,18 @@ export default function RestaurantAdminPage() {
   useMenusVersion();
   useRestaurantDrafts();
   const userReviews = useUserReviews();
-  const adminOffers = useAdminOffers();
 
   const { restaurants: owned, loading: ownedLoading } = useOwnerRestaurants(session?.restaurantIds);
 
   const [selectedId, setSelectedId] = useState<string>(owned[0]?.id ?? '');
+
+  const { offers: myOffers, createOffer: createDbOffer, submitOffer: submitDbOffer, removeOffer } =
+    useRestaurantOffers(selectedId || session?.restaurantIds?.[0]);
+
+  // Single source of truth for the restaurant's editable ("working") menu. Used
+  // by both the Overview dish count and the Menu tab so the admin reflects the
+  // real Supabase-backed menu, not the demo-store seed.
+  const ownerMenu = useOwnerMenu(selectedId || session?.restaurantIds?.[0] || '', session?.id ?? '');
 
   useEffect(() => {
     if (!selectedId && owned[0]) setSelectedId(owned[0].id);
@@ -73,11 +81,13 @@ export default function RestaurantAdminPage() {
 
   const restaurant = owned.find((r) => r.id === selectedId) ?? owned[0];
   const draft = getRestaurantDraft(restaurant.id);
-  const menu = getEffectiveMenu(restaurant);
-  const myOffers = adminOffers.filter((o) => o.restaurantId === restaurant.id);
   const myReviews = userReviews.filter((r) => r.restaurantId === restaurant.id);
-  const publicOffers = getAllOffers().filter((o) => o.restaurantId === restaurant.id);
-  const dishCount = menu.categories.reduce((n, c) => n + c.dishes.length, 0);
+  const publicOffers = myOffers.filter((o) => o.status === 'approved');
+  // Dish count reflects the real, working menu (PUBLISHED/DRAFT/PENDING) loaded
+  // from Supabase — not the demo-store seed, which is empty for most restaurants.
+  const dishCount = ownerMenu.menu
+    ? ownerMenu.menu.categories.reduce((n, c) => n + c.dishes.length, 0)
+    : 0;
 
   const tabs: Array<{ key: Tab; label: string; icon: React.ReactNode }> = [
     { key: 'overview', label: 'Overview', icon: <LayoutDashboard size={15} /> },
@@ -87,7 +97,6 @@ export default function RestaurantAdminPage() {
     { key: 'offers', label: 'Offers', icon: <BadgePercent size={15} /> },
     { key: 'reviews', label: 'Reviews', icon: <MessageSquareQuote size={15} /> },
     { key: 'attributes', label: 'Discovery tags', icon: <Sparkles size={15} /> },
-    { key: 'settings', label: 'Settings', icon: <Settings size={15} /> },
   ];
 
   return (
@@ -136,11 +145,10 @@ export default function RestaurantAdminPage() {
           )}
           {tab === 'profile' && <ProfileTab restaurantId={restaurant.id} />}
           {tab === 'photos' && <PhotosTab restaurantId={restaurant.id} />}
-          {tab === 'menu' && <MenuTab restaurant={restaurant.id} />}
-          {tab === 'offers' && <OffersTab restaurantId={restaurant.id} restaurantName={restaurant.name} myOffers={myOffers} publicOffers={publicOffers} />}
+          {tab === 'menu' && <MenuTab restaurant={restaurant.id} ownerMenu={ownerMenu} />}
+            {tab === 'offers' && <OffersTab restaurantName={restaurant.name} myOffers={myOffers} publicOffers={publicOffers} createOffer={createDbOffer} submitOffer={submitDbOffer} removeOffer={removeOffer} />}
           {tab === 'reviews' && <ReviewsTab restaurantId={restaurant.id} restaurantName={restaurant.name} myReviews={myReviews} />}
           {tab === 'attributes' && <AttributesTab restaurantId={restaurant.id} restaurantName={restaurant.name} />}
-          {tab === 'settings' && <SettingsTab restaurantId={restaurant.id} restaurantName={restaurant.name} />}
         </div>
       </div>
     </main>
@@ -291,18 +299,123 @@ function ProfileTab({ restaurantId }: { restaurantId: string }) {
 
 function PhotosTab({ restaurantId }: { restaurantId: string }) {
   const restaurant = restaurants.find((r) => r.id === restaurantId)!;
+  const googlePhotos = restaurant.google?.photos ?? [];
+  const configured = isSupabaseConfigured();
+  const [ownerImages, setOwnerImages] = useState<{ id: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let alive = true;
+    if (configured) {
+      fetchOwnerImages(restaurantId)
+        .then((rows) => alive && setOwnerImages(rows.map((r) => ({ id: r.id, url: r.image_url }))))
+        .catch(() => {});
+    }
+    return () => {
+      alive = false;
+    };
+  }, [restaurantId, configured]);
+
+  const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = '';
+    if (!file) return;
+    setError(null);
+    setUploading(true);
+    try {
+      await uploadRestaurantImage(restaurantId, file);
+      const rows = await fetchOwnerImages(restaurantId);
+      setOwnerImages(rows.map((r) => ({ id: r.id, url: r.image_url })));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="panel">
       <div className="panel__head"><h2>Restaurant photos</h2></div>
-      <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-        Photo upload isn't wired up yet (no storage backend). Current imagery comes from the Google Maps photo links on this restaurant's record.
-      </p>
-      <div className="upload-placeholder">
-        <UploadCloud size={28} aria-hidden="true" />
-        <p>Uploads arrive in a future phase with real storage.</p>
-      </div>
-      <p className="t-xs" style={{ color: 'var(--ink-faint)' }}>
-        {restaurant.name} currently shows {restaurant.signatureDishes.length} signature dishes and Google Maps photography. Source metadata is preserved per image.
+
+      {configured ? (
+        <div style={{ marginTop: 'var(--s3)' }}>
+          <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
+            Upload owner-managed photos. They are stored in Supabase Storage and listed below.
+          </p>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            disabled={uploading}
+            onChange={onUpload}
+            style={{ marginTop: 'var(--s3)' }}
+          />
+          {uploading && <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Uploading…</p>}
+          {error && (
+            <p className="t-sm" style={{ color: 'var(--danger, #b00020)' }}>
+              {error}
+            </p>
+          )}
+          {ownerImages.length > 0 && (
+            <>
+              <h3 className="t-sm" style={{ marginTop: 'var(--s4)' }}>Owner uploads</h3>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                  gap: 'var(--s3)',
+                  marginTop: 'var(--s3)',
+                }}
+              >
+                {ownerImages.map((img) => (
+                  <img
+                    key={img.id}
+                    src={img.url}
+                    alt={`${restaurant.name} owner photo`}
+                    style={{ width: '100%', borderRadius: 10, aspectRatio: '4 / 3', objectFit: 'cover' }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <p className="t-sm" style={{ color: 'var(--ink-soft)', marginTop: 'var(--s3)' }}>
+          Photo uploads aren’t enabled in this build — there is no storage backend yet. The photos
+          below are pulled from the venue’s linked source and are read-only here.
+        </p>
+      )}
+
+      {googlePhotos.length > 0 ? (
+        <>
+          <h3 className="t-sm" style={{ marginTop: 'var(--s4)' }}>Linked source photos</h3>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+              gap: 'var(--s3)',
+              marginTop: 'var(--s3)',
+            }}
+          >
+            {googlePhotos.map((p, i) => (
+              <img
+                key={i}
+                src={p.imageUrl ?? ''}
+                alt={p.alt ?? `${restaurant.name} photo`}
+                style={{ width: '100%', borderRadius: 10, aspectRatio: '4 / 3', objectFit: 'cover' }}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="t-sm" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s4)' }}>
+          No photos are linked to this restaurant yet.
+        </p>
+      )}
+      <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s4)' }}>
+        Source metadata is preserved per image. Owner-managed uploads are stored in Supabase.
       </p>
     </div>
   );
@@ -310,32 +423,44 @@ function PhotosTab({ restaurantId }: { restaurantId: string }) {
 
 /* ------------------------------------------------------------------ */
 
-function MenuTab({ restaurant }: { restaurant: string }) {
-  if (isSupabaseConfigured()) return <OwnerMenuTab restaurant={restaurant} />;
+function MenuTab({ restaurant, ownerMenu }: { restaurant: string; ownerMenu: OwnerMenuState }) {
+  if (isSupabaseConfigured()) return <OwnerMenuTab restaurant={restaurant} owner={ownerMenu} />;
   return <MenuEditorTab restaurant={restaurant} />;
 }
 
-function OwnerMenuTab({ restaurant }: { restaurant: string }) {
-  const { session } = useAuth();
-  const owner = useOwnerMenu(restaurant, session?.id ?? '');
+function OwnerMenuTab({ restaurant, owner }: { restaurant: string; owner: OwnerMenuState }) {
   const [localMenu, setLocalMenu] = useState<Menu | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalMenu(owner.menu);
   }, [owner.menu]);
 
-  const handlePersist = (next: Menu) => setLocalMenu(next);
-  const onSave = async () => {
-    if (localMenu) await owner.saveDraft(localMenu);
+  // Menu writes require a backend-owned restaurant account (RLS: the signed-in
+  // user must be linked to the restaurant via `roles`). Dev-mock demo logins have
+  // no real Supabase session, so a write is rejected — surface that clearly
+  // instead of leaving a silently-dead button.
+  const EDIT_BLOCKED =
+    "Menu changes can't be saved from this account — it isn't linked to a verified restaurant owner in the backend. Sign in as the restaurant's owner to edit.";
+  const runWrite = async (fn: () => Promise<void>) => {
+    setError(null);
+    try {
+      await fn();
+    } catch {
+      setError(EDIT_BLOCKED);
+    }
   };
-  const onSubmit = async () => {
+
+  const handlePersist = (next: Menu) => setLocalMenu(next);
+  const onSave = () => runWrite(async () => {
+    if (localMenu) await owner.saveDraft(localMenu);
+  });
+  const onSubmit = () => runWrite(async () => {
     if (!localMenu) return;
     await owner.saveDraft(localMenu);
     await owner.submitForReview();
-  };
-  const onCreate = async () => {
-    await owner.createDraft();
-  };
+  });
+  const onCreate = () => runWrite(() => owner.createDraft());
 
   const statusLabel =
     owner.menuStatus === 'DRAFT'
@@ -384,6 +509,12 @@ function OwnerMenuTab({ restaurant }: { restaurant: string }) {
             <h3>No menu recorded yet</h3>
             <p>Create a draft to start building your menu.</p>
           </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="admin-banner admin-banner--error" role="alert">
+          <Info size={13} aria-hidden="true" /> {error}
         </div>
       )}
 
@@ -630,44 +761,46 @@ function MenuEditorTab({ restaurant, menu: menuProp, onPersist, readOnly }: {
 
 /* ------------------------------------------------------------------ */
 
-function OffersTab({ restaurantId, restaurantName, myOffers, publicOffers }: {
-  restaurantId: string; restaurantName: string; myOffers: AdminOfferDraft[]; publicOffers: ReturnType<typeof getAllOffers>;
+function OffersTab({ restaurantName, myOffers, publicOffers, createOffer, submitOffer, removeOffer }: {
+  restaurantName: string; myOffers: Offer[]; publicOffers: Offer[];
+  createOffer: (input: { title: string; discountLabel: string; value: string; validity: string; terms: string }) => void | Promise<void>;
+  submitOffer: (id: string) => void | Promise<void>;
+  removeOffer: (id: string) => void | Promise<void>;
 }) {
   const [form, setForm] = useState({ title: '', discountLabel: '', value: '', validity: '', terms: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { session } = useAuth();
+
+  // Friendly labels for the offer lifecycle so owners can track status at a glance
+  // (draft → pending approval → approved/public, plus scheduled/expired).
+  const statusLabel = (s: Offer['status']): string =>
+    ({ draft: 'Draft', pending: 'Pending approval', approved: 'Approved · public', scheduled: 'Scheduled', expired: 'Expired' } as Record<Offer['status'], string>)[s] ?? s;
 
   const setField = (key: keyof typeof form, value: string) => {
     setForm({ ...form, [key]: value });
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: '' }));
   };
 
-  const createOffer = (e: FormEvent) => {
+  const handleCreateOffer = (e: FormEvent) => {
     e.preventDefault();
     const validation = validateOfferDraft(form);
     if (!validation.isValid) {
       setErrors(validation.errors);
       return;
     }
-    upsertAdminOffer({
-      id: uid('off'),
-      restaurantId,
+    createOffer({
       title: form.title.trim(),
       discountLabel: form.discountLabel.trim(),
       value: form.value.trim() || 'See restaurant',
       validity: form.validity.trim() || 'Limited time',
       terms: form.terms.trim() || 'Demo offer — not redeemable in real restaurants.',
-      status: 'draft',
-      createdAt: new Date().toISOString(),
     });
     setForm({ title: '', discountLabel: '', value: '', validity: '', terms: '' });
     setErrors({});
   };
 
-  const submitOffer = (id: string) => {
-    const offer = myOffers.find((o) => o.id === id);
-    if (!offer) return;
-    upsertAdminOffer({ ...offer, status: 'pending' });
+  const handleSubmitOffer = (id: string) => {
+    submitOffer(id);
   };
 
   return (
@@ -677,7 +810,7 @@ function OffersTab({ restaurantId, restaurantName, myOffers, publicOffers }: {
         <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>Offers only appear publicly after executive approval</span>
       </div>
 
-      <form className="admin-form" onSubmit={createOffer} noValidate>
+      <form className="admin-form" onSubmit={handleCreateOffer} noValidate>
         <div className="admin-form__row">
           <label className="field">
             <span className="field__label">Title</span>
@@ -713,6 +846,9 @@ function OffersTab({ restaurantId, restaurantName, myOffers, publicOffers }: {
       </form>
 
       <h3 style={{ marginTop: 'var(--s5)' }}>Your offers</h3>
+      <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s2)' }}>
+        Drafts are private. Submit one for executive approval — once approved it moves to “Currently public” below.
+      </p>
       <div className="offer-admin-list">
         {myOffers.length === 0 && <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>No offers created yet.</p>}
         {myOffers.map((o) => (
@@ -721,11 +857,11 @@ function OffersTab({ restaurantId, restaurantName, myOffers, publicOffers }: {
               <strong>{o.title}</strong>
               <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{o.discountLabel} · {o.validity}</span>
             </div>
-            <span className={`admin-status admin-status--${o.status}`}>{o.status}</span>
+            <span className={`admin-status admin-status--${o.status}`}>{statusLabel(o.status)}</span>
             {o.status === 'draft' && (
-              <button type="button" className="btn btn--primary btn--sm" onClick={() => submitOffer(o.id)}><Send size={12} aria-hidden="true" /> Submit for approval</button>
+              <button type="button" className="btn btn--primary btn--sm" onClick={() => handleSubmitOffer(o.id)}><Send size={12} aria-hidden="true" /> Submit for approval</button>
             )}
-            <button type="button" className="btn btn--subtle btn--sm" onClick={() => deleteAdminOffer(o.id)} aria-label={`Delete ${o.title}`}><Trash2 size={12} /></button>
+            <button type="button" className="btn btn--subtle btn--sm" onClick={() => removeOffer(o.id)} aria-label={`Delete ${o.title}`}><Trash2 size={12} /></button>
           </div>
         ))}
       </div>
@@ -930,33 +1066,3 @@ function AttributesTab({ restaurantId, restaurantName }: { restaurantId: string;
 
 /* ------------------------------------------------------------------ */
 
-function SettingsTab({ restaurantId, restaurantName }: { restaurantId: string; restaurantName: string }) {
-  const restaurant = restaurants.find((r) => r.id === restaurantId)!;
-  const rows = [
-    ['Name', restaurant.name],
-    ['Address', restaurant.address],
-    ['Hours', restaurant.openingHours],
-    ['Cuisines', restaurant.cuisines.join(', ')],
-    ['Budget', restaurant.budget],
-    ['Phone / website', 'Not published yet'],
-  ];
-  return (
-    <div className="panel">
-      <div className="panel__head"><h2>Settings</h2></div>
-      <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-        Core identity information is managed through the review workflow (future phase). These are the values users currently see.
-      </p>
-      <dl className="settings-list">
-        {rows.map(([k, v]) => (
-          <div key={k} className="settings-row">
-            <dt>{k}</dt>
-            <dd>{v}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s3)' }}>
-        {restaurantName} · ownership boundary enforced: this account can only manage this restaurant.
-      </p>
-    </div>
-  );
-}

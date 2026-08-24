@@ -32,6 +32,9 @@ import { useDiscoveryFacts } from '../hooks/useDiscoveryFacts';
 import { useReviewSamples } from '../hooks/useReviewSamples';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { selectRestaurantPhotos } from '../lib/photos';
+import { isSupabaseConfigured } from '../integrations/supabase/client';
+import { fetchOwnerImages } from '../repositories/imageUploadRepository';
+import type { RestaurantImageSource } from '../domain/images';
 import { getOffersForRestaurant, OFFERS_ENABLED } from '../hooks/useOffers';
 import { distanceKm } from '../lib/geo';
 import { googleMapsDirectionsUrl, googleMapsEmbedUrl, googleMapsPlaceUrl, googleMapsReviewsUrl } from '../lib/maps';
@@ -96,7 +99,37 @@ export default function RestaurantPage() {
   // Gallery photos come from a source-aware selector: real Google photos →
   // Khabo Kothay community photos → clearly-labelled demo placeholders.
   const gallery = restaurant ? selectRestaurantPhotos(restaurant, 'gallery') : { photos: [], leadSource: 'demo' as const };
-  const images = gallery.photos;
+
+  // Owner-managed uploads (image_references) are appended to the public gallery
+  // when a backend is configured. RLS already restricts them to the owner.
+  const configured = isSupabaseConfigured();
+  const [ownerPhotos, setOwnerPhotos] = useState<RestaurantImageSource[]>([]);
+  useEffect(() => {
+    if (!restaurant || !configured) {
+      setOwnerPhotos([]);
+      return;
+    }
+    let alive = true;
+    fetchOwnerImages(restaurant.id)
+      .then((rows) =>
+        alive &&
+        setOwnerPhotos(
+          rows.map((r) => ({
+            provider: 'khabo' as const,
+            imageUrl: r.image_url,
+            alt: `${restaurant.name} — owner photo`,
+            attribution: 'Owner upload',
+            license: '',
+          })),
+        ),
+      )
+      .catch(() => setOwnerPhotos([]));
+    return () => {
+      alive = false;
+    };
+  }, [restaurant, configured]);
+
+  const images = [...gallery.photos, ...ownerPhotos];
   const photoSourceLabel =
     gallery.leadSource === 'google-photos'
       ? 'Photos from Google Maps'
