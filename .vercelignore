@@ -1,42 +1,27 @@
-# Experimental / tooling artifacts — excluded from Vercel deploy
-*.xlsx
-*.xlsm
-*.csv
-KK_*
-address-quality-check.mjs
-check_addr*.cjs
-check_addresses*.cjs
-check_addresses*.mjs
-check_all*.cjs
-check_all*.mjs
-check_burger.mjs
-check_cross.mjs
-check_csv.mjs
-check_infocard.cjs
-check_prerender*.cjs
-check_rating_bytes.mjs
-check_restaurant*.cjs
-debug-*.mjs
-debug_*.cjs
-debug_all*.cjs
-debug_html.cjs
-debug-rows.mjs
-execute_import.mjs
-extracted_reviews.json
-fetch_reviews.*
-fix_burger.mjs
-fk_dry_run.mjs
-generate-*.mjs
-generate_audit.mjs
-inspect-preview.mjs
-prepare_import.mjs
-print_all.cjs
-process_all_reviews.mjs
-process_reviews.mjs
-qa_review_preview.mjs
-run-address-migration-and-populate.mjs
-database/address-verification/
-database/pipelines/
-scripts/*.cjs
-test*.txt
-input/
+# Files the Vercel build does not need. The build runs `npm run build`
+# (tsc → vite build → scripts/prerender.mjs), so it needs index.html, src/,
+# public/, scripts/, the tsconfigs and vite.config.ts — nothing else.
+#
+# Paths are anchored with a leading slash on purpose: an unanchored `supabase/`
+# would also exclude src/integrations/supabase/, which the build imports.
+
+# Local dependencies and build output (Vercel installs and builds its own)
+node_modules
+/dist
+
+# Database SQL and documentation — reference material, never imported
+/supabase/
+/docs/
+/README.md
+
+# Local tooling state
+/.claude/
+/.vercel/
+*.log
+
+# Local environment files. Vercel injects each project's own environment
+# variables into the build, and Vite gives real process env precedence over
+# .env files — so uploading these would only risk one project's values (or a
+# server-side secret) leaking into another project's build.
+/.env
+/.env.*

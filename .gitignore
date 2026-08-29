@@ -1,41 +1,36 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
+# Dependencies
 node_modules
+
+# Build output
 dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Environment — real values never leave the machine; the template is tracked
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Tool caches and build info
+*.tsbuildinfo
+.vite
+coverage
+
+# Editors
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
-*.ntvs*
-*.njsproj
-*.sln
 *.sw?
 
+# Local tooling state
 .vercel
-.env
-
-# Environment — ignore real values, keep the template
-.env
-.env.*
-!.env.example
-
-# TypeScript build info / tool caches
-*.tsbuildinfo
-.vite
-coverage
-
-# Supabase CLI local state
+.claude
 supabase/.temp
-.env*

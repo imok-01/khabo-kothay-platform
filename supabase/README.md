@@ -12,16 +12,19 @@ source of truth for what is live.
 
 ## Secondary / proposal location (DO NOT apply blindly)
 
-`database/schema/migrations/` holds:
+`supabase/schema/migrations/` holds:
 
 - `KHABO_KOTHAY_DATABASE_FOUNDATION_v1_1_FINAL_MIGRATION.sql` — foundational
   schema snapshot.
 - `RLS_PUBLIC_READ.sql` — row-level-security policy.
-- `PROPOSED_1_2` … `PROPOSED_1_6` — **proposed, NOT executed** migrations.
+- `PROPOSED_1_2` … `PROPOSED_1_13` — **proposed, NOT executed** migrations.
 
 The `PROPOSED_*` files are design proposals, not applied history. Do not run
 them as part of a normal migrate; promote a proposal into `supabase/migrations/`
 only after review and with a real migration timestamp.
+
+`supabase/schema/validation/` holds the read-only verification queries used to
+check anon / owner / executive access after a grant or RLS change.
 
 ## Known drift (gated — requires DB access, do not fix in app code)
 
