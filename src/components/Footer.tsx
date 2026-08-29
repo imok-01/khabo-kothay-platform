@@ -19,9 +19,9 @@ export default function Footer() {
     <footer className="footer">
       <div className="footer__inner">
         <div className="footer__brand">
-          <span className="footer__logo" aria-hidden="true"><Soup size={22} /></span>
+          <span className="footer__logo" aria-hidden="true"><Soup size={20} /></span>
           <div>
-            <strong>Khabo Kothay BD</strong>
+            <strong className="footer__mark">Khabo <em>Kothay</em></strong>
             <p className="footer__tagline">Discover Dhaka's restaurants with confidence.</p>
             <p className="footer__statement">
               Real listings, honest data, and recommendations that explain themselves — built for the daily question: where do we eat today?
@@ -62,14 +62,14 @@ export default function Footer() {
       </div>
       <div className="footer__bottom">
         <div className="footer__bottom-inner">
-          <p>© {year} Khabo Kothay BD · Made with ♥ in Dhaka</p>
+          <p>© {year} Khabo Kothay · Made with ♥ in Dhaka</p>
           <div className="footer__social" aria-label="Social channels — coming soon">
-            <span className="footer__social-icon" title="Coming soon"><AtSign size={15} aria-hidden="true" /></span>
-            <span className="footer__social-icon" title="Coming soon"><Share2 size={15} aria-hidden="true" /></span>
+            <span className="footer__social-icon" title="Coming soon"><AtSign size={16} aria-hidden="true" /></span>
+            <span className="footer__social-icon" title="Coming soon"><Share2 size={16} aria-hidden="true" /></span>
           </div>
           <div className="footer__legal">
-            <Link to="/privacy"><ShieldCheck size={13} aria-hidden="true" /> Privacy</Link>
-            <Link to="/terms"><FileText size={13} aria-hidden="true" /> Terms</Link>
+            <Link to="/privacy"><ShieldCheck size={14} aria-hidden="true" /> Privacy</Link>
+            <Link to="/terms"><FileText size={14} aria-hidden="true" /> Terms</Link>
           </div>
           <p className="footer__note">Saved places are stored on your device.</p>
         </div>

@@ -1,4 +1,5 @@
-import { WifiOff } from 'lucide-react';
+import { WifiOff, RotateCcw } from 'lucide-react';
+import { Button } from './ui';
 
 interface FetchErrorProps {
   onRetry: () => void;
@@ -7,16 +8,19 @@ interface FetchErrorProps {
 
 export default function FetchError({
   onRetry,
-  message = 'We couldn\'t load this right now. Check your connection and try again.',
+  /* Not "check your connection and try again" — the button says that. A message
+     whose only content is the label of the button beneath it wastes the one line
+     a diner reads before deciding whether this product is worth the wait. */
+  message = 'Nothing loaded. Your connection may have dropped mid-request.',
 }: FetchErrorProps) {
   return (
     <div className="empty" role="alert">
       <span className="empty__icon" aria-hidden="true"><WifiOff size={36} /></span>
       <h3>Connection trouble</h3>
       <p>{message}</p>
-      <button type="button" className="btn btn--primary" onClick={onRetry}>
+      <Button variant="primary" icon={RotateCcw} onClick={onRetry}>
         Try again
-      </button>
+      </Button>
     </div>
   );
 }

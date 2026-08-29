@@ -1,82 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500;1,6..72,600&family=Manrope:wght@400;500;600;700;800&display=swap');
-
 /* ============================================================
-   TOKENS
+   KHABO KOTHAY — COMPONENT LAYER (base)
+   ============================================================
+   Tokens live in design-system.css, which is the single source of
+   truth and is loaded before this file. Do NOT declare :root here
+   — two competing token blocks is exactly the bug that made a
+   component's appearance depend on import order.
+
+   Fonts are loaded via <link rel="preconnect"> + stylesheet in
+   index.html rather than an @import here, because a CSS @import
+   blocks rendering until it resolves.
    ============================================================ */
-:root {
-  /* Colour */
-  --bg: #faf8f3;
-  --surface: #ffffff;
-  --surface-2: #f2ede3;
-  --surface-3: #eae3d4;
-  --ink: #211d15;
-  --ink-soft: #5b5346;
-  --ink-faint: #877e6e;
-  --primary: #0b6b45;
-  --primary-strong: #075136;
-  --primary-soft: #e3f0e8;
-  --accent: #c97707;
-  --accent-soft: #fbf0da;
-  --success: #15803d;
-  --success-soft: #e5f3e8;
-  --warning: #b45309;
-  --danger: #b91c1c;
-  --border: #e6decc;
-  --border-strong: #d6cbb2;
-
-  /* Typography */
-  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
-  --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --fs-display: clamp(2.9rem, 7vw, 4.4rem);
-  --fs-h1: clamp(2.1rem, 4.6vw, 3.2rem);
-  --fs-h2: clamp(1.65rem, 3vw, 2.2rem);
-  --fs-h3: clamp(1.2rem, 1.8vw, 1.5rem);
-  --fs-body: 0.9375rem;
-  --fs-md: 0.875rem;
-  --fs-sm: 0.8125rem;
-  --fs-xs: 0.75rem;
-  --lh-tight: 1.12;
-  --lh-snug: 1.3;
-  --lh-body: 1.6;
-
-  /* Spacing (4px scale) */
-  --s1: 4px;
-  --s2: 8px;
-  --s3: 12px;
-  --s4: 16px;
-  --s5: 20px;
-  --s6: 24px;
-  --s8: 32px;
-  --s10: 40px;
-  --s12: 48px;
-  --s16: 64px;
-
-  /* Radius — restrained */
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 20px;
-  --r-full: 999px;
-
-  /* Shadows — subtle, layered */
-  --shadow-xs: 0 1px 2px rgba(33, 29, 21, 0.06);
-  --shadow-sm: 0 1px 3px rgba(33, 29, 21, 0.07), 0 1px 2px rgba(33, 29, 21, 0.04);
-  --shadow-md: 0 4px 14px rgba(33, 29, 21, 0.1);
-  --shadow-lg: 0 14px 36px rgba(33, 29, 21, 0.15);
-  --shadow-pop: 0 8px 28px rgba(33, 29, 21, 0.16);
-
-  /* Motion */
-  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --dur-fast: 150ms;
-  --dur-med: 250ms;
-  --dur-slow: 400ms;
-
-  /* Layout */
-  --nav-h: 64px;
-  --container: 1180px;
-  --gutter: clamp(1rem, 3vw, 2rem);
-}
 
 /* ============================================================
    RESET & BASE
@@ -94,27 +27,11 @@ html {
 
 body {
   margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--fs-body);
-  line-height: var(--lh-body);
-  color: var(--ink);
-  background: var(--bg);
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
 
 h1, h2, h3, h4 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  line-height: var(--lh-tight);
-  color: var(--ink);
   margin: 0;
-  letter-spacing: -0.01em;
 }
-
-h1 { font-size: var(--fs-h1); }
-h2 { font-size: var(--fs-h2); }
-h3 { font-size: var(--fs-h3); }
 
 p { margin: 0; }
 a { color: inherit; text-decoration: none; }
@@ -124,17 +41,6 @@ button {
   font-family: inherit;
   cursor: pointer;
   color: inherit;
-}
-
-::selection {
-  background: var(--primary-soft);
-  color: var(--ink);
-}
-
-:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-  border-radius: 2px;
 }
 
 .sr-only {
@@ -160,10 +66,16 @@ button {
   border-radius: 0 0 var(--r-sm) var(--r-sm);
   font-weight: 700;
   font-size: var(--fs-md);
-  transition: top var(--dur-med) var(--ease);
+  transition: top var(--tr-settle);
 }
 
-.skip-link:focus { top: 0; }
+/* The first control a keyboard user ever touches, and it used to take 260ms
+   on the browser's default curve to arrive — long enough to look like the page
+   was deciding. It answers at --tr-answer and retreats on the settle. */
+.skip-link:focus {
+  top: 0;
+  transition-duration: var(--tr-answer);
+}
 
 .app {
   display: flex;
@@ -179,111 +91,48 @@ button {
 /* ============================================================
    TYPOGRAPHY HELPERS
    ============================================================ */
-.t-display { font-family: var(--font-display); font-size: var(--fs-display); font-weight: 700; line-height: 1.02; }
-.t-h1 { font-family: var(--font-display); font-size: var(--fs-h1); font-weight: 600; }
-.t-h2 { font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 600; }
-.t-h3 { font-family: var(--font-display); font-size: var(--fs-h3); font-weight: 600; }
 .t-body { font-size: var(--fs-body); line-height: var(--lh-body); }
 .t-md { font-size: var(--fs-md); }
 .t-sm { font-size: var(--fs-sm); }
 .t-xs { font-size: var(--fs-xs); }
-.t-label {
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-.t-num { font-variant-numeric: tabular-nums; font-weight: 700; }
 .t-em { font-style: italic; }
 
 /* ============================================================
-   BUTTONS
+   BUTTONS — moved to primitives.css
+   ============================================================
+   The base rule and the primary / ghost / subtle / block / lg
+   variants used to be declared here and then re-declared, with
+   different values, in editorial.css, refine.css and polish.css. What
+   shipped was the resolved value of all four, so this block described
+   a button nobody ever saw. It now lives once, in primitives.css,
+   beside the Button component that emits these classes.
    ============================================================ */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s2);
-  padding: 0.6rem 1.15rem;
-  border-radius: var(--r-md);
-  border: 1px solid transparent;
-  font-weight: 600;
-  font-size: var(--fs-md);
-  line-height: 1.2;
-  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
-    box-shadow var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
-}
-
-.btn:active { transform: translateY(1px); }
-
-.btn--primary {
-  background: var(--primary);
-  color: #fff;
-  box-shadow: var(--shadow-xs);
-}
-.btn--primary:hover { background: var(--primary-strong); box-shadow: var(--shadow-sm); }
-
-.btn--ghost {
-  background: var(--surface);
-  border-color: var(--border);
-  color: var(--ink-soft);
-}
-.btn--ghost:hover { border-color: var(--border-strong); color: var(--ink); }
-
-.btn--subtle { background: transparent; border-color: transparent; color: var(--ink-soft); }
-.btn--subtle:hover { background: var(--surface-2); color: var(--ink); }
-
-.btn--block { width: 100%; }
-.btn--lg { padding: 0.8rem 1.6rem; font-size: 1rem; }
 
 /* ============================================================
    CHIPS & BADGES
+   ============================================================
+
+   The chip block that used to sit here is gone the same way the button
+   block above it went, and for the same reason: `.chip` was declared
+   twice — here and in editorial.css — with five of its variants
+   declared twice at different values, and because editorial.css loads
+   later, nothing this file said about a chip survived. Six hardcoded
+   hexes died with it (#8a5408, #eed9b0, #f1ecff, #5b3fd4, #e2dafd,
+   #c9e8d2), none of which had ever painted a pixel.
+
+   The resolved chip lives once, in primitives.css §5, beside the `Chip`
+   and `Badge` components that supersede it.
    ============================================================ */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s1);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  padding: 0.28rem 0.8rem;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--ink-soft);
-  white-space: nowrap;
-  transition: all var(--dur-fast) var(--ease);
-}
-
-.chip--select {
-  cursor: pointer;
-  background: var(--surface);
-}
-.chip--select:hover { border-color: var(--primary); color: var(--primary); }
-
-.chip--active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-}
-
-.chip--link:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
-
-.chip--dismiss { cursor: pointer; }
-
-.chip--meal { background: var(--accent-soft); color: #8a5408; border-color: #eed9b0; }
-.chip--vibe { background: #f1ecff; color: #5b3fd4; border-color: #e2dafd; }
-.chip--offer { background: var(--success-soft); color: var(--success); border-color: #c9e8d2; }
 
 .veg-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--s1);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   border-radius: 4px;
-  padding: 2px 5px;
+  padding: var(--s0h) var(--s1h);
   border: 1.5px solid currentColor;
   line-height: 1;
 }
@@ -302,29 +151,52 @@ button {
   position: relative;
 }
 
+/* The trigger is a control, and until now it did not look like one: an
+   unpainted 303x22px row whose only affordance was a 22px `Info` glyph at
+   half opacity. It is now two lines — the measure, and the strongest real
+   reason under it — inside a 44px box that takes a ground on hover. */
 .match-indicator__trigger {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  justify-content: center;
+  gap: var(--s1h);
   width: 100%;
-  padding: 0;
+  min-height: 44px;
+  /* Padding for the pointer, negative margin to give it back to the
+     layout, so the row still sits flush with the foot's own padding. */
+  padding: var(--s1h) var(--s2);
+  margin: -5px -7px;
   background: none;
   border: 0;
+  border-radius: var(--r-sm);
   cursor: pointer;
   text-align: left;
   color: inherit;
+  transition:
+    background var(--tr-settle),
+    box-shadow var(--tr-settle);
+}
+.match-indicator__trigger:hover {
+  transition-duration: var(--tr-answer);
 }
 
 .match-indicator__trigger:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
-  border-radius: 4px;
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.match-indicator__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--s3);
+  min-width: 0;
 }
 
 .match-indicator__score {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--s1h);
 }
 
 .match-indicator__score strong {
@@ -338,6 +210,53 @@ button {
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--ink-faint);
+}
+
+/* The affordance in words. A word survives being small; a 14px glyph at
+   `opacity: 0.5` does not, which is why nobody found the old one. */
+.match-indicator__why {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-semi);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--ink-faint);
+  transition: color var(--dur-med) var(--ease-out);
+}
+.match-indicator__chev {
+  transition: transform var(--dur-med) var(--ease-out);
+}
+/* The chevron's angle IS the panel's state, so it is read off
+   `aria-expanded` rather than a class that could disagree with it. */
+.match-indicator__trigger[aria-expanded='true'] .match-indicator__chev {
+  transform: rotate(180deg);
+}
+
+/* The lead reason, on the card. This is the whole point of the revamp: the
+   engine's strongest reason is real text it already produced, and printing
+   it here means the card answers "why?" without anyone opening anything.
+   One line, always — it ellipsises rather than reflowing the foot, so card
+   heights across a grid row stay equal. */
+.match-indicator__lead {
+  display: flex;
+  align-items: center;
+  gap: var(--s1h);
+  min-width: 0;
+  font-size: var(--fs-2xs);
+  color: var(--ink-soft);
+}
+.match-indicator__lead svg {
+  flex: none;
+  color: var(--accent-strong);
+}
+.match-indicator__lead-text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .match-bar {
@@ -355,122 +274,186 @@ button {
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--primary), var(--primary-strong, var(--primary)));
-  transition: width var(--dur-slow) var(--ease);
+  /* Not an interaction: a fill arriving at a value, so it decelerates on
+     --ease-out like `.progress__bar` rather than joining the §8b pair. */
+  transition: width var(--dur-slow) var(--ease-out);
 }
 
 .match-popover {
   position: absolute;
+  /* The panel is sized by its anchor, not by a width of its own. `.rcard`
+     sets `overflow: hidden` to clip the photo against the card radius, so
+     anything wider than the card is cut off at the card's edge — a 360px
+     panel inside a 337px card lost 40px of its right side, meters included.
+     `left/right: 0` with no width pins it to `.match-indicator`, which is
+     always inside the foot and therefore always inside the card, at every
+     variant and width, with no dependency on the foot's padding. */
   left: 0;
   right: 0;
-  bottom: calc(100% + 8px);
+  /* …and capped, because the anchor is not always narrow: the homepage's
+     editorial card gives it a 644px foot, and a 46px dial, one sentence and
+     52px meters stretched across 644px is a panel with a hole in the middle.
+     `left` + `right` + `max-width` is over-constrained, which CSS resolves in
+     LTR by dropping `right` — so this reads as "start at the anchor's left
+     edge, never exceed 360px, never exceed the anchor". */
+  max-width: 360px;
+  bottom: calc(100% + 10px);
   z-index: 30;
-  width: min(100%, 340px);
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   box-shadow: var(--shadow-lg);
-  padding: var(--s3);
+  padding: var(--s4);
   outline: none;
-  animation: popover-in 160ms var(--ease);
+  animation: kk-rise 160ms var(--ease-out);
+  --kk-rise-from: 4px;
 }
 
+/* Hover bridge. The panel opens on hover of `.match-indicator` and closes on
+   its `mouseleave`, but the 10px gap between the trigger and the panel is
+   outside the root's own box — the panel is absolutely positioned, so it adds
+   nothing to it. Crossing that gap fired `mouseleave`, unmounted the panel,
+   and made it unreachable by pointer: the only way in was a click. This strip
+   is part of the panel, so the pointer never leaves the root on the way up.
+   Suppressed in the ≤640 sheet below, where the panel is fixed and nowhere
+   near the trigger. */
+.match-popover::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 10px;
+}
+
+/* Head: dial, then the sentence, then the close. Three columns rather than
+   `space-between` so the title's left edge does not move between a 7% and a
+   100% score. */
 .match-popover__head {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: var(--s2);
+  gap: var(--s3);
+  margin-bottom: var(--s3);
 }
 
-.match-popover__head-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-soft);
-}
-
-.match-popover__head-title svg {
-  color: var(--primary);
+/* The same conic ring the card's media badge uses (phase-c.css .rcard__ring),
+   at panel scale. Reusing the device rather than inventing a second one is
+   what makes the popover read as part of the card it came from. */
+.match-popover__dial {
+  position: relative;
   flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--accent-strong) calc(var(--pct) * 1%),
+    var(--primary-line) 0
+  );
+}
+.match-popover__dial::before {
+  content: '';
+  position: absolute;
+  inset: 3.5px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.match-popover__dial strong {
+  position: relative;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.match-popover__dial small {
+  font-size: 0.62em;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+.match-popover__headtext {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s0h);
+  min-width: 0;
+}
+
+.match-popover__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+  letter-spacing: var(--tracking-tight);
+}
+
+/* The number in words. Four bands, no new information — it exists so "42%"
+   is legible as a quantity of overlap rather than as a grade. */
+.match-popover__band {
+  font-size: var(--fs-2xs);
+  color: var(--ink-soft);
 }
 
 .match-popover__close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   background: none;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-xs);
   color: var(--ink-faint);
   cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
 }
 
 .match-popover__close:hover {
-  background: var(--surface-2);
+  background: var(--primary-faint);
   color: var(--ink);
 }
 
 .match-popover__close:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: var(--focus-ring);
   outline-offset: 1px;
-}
-
-/* Score summary inside the popover — ties the explanation to the number. */
-.match-popover__score {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: var(--s2) var(--s3);
-  margin: 0 calc(var(--s3) * -1) var(--s3);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-
-.match-popover__score-value {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  font-size: var(--fs-xs);
-  color: var(--ink-faint);
-}
-
-.match-popover__score-value strong {
-  font-size: var(--fs-md);
-  font-weight: 700;
-  color: var(--primary);
-  letter-spacing: -0.01em;
-}
-
-.match-bar--popover {
-  height: 5px;
 }
 
 .match-popover__groups {
   display: flex;
   flex-direction: column;
-  gap: var(--s2);
+  gap: var(--s3);
 }
 
 .match-popover__group {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--s1h);
 }
 
+/* The caption trails a hairline to the right edge, so three stacked groups
+   read as three sections instead of three floating scraps of small caps. */
 .match-popover__caption {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
   margin: 0;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--tracking-caps);
   color: var(--ink-faint);
+}
+.match-popover__caption::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 .match-popover__reasons {
@@ -479,66 +462,68 @@ button {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: var(--s1h);
 }
 
+/* Icon tile, label, meter — one grid so the meters line up in a column and
+   the strengths are comparable at a glance. They were full-width bars under
+   each label before, which made every reason look equally strong. */
 .match-popover__reason {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.match-popover__reason-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-xs);
+  background: var(--primary-faint);
+  color: var(--primary);
 }
 
 .match-popover__reason-label {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
+  min-width: 0;
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--ink);
-  line-height: 1.4;
+  line-height: 1.35;
   overflow-wrap: anywhere;
-}
-
-.match-popover__reason-label svg {
-  color: var(--primary);
-  flex: none;
-  margin-top: 2px;
 }
 
 .match-popover__bar {
   display: block;
-  width: 100%;
-  height: 3px;
+  width: 52px;
+  height: 5px;
   border-radius: 999px;
-  background: var(--surface-2);
+  background: var(--primary-line);
   overflow: hidden;
 }
 
 .match-popover__bar span {
   display: block;
   height: 100%;
-  background: var(--primary-soft-strong, var(--primary));
   border-radius: 999px;
-  opacity: 0.7;
+  background: var(--grad-gold);
 }
 
 .match-popover__empty {
   font-size: var(--fs-xs);
   color: var(--ink-soft);
-  margin: 0 0 var(--s2);
+  line-height: 1.5;
+  margin: 0;
 }
 
 .match-popover__foot {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--ink-faint);
+  line-height: 1.45;
   margin: var(--s3) 0 0;
-  padding-top: var(--s2);
+  padding-top: var(--s3);
   border-top: 1px solid var(--border);
-}
-
-@keyframes popover-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Mobile: the explanation becomes a bottom sheet that stays in the viewport. */
@@ -547,19 +532,39 @@ button {
     position: fixed;
     left: 12px;
     right: 12px;
-    bottom: 12px;
+    /* Clears the fixed `.mobile-nav`, which is 62px tall at z-index 60 — the
+       sheet sits at 30, so anything it puts in the bottom 62px is painted
+       over. It was the foot line, i.e. the provenance sentence, which is the
+       one line in this panel KK cannot afford to hide. */
+    bottom: calc(var(--bottom-nav-h) + var(--s3) + env(safe-area-inset-bottom, 0px));
     top: auto;
     width: auto;
-    max-height: 72vh;
+    /* The sheet spans the viewport gutters, so the desktop cap has to be
+       lifted or a 600px phone gets a 360px sheet pinned to the left. */
+    max-width: none;
+    max-height: 68vh;
     overflow-y: auto;
-    border-radius: 14px;
-    animation-name: sheet-in;
+    border-radius: var(--r-md);
+    --kk-rise-from: 12px;
   }
+  .match-popover::after { content: none; }
 }
 
-@keyframes sheet-in {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+/* The global blanket in editorial.css zeroes animation and transition
+   *durations*, which turns the chevron's rotation and the panel's rise into
+   instant jumps rather than removing them — more motion than none, in one
+   frame. `transition-property`/`animation-name` are not what the blanket
+   overrides, so setting them here is what actually holds. The trigger's
+   background and the close button keep their colour fades: a colour change
+   at a distance of zero pixels is not motion. */
+@media (prefers-reduced-motion: reduce) {
+  .match-indicator__chev,
+  .match-bar__fill {
+    transition: none;
+  }
+  .match-popover {
+    animation: none;
+  }
 }
 
 .veg-badge--corner {
@@ -571,25 +576,14 @@ button {
   z-index: 2;
 }
 
-.compare-btn {
-  position: absolute;
-  bottom: var(--s3);
-  right: var(--s3);
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink-faint);
-  box-shadow: var(--shadow-xs);
-  transition: all var(--dur-fast) var(--ease);
-  z-index: 2;
-}
-
-.compare-btn:hover { color: var(--primary); border-color: var(--primary); }
-.compare-btn--active { color: #fff; background: var(--primary); border-color: var(--primary); }
+/* `.compare-btn` — the whole family — is gone. It was declared here (base,
+   `:hover`, `--active`), again in editorial.css's floating-actions group, again
+   in two of its responsive blocks, and it had a line in editorial.css's ENTER
+   block, so five places were maintaining a control with no markup: comparing is
+   `.rcard__act` / `.rcard__act--compare-on` now (RestaurantCard.tsx:468). The
+   compare *feature* is untouched — CompareTray, `.compare-table` and the
+   comparison route all still work; only this orphaned button's paint went.
+   `.save-btn` went with it for the same reason and in the same sweep. */
 
 .card__match {
   display: flex;
@@ -618,7 +612,12 @@ button {
   inset: 0 0 auto 0;
   z-index: 50;
   background: rgba(250, 248, 243, 0.9);
-  backdrop-filter: blur(14px);
+  /* No `backdrop-filter` here. The header's glass is a *state*, owned by
+     polish.css: `.nav:not(.nav--scrolled):not(.nav--over-hero)` clears it
+     at rest, `.nav.nav--scrolled` applies `--glass-blur`, and refine.css's
+     `.nav.nav--over-hero` clears it over the homepage hero. All three are
+     more specific than this rule, so the `blur(14px)` that used to sit on
+     this line had never once composited. Deleted in Phase 3 item 6. */
   border-bottom: 1px solid var(--border);
 }
 
@@ -675,7 +674,7 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   padding: 0.45rem 0.8rem;
-  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  transition: border-color var(--tr-settle), box-shadow var(--tr-settle);
 }
 
 .nav__search:focus-within,
@@ -692,6 +691,11 @@ button {
   background: transparent;
   outline: none;
   width: 100%;
+  /* An <input> carries an intrinsic min-width, so `min-width: auto` would
+     stop the flex row shrinking somewhere around 170px — wider than the
+     136px the bar's pill rests at. Without this the collapsed pill cannot
+     reach its own resting width. */
+  min-width: 0;
   font-family: inherit;
   font-size: var(--fs-md);
   color: var(--ink);
@@ -708,13 +712,17 @@ button {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   padding: 0.45rem 0.8rem;
   border-radius: var(--r-sm);
   font-weight: 600;
   font-size: var(--fs-md);
   color: var(--ink-soft);
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  /* Nav labels are single words or short pairs and must never wrap —
+     at narrow-desktop widths "Sign in" was breaking onto two lines and
+     making that one item taller than the rest of the bar. */
+  white-space: nowrap;
+  transition: background var(--tr-settle), color var(--tr-settle);
 }
 
 .nav__link:hover { background: var(--surface-2); color: var(--ink); }
@@ -726,7 +734,7 @@ button {
   place-items: center;
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
+  padding: 0 var(--s1h);
   border-radius: var(--r-full);
   background: var(--accent);
   color: #fff;
@@ -734,15 +742,11 @@ button {
   font-weight: 700;
 }
 
-.nav__burger {
-  display: none;
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  padding: 0.45rem 0.6rem;
-  color: var(--ink);
-  font-size: 1.05rem;
-}
+/* `.nav__burger` was declared here, in editorial.css, in polish.css and once
+   more (over-hero) in refine.css. It now lives once, in polish.css, beside the
+   account pill and CTA it has to stay 40px-aligned with. Every declaration this
+   copy made was already being overwritten there except `font-size: 1.05rem`,
+   which painted nothing — see the note at the consolidated rule. */
 
 .nav__mobile {
   display: none;
@@ -795,7 +799,7 @@ button {
 .hero__eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   color: var(--primary);
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -826,13 +830,13 @@ button {
 .hero__search {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s2);
   max-width: 620px;
   margin: 0 auto var(--s5);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 6px 6px 6px 16px;
+  padding: var(--s1h) var(--s1h) var(--s1h) var(--s4);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
 }
 
@@ -849,7 +853,7 @@ button {
   background: transparent;
   font-size: 1rem;
   color: var(--ink);
-  padding: 10px 4px;
+  padding: var(--s2h) var(--s1);
   outline: none;
 }
 
@@ -916,8 +920,8 @@ button {
   .hero__search {
     flex-wrap: wrap;
     border-radius: 16px;
-    padding: 10px;
-    gap: 10px;
+    padding: var(--s2h);
+    gap: var(--s2h);
   }
   .hero__search-input {
     flex-basis: 100%;
@@ -965,7 +969,7 @@ button {
 .quick-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   padding: 0.5rem 1rem;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
@@ -973,7 +977,14 @@ button {
   font-weight: 600;
   font-size: var(--fs-md);
   color: var(--ink-soft);
-  transition: all var(--dur-fast) var(--ease);
+  /* `all` was hiding how much this chip actually moves: editorial.css adds a
+     shadow on hover, phase-c/hero-scene/refine each give the hero variants a
+     border, and polish.css presses it 1px on `:active`. Named, so the browser
+     is not asked to interpolate every property it owns. */
+  transition:
+    background var(--tr-settle), border-color var(--tr-settle),
+    box-shadow var(--tr-settle), color var(--tr-settle),
+    transform var(--tr-settle);
 }
 
 .quick-chip:hover {
@@ -1024,7 +1035,36 @@ button {
   border-radius: var(--r-sm);
   padding: 0.55rem 0.8rem;
   text-align: left;
-  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+  transition: border-color var(--tr-settle), background var(--tr-settle);
+}
+
+/* The field's face. The icon used to sit inline inside the caps label, where a
+   16px glyph next to 10px letterspaced type reads as neither one thing nor the
+   other. In a tile it becomes the field's own mark — and the tile is what
+   lights when the field has been answered, which turns the row of five into a
+   visible account of how much of your taste KK has been told. That signal was
+   a 6px dot in the trigger's top-left corner before, which is the smallest a
+   piece of state can be and still be drawn. */
+.builder-field__well {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-xs);
+  background: var(--surface-3);
+  color: var(--ink-soft);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.builder-field__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.builder-field__trigger--active .builder-field__well {
+  background: var(--accent);
+  color: var(--surface);
 }
 
 .builder-field__trigger:hover { background: var(--surface-3); }
@@ -1051,52 +1091,98 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
+  /* The flex column is the constraint now, so a fixed 120px here only ever
+     truncated values the field had room for. */
+  max-width: 100%;
 }
 
-.builder-field__chevron { color: var(--ink-faint); transition: transform var(--dur-fast) var(--ease); }
+.builder-field__chevron { color: var(--ink-faint); transition: transform var(--tr-settle); }
 .builder-field__trigger[aria-expanded='true'] .builder-field__chevron { transform: rotate(180deg); }
 
+/* The menu is the field's own panel, so it is measured from the field: at
+   least as wide as the trigger it belongs to, no wider than its longest row
+   needs, and never wider than a comfortable reading measure. The old fixed
+   `min-width: 240px` under a 224px field left a 16px overhang that read as a
+   panel floating loose of its control — and on the widest fields it was the
+   other way round, a 240px list under a 300px trigger. `min-width: 100%`
+   resolves against `.builder-field`, which is the containing block, so the
+   two edges line up at every breakpoint without a single measured value.
+   The height ceiling lives in polish.css section 11 with the room the field
+   measures for it.
+
+   Two elements, not one. This is the frame: ground, hairline, shadow,
+   position, and nothing that scrolls. The rows live in
+   `.builder__popover-list` inside it, which is transparent and is what
+   carries the height cap, the overflow and the edge fade — because a
+   `mask-image` on this element would clip its own box-shadow off and turn
+   its background transparent at both fading edges, showing the field rail
+   through the menu. `overflow: hidden` so the rows clip to the radius
+   rather than squaring off its corners, and no padding, because padding
+   here would sit outside the scroller and put a dead band above the first
+   row that scrolls with nothing in it. */
 .builder__popover {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  min-width: 240px;
-  max-width: 320px;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(22rem, 88vw);
   z-index: 30;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-pop);
-  padding: var(--s2);
-  animation: pop-in var(--dur-med) var(--ease-out);
+  overflow: hidden;
+  padding: 0;
+  animation: kk-rise var(--dur-med) var(--ease-out);
+  --kk-rise-from: -4px;
 }
 
-@keyframes pop-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
+/* Three columns, and the first one is always there. The check holds its own
+   16px gutter whether it is drawn or not (see `--kk-select__check` in
+   primitives.css, the same contract), so moving the selection down the list
+   never shifts a single label sideways — the alternative, mounting the mark
+   only on the selected row, animates every label by 21px on each pick.
+   `text-align: left` because a `<button>`'s UA default is centre, which the
+   old shrink-wrapped label hid. */
 .builder__option {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--s3);
+  gap: var(--s2);
   background: none;
   border: none;
   border-radius: var(--r-sm);
   padding: 0.55rem 0.7rem;
+  text-align: left;
   font-size: var(--fs-md);
   font-weight: 600;
   color: var(--ink);
-  transition: background var(--dur-fast) var(--ease);
+  transition: background var(--tr-settle), color var(--tr-settle);
+}
+
+.builder__option-check {
+  flex: none;
+  color: var(--accent);
+  opacity: 0;
+}
+.builder__option--selected .builder__option-check { opacity: 1; }
+
+/* Takes the slack so the count sits at the row's right edge, and can
+   ellipsize rather than widen the panel past its measure. */
+.builder__option-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .builder__option:hover { background: var(--surface-2); }
 .builder__option--selected { background: var(--primary-soft); color: var(--primary); }
 
 .builder__option-count {
+  flex: none;
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--ink-faint);
@@ -1105,31 +1191,96 @@ button {
 
 .builder__option--selected .builder__option-count { color: var(--primary); }
 
+/* THE FOOT. Two stacked rows, not one wrapping row of four strangers: what you
+   have chosen, then what to do about it. The old layout put a sentence, a
+   figure and the primary button on one line and pushed the button right with
+   `margin-left: auto`, and every combination of contents wrapped differently. */
 .builder__summary {
   margin-top: var(--s3);
   padding-top: var(--s3);
   border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+/* Row 1: the terms. Mounted in both states, so the first chip replaces a
+   sentence instead of promoting a row to full width and dropping the action
+   onto a second line — measured at 1405, that reflow grew the console 53px
+   under the reader's cursor on the very first pick.
+
+   The reservation is the chip's height, not the sentence's: 1.8rem is the
+   `.chip--dismiss` box (its 13px line box, 0.28rem of padding each side and a
+   1px border, measured at 28.94px). Sized to the sentence instead, the row
+   still gained 8px on the first pick, because a pill is taller than a line of
+   text — small, but it is the action bar underneath that moves. */
+.builder__summary-terms {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s1h);
+  min-height: 1.8rem;
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+
+/* Row 2: the action bar. The status reads from the left, the button terminates
+   the row on the right, and the quiet undo sits immediately before it — near
+   enough to be found when it is wanted, small enough never to compete with the
+   thing it sits beside. */
+.builder__action {
   display: flex;
   align-items: center;
   gap: var(--s3);
   flex-wrap: wrap;
 }
 
-.builder__summary-terms {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-size: var(--fs-sm);
-  color: var(--ink-soft);
-}
+/* The figure and what it counts, as one line. It was a two-line block with the
+   number set 1.25rem in the display serif — a metric tile, and the loudest
+   thing in a foot whose whole job is the button next to it. Baseline-aligned
+   inline text instead: still the first thing read in the row, no longer a
+   competing object.
 
+   Inline flow rather than a flex row, deliberately. A flex row would need a
+   `gap` to separate the figure from the words, and a gap is not a space: the
+   two would be read as "13places fit what you picked". Inline text gets the
+   baseline alignment for free and keeps the real word break. */
 .builder__count {
+  /* Takes the row's free space to its right, so the undo and the button group
+     at the far end whether or not the undo exists. An `auto` on the button
+     instead would have left the undo stranded beside the status. */
+  margin: 0 auto 0 0;
   font-weight: 800;
   color: var(--primary);
   font-variant-numeric: tabular-nums;
 }
+.builder__count-note {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0;
+  color: var(--ink-soft);
+}
 
-.builder__cta { margin-left: auto; }
+/* Undo, for the whole thing. Five fields and six advanced ones could be filled
+   and there was no way back short of reloading the page — the only control that
+   removed anything was the option row you had to find again. */
+.builder__reset {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  padding: var(--s1h) var(--s2h);
+  background: none;
+  border: 0;
+  border-radius: var(--r-xs);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.builder__reset:hover { background: var(--surface-2); color: var(--ink); }
+.builder__reset:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
 
 /* ============================================================
    SECTIONS
@@ -1172,7 +1323,7 @@ button {
   font-weight: 700;
   font-size: var(--fs-md);
   white-space: nowrap;
-  padding-bottom: 4px;
+  padding-bottom: var(--s1);
 }
 
 .section-heading__action:hover { text-decoration: underline; }
@@ -1192,7 +1343,7 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   overflow: hidden;
-  transition: transform var(--dur-med) var(--ease), box-shadow var(--dur-med) var(--ease);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
 }
 
 .card:hover {
@@ -1221,18 +1372,23 @@ button {
 
 .card__media img {
   transform: scale(1.01);
-  transition: transform var(--dur-slow) var(--ease);
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 
 .card__media:hover img { transform: scale(1.04); }
 
+/* `.card__badge` has no markup anywhere under src — the restaurant
+   card's overlays are `.rcard__flag` / `.rcard__pill` / `.rcard__match-badge`
+   now. Left standing (the selector is harmless and the block documents the
+   old treatment), but its `backdrop-filter: blur(6px)` is gone: it was dead
+   twice over — editorial.css re-declares the same selector with blur(8px)
+   and wins on source order, and neither one has an element to apply to. */
 .card__badge {
   position: absolute;
   top: var(--s3);
   left: var(--s3);
   background: rgba(33, 29, 21, 0.72);
   color: #fff;
-  backdrop-filter: blur(6px);
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -1268,14 +1424,14 @@ button {
 .card__tagline {
   color: var(--ink-soft);
   font-size: var(--fs-md);
-  margin: 4px 0 var(--s3);
+  margin: var(--s1) 0 var(--s3);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.card__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--s3); }
+.card__chips { display: flex; flex-wrap: wrap; gap: var(--s1h); margin-bottom: var(--s3); }
 
 .card__meta {
   display: flex;
@@ -1288,7 +1444,7 @@ button {
   flex-wrap: wrap;
 }
 
-.card__meta-item { display: inline-flex; align-items: center; gap: 4px; }
+.card__meta-item { display: inline-flex; align-items: center; gap: var(--s1); }
 .card__meta-item svg { color: var(--ink-faint); }
 .card__distance { color: var(--ink-faint); }
 
@@ -1319,7 +1475,7 @@ button {
   background: rgba(255, 255, 255, 0.92);
   color: var(--ink-faint);
   box-shadow: var(--shadow-sm);
-  transition: transform var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  transition: transform var(--tr-settle), color var(--tr-settle);
   z-index: 2;
 }
 
@@ -1342,7 +1498,7 @@ button {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   font-size: 0.8rem;
   line-height: 1;
 }
@@ -1357,7 +1513,11 @@ button {
   position: absolute;
   inset: 0 auto 0 0;
   overflow: hidden;
-  color: var(--accent);
+  /* accent-strong, not accent: saffron-600 stars measure 3.5:1 on --surface,
+     which clears the 3:1 graphic threshold but not the 4.5:1 text one — and
+     these are text glyphs at 12.8px. saffron-700 measures 4.8:1 and still
+     reads as the warm brand saffron rather than brown. */
+  color: var(--accent-strong);
 }
 
 .rating__value { font-weight: 700; font-size: var(--fs-md); color: var(--ink); }
@@ -1379,7 +1539,7 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   padding: var(--s2);
-  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle), border-color var(--tr-settle);
 }
 
 .tile:hover {
@@ -1432,7 +1592,7 @@ button {
   overflow: hidden;
   border: 1px solid var(--border);
   background: var(--surface);
-  transition: transform var(--dur-med) var(--ease), box-shadow var(--dur-med) var(--ease);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
 }
 
 .collection-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
@@ -1447,7 +1607,7 @@ button {
 
 .collection-card__body { padding: var(--s4); }
 
-.collection-card__body h3 { font-size: 1.2rem; margin-bottom: 2px; }
+.collection-card__body h3 { font-size: 1.2rem; margin-bottom: var(--s0h); }
 
 .collection-card__body p { font-size: var(--fs-md); color: var(--ink-soft); }
 
@@ -1458,7 +1618,7 @@ button {
   margin-top: var(--s2);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--s1);
 }
 
 /* ============================================================
@@ -1477,7 +1637,7 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: var(--s4);
-  transition: transform var(--dur-med) var(--ease), box-shadow var(--dur-med) var(--ease);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
 }
 
 .offer-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
@@ -1505,9 +1665,9 @@ button {
   margin-bottom: var(--s2);
 }
 
-.offer-card__title { font-size: 1.05rem; margin-bottom: 2px; }
+.offer-card__title { font-size: 1.05rem; margin-bottom: var(--s0h); }
 
-.offer-card__terms { font-size: var(--fs-sm); color: var(--ink-faint); margin-top: 4px; }
+.offer-card__terms { font-size: var(--fs-sm); color: var(--ink-faint); margin-top: var(--s1); }
 
 .offer-card__link { color: var(--primary); font-weight: 700; font-size: var(--fs-md); }
 
@@ -1540,7 +1700,7 @@ button {
 .surprise__label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   background: var(--accent-soft);
   color: #8a5408;
   border-radius: var(--r-full);
@@ -1550,7 +1710,7 @@ button {
   margin-bottom: var(--s2);
 }
 
-.surprise__body h2 { font-size: var(--fs-h3); margin-bottom: 4px; }
+.surprise__body h2 { font-size: var(--fs-h3); margin-bottom: var(--s1); }
 .surprise__body h2 em { color: var(--primary); font-style: italic; }
 .surprise__body p { color: var(--ink-soft); margin-bottom: var(--s4); }
 .surprise__actions { display: flex; gap: var(--s2); flex-wrap: wrap; }
@@ -1563,7 +1723,7 @@ button {
   padding: clamp(2rem, 5vw, 3rem);
 }
 
-.cta h2 { font-size: var(--fs-h2); margin-bottom: 4px; }
+.cta h2 { font-size: var(--fs-h2); margin-bottom: var(--s1); }
 .cta p { color: var(--ink-soft); margin-bottom: var(--s5); }
 
 /* ============================================================
@@ -1579,7 +1739,7 @@ button {
 
 .explore__header h1 { font-size: var(--fs-h1); }
 
-.explore__header p { color: var(--ink-soft); margin-top: 2px; }
+.explore__header p { color: var(--ink-soft); margin-top: var(--s0h); }
 
 .explore__controls {
   display: flex;
@@ -1651,14 +1811,14 @@ button {
 .filters__clear {
   background: none;
   border: none;
-  padding: 6px 10px;
+  padding: var(--s1h) var(--s2h);
   font: inherit;
   font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--primary);
   border-radius: var(--r-full);
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease);
+  transition: background var(--tr-settle);
 }
 .filters__clear:hover { background: var(--primary-soft); }
 .filters__clear:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
@@ -1669,7 +1829,7 @@ button {
   border: none;
   font-size: 1.1rem;
   color: var(--ink-soft);
-  padding: 4px;
+  padding: var(--s1);
 }
 
 .filter-group { display: flex; flex-direction: column; gap: var(--s2); }
@@ -1711,7 +1871,7 @@ button {
   border-radius: var(--r-sm);
   padding: 0.5rem 0.7rem;
   background: var(--surface);
-  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  transition: border-color var(--tr-settle), box-shadow var(--tr-settle);
 }
 
 .input-wrap:focus-within {
@@ -1731,45 +1891,13 @@ button {
   color: var(--ink);
 }
 
-.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: var(--s1h); }
 
-.switch {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  cursor: pointer;
-  font-size: var(--fs-md);
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
-.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-
-.switch__track {
-  width: 38px;
-  height: 22px;
-  border-radius: var(--r-full);
-  background: var(--surface-3);
-  position: relative;
-  flex-shrink: 0;
-  transition: background var(--dur-fast) var(--ease);
-}
-
-.switch__track::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: var(--shadow-xs);
-  transition: transform var(--dur-fast) var(--ease);
-}
-
-.switch input:checked + .switch__track { background: var(--primary); }
-.switch input:checked + .switch__track::after { transform: translateX(16px); }
+/* A five-rule toggle-switch component — `.switch`, its hidden input,
+   `.switch__track`, the knob pseudo-element and the two `:checked` rules — used
+   to sit here. Nothing in the product has ever emitted `.switch`: every boolean
+   in KK is a checkbox in a `.field`, or a `ConfirmButton`. Removed rather than
+   kept as a component nobody can find. */
 
 .explore__toolbar {
   display: flex;
@@ -1780,7 +1908,7 @@ button {
   flex-wrap: wrap;
 }
 
-.explore__active-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.explore__active-filters { display: flex; flex-wrap: wrap; gap: var(--s1h); }
 .explore__hint { color: var(--ink-faint); font-size: var(--fs-md); }
 
 .explore__toolbar-right { display: flex; align-items: center; gap: var(--s2); }
@@ -1789,30 +1917,26 @@ button {
 
 .filters__scrim { display: none; }
 
-.geo-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  padding: 0.4rem 0.9rem;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--ink-soft);
-  white-space: nowrap;
-  transition: all var(--dur-fast) var(--ease);
-}
+/* `.geo-chip` (base, `:hover`, `--on`) is gone. It was the "use my location"
+   control on the first Explore toolbar, and it has no markup: that job belongs
+   to `.rf__geo` in the refine drawer (RefineDrawer.tsx:266) and `.disc__geo` in
+   the Explore header (ExplorePage.tsx:636), both of which are live and both of
+   which got real hover states in this pass. It also had a border-radius line,
+   a touch-action group, an `:active` press and two `@media` label-hiding rules
+   in polish.css, and an ellipsis rule in editorial.css — all removed with it.
+   Its `transition: all var(--dur-fast) var(--ease)` was the reason it surfaced.
 
-.geo-chip:hover { border-color: var(--primary); color: var(--primary); }
-
-.geo-chip--on { background: var(--primary-soft); border-color: #bfe3cf; color: var(--primary-strong); }
+   Note for whoever reads this next: the rest of that first toolbar
+   (`.explore__toolbar`, `.explore__toolbar-right`, `.explore__map-toggle`,
+   `.explore__filters-btn`) measures dead too. Left standing deliberately —
+   removing a whole superseded page system is its own piece of work, not a
+   footnote to this one. */
 
 .nl-interpreted {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--s1h);
   background: var(--accent-soft);
   border: 1px solid #eed9b0;
   border-radius: var(--r-sm);
@@ -1887,13 +2011,13 @@ button {
   display: block;
   width: 18px;
   height: 18px;
-  margin: 2px;
+  margin: var(--s0h);
   background: var(--primary);
   border: 2px solid #fff;
   border-radius: 50% 50% 50% 0;
   transform: rotate(-45deg);
   box-shadow: 0 2px 5px rgba(33, 29, 21, 0.3);
-  transition: transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+  transition: transform var(--tr-settle), background var(--tr-settle);
 }
 .kk-marker .kk-marker__pin::after {
   content: "";
@@ -1931,9 +2055,8 @@ button {
   border: 3px solid var(--border);
   border-top-color: var(--primary);
   border-radius: 50%;
-  animation: map-spin 0.8s linear infinite;
+  animation: kk-spin 0.8s linear infinite;
 }
-@keyframes map-spin { to { transform: rotate(360deg); } }
 
 /* Floating controls: Search this area / Re-centre */
 .map-controls {
@@ -1943,18 +2066,19 @@ button {
   transform: translateX(-50%);
   z-index: 6;
   display: flex;
-  gap: 2px;
+  gap: var(--s0h);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-full);
-  padding: 3px;
+  padding: var(--s1);
   box-shadow: var(--shadow-md);
-  animation: pop-in var(--dur-fast) var(--ease-out);
+  animation: kk-rise var(--dur-fast) var(--ease-out);
+  --kk-rise-from: -4px;
 }
 .map-controls__btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--s1h);
   border: none;
   background: none;
   color: var(--ink);
@@ -1963,7 +2087,7 @@ button {
   padding: 0.4rem 0.85rem;
   border-radius: var(--r-full);
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease);
+  transition: background var(--tr-settle);
 }
 .map-controls__btn:hover { background: var(--primary-soft); color: var(--primary-strong); }
 .map-controls__btn--ghost { color: var(--ink-soft); font-weight: 500; }
@@ -1984,7 +2108,8 @@ button {
   border-radius: var(--r-md);
   padding: var(--s3);
   box-shadow: var(--shadow-lg);
-  animation: pop-in var(--dur-med) var(--ease-out);
+  animation: kk-rise var(--dur-med) var(--ease-out);
+  --kk-rise-from: -4px;
 }
 .map-preview__media {
   width: 68px;
@@ -1997,8 +2122,8 @@ button {
 .map-preview__media .img-wrap,
 .map-preview__media .img-fallback { width: 100%; height: 100%; object-fit: cover; }
 .map-preview__body { min-width: 0; flex: 1; }
-.map-preview__body h3 { font-size: var(--fs-md); line-height: var(--lh-snug); margin-bottom: 2px; }
-.map-preview__meta { display: flex; gap: var(--s2); font-size: var(--fs-xs); color: var(--ink-soft); flex-wrap: wrap; margin-top: 4px; }
+.map-preview__body h3 { font-size: var(--fs-md); line-height: var(--lh-snug); margin-bottom: var(--s0h); }
+.map-preview__meta { display: flex; gap: var(--s2); font-size: var(--fs-xs); color: var(--ink-soft); flex-wrap: wrap; margin-top: var(--s1); }
 .map-preview__cta { display: flex; gap: var(--s2); margin-top: var(--s2); }
 .map-preview__cta .btn { padding: 0.3rem 0.65rem; font-size: var(--fs-sm); }
 .map-preview__cta a[aria-label] { padding: 0.3rem 0.55rem; }
@@ -2047,7 +2172,7 @@ button {
 .detail__back {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   background: none;
   border: none;
   padding: 0;
@@ -2106,7 +2231,7 @@ button {
   overflow: hidden;
   cursor: pointer;
   opacity: 0.75;
-  transition: opacity var(--dur-fast) var(--ease);
+  transition: opacity var(--tr-settle);
 }
 
 .detail__gallery-thumbs button:hover { opacity: 1; }
@@ -2123,6 +2248,12 @@ button {
   object-fit: cover;
 }
 
+/* Both gallery overlays are legitimate glass — labels floating on
+   photography, §4's fourth permitted surface — but the recipe is not
+   decided here: polish.css groups the two selectors and sets
+   `--glass-blur` on both, so the `blur(4px)` these two rules used to
+   carry never composited. Deleted in Phase 3 item 6 rather than kept as
+   a misleading second opinion. */
 .detail__gallery-count {
   position: absolute;
   bottom: var(--s3);
@@ -2133,7 +2264,6 @@ button {
   font-weight: 700;
   padding: 0.26rem 0.6rem;
   border-radius: var(--r-full);
-  backdrop-filter: blur(4px);
 }
 
 /* Photo source label — Google vs Khabo Kothay vs demo, never hidden */
@@ -2147,7 +2277,6 @@ button {
   font-weight: 600;
   padding: 0.26rem 0.6rem;
   border-radius: var(--r-full);
-  backdrop-filter: blur(4px);
 }
 
 /* Head */
@@ -2185,7 +2314,7 @@ button {
 .rating-source {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   font-size: var(--fs-sm);
   color: var(--ink-soft);
 }
@@ -2198,12 +2327,15 @@ button {
   color: var(--ink-faint);
   border: 1px solid var(--border-strong);
   border-radius: var(--r-full);
-  padding: 2px 7px;
+  padding: var(--s0h) var(--s2);
   white-space: nowrap;
 }
 
 .rating-source--google .rating-source__label {
-  color: #1a73e8;
+  /* Google Blue 800, not the 600 (#1a73e8): at 10px on this tint the 600
+     measures 4.23:1 and misses AA. The 800 is the same brand family and
+     measures 6.5:1. */
+  color: #1557b0;
   border-color: #c6dafb;
   background: #f4f8fe;
 }
@@ -2226,7 +2358,7 @@ button {
   margin: calc(var(--s1) * -1) 0 var(--s4);
 }
 
-.detail__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--s4); }
+.detail__chips { display: flex; flex-wrap: wrap; gap: var(--s1h); margin-bottom: var(--s4); }
 
 .detail__actions {
   display: flex;
@@ -2235,7 +2367,9 @@ button {
   margin-bottom: var(--s5);
 }
 
-.detail__actions .btn { border-radius: var(--r-sm); }
+/* Superseded by editorial.css, which owns the detail action hierarchy.
+   Kept in sync so the two files do not disagree. */
+.detail__actions .btn { border-radius: var(--r-md); }
 
 .detail__stats {
   display: grid;
@@ -2256,7 +2390,7 @@ button {
   color: var(--ink-faint);
 }
 
-.stat__value { font-weight: 700; margin: 2px 0; }
+.stat__value { font-weight: 700; margin: var(--s0h) 0; }
 .stat__sub { font-size: var(--fs-xs); color: var(--ink-faint); }
 
 .open-status--yes { color: var(--success); font-weight: 700; }
@@ -2269,6 +2403,13 @@ button {
   gap: var(--s8);
   align-items: start;
 }
+/* Grid items default to `min-width: auto`, so a scroll container inside them
+   (the menu category rail) contributes its FULL content width as a minimum and
+   pushes the whole page into horizontal overflow — at 375px the detail body was
+   laying out at 728px and clipping. `minmax(0, 1fr)` only sizes the track; the
+   item itself still needs permission to shrink. */
+.detail__main,
+.detail__aside { min-width: 0; }
 
 .detail__section { margin-bottom: var(--s8); }
 
@@ -2276,23 +2417,10 @@ button {
 
 .detail__about { color: var(--ink-soft); max-width: 64ch; }
 
-.detail__highlights {
-  list-style: none;
-  padding: 0;
-  margin: var(--s4) 0 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--s2);
-}
-
-.detail__highlights li {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  padding: var(--s3);
-  font-size: var(--fs-md);
-  font-weight: 600;
-}
+/* `.detail__highlights` lived here — the "Did you know?" bullet grid. It has one
+   consumer no longer, and only ever had one: the section is `.dyk` in
+   editorial.css §14d now. Removed rather than left standing because unlike
+   `.explore__toolbar` there is no second surface that might want it back. */
 
 .dishes {
   display: grid;
@@ -2305,7 +2433,7 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   padding: var(--s4);
-  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
 }
 
 .dish:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
@@ -2357,14 +2485,14 @@ button {
 .visit-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--s1);
   font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--primary-strong);
   background: var(--primary-soft);
   border: 1px solid #bfe3cf;
   border-radius: var(--r-full);
-  padding: 3px 8px;
+  padding: var(--s1) var(--s2);
   white-space: nowrap;
 }
 
@@ -2374,9 +2502,9 @@ button {
   border-color: #eed9b0;
 }
 
-.review__subratings { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--s2); }
+.review__subratings { display: flex; gap: var(--s1h); flex-wrap: wrap; margin-bottom: var(--s2); }
 
-.review__dishes { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: var(--s2); }
+.review__dishes { display: flex; align-items: center; gap: var(--s1h); flex-wrap: wrap; margin-top: var(--s2); }
 .review__dishes-label {
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -2398,7 +2526,7 @@ button {
 .review__helpful {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--s1h);
   font-size: var(--fs-xs);
   color: var(--ink-soft);
 }
@@ -2406,7 +2534,7 @@ button {
 .review__translated {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--s1h);
   font-size: var(--fs-xs);
   color: var(--ink-faint);
   font-style: italic;
@@ -2415,7 +2543,7 @@ button {
 .review__source {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--s1h);
   font-size: var(--fs-xs);
   font-weight: 600;
   color: #1a73e8;
@@ -2482,7 +2610,7 @@ button {
   border-radius: var(--r-full);
 }
 
-.detail__tags { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.detail__tags { display: flex; align-items: center; gap: var(--s1h); flex-wrap: wrap; }
 .detail__tags-label {
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -2491,13 +2619,32 @@ button {
   letter-spacing: 0.06em;
 }
 
+/* Not sticky, deliberately. This card used to be `position: sticky` with a
+   nav-height offset, and it was correct when the detail aside held nothing
+   else. The venue map was added below it as a following sibling, and a sticky
+   box travels through the space its later siblings occupy: measured at 1440×900
+   on /restaurant/turkey-bliss, the pinned card and `.venue-map` overlapped by
+   287px, with Leaflet's `.map-surface` (positioned, so it paints above a
+   non-positioned box) drawing tiles across the address and hours rows — and
+   taking the pointer, since it was the topmost element there.
+
+   Paint order is not the fix: raising the card above the map instead hides the
+   map behind it for the whole 360px of travel. Nor can the travel be shortened,
+   because a sticky child is bounded by its container's content box, which here
+   IS card + map. What could follow the reader is the whole aside as one unit
+   (`position: sticky` on the grid item, whose containing block is the taller
+   grid area), but the column is 725px and the map's Directions row is its last
+   element, so on any window shorter than ~810px that row would be pinned out of
+   reach. A reference column that scrolls with the page costs nothing.
+
+   `.info-card` is also the shared card on /partners and the info pages, where
+   it is a grid item in `.info-body` — sticky was a no-op there (a grid item's
+   containing block is its own area), so nothing on those pages changes. */
 .info-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: var(--s5);
-  position: sticky;
-  top: calc(var(--nav-h) + var(--s3));
   box-shadow: var(--shadow-xs);
 }
 
@@ -2515,14 +2662,14 @@ button {
 .info-card__list li {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--s0h);
   font-size: var(--fs-md);
 }
 
 .info-card__list span {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   color: var(--ink-faint);
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -2534,7 +2681,7 @@ button {
 
 /* Weekly hours inside the info card — the base span rule uppercase-styles
    every span, so these reset typography for the hours rows. */
-.info-card__list .hours-week { display: flex; flex-direction: column; gap: 4px; font-size: var(--fs-sm); font-weight: 500; text-transform: none; letter-spacing: normal; color: var(--ink); }
+.info-card__list .hours-week { display: flex; flex-direction: column; gap: var(--s1); font-size: var(--fs-sm); font-weight: 500; text-transform: none; letter-spacing: normal; color: var(--ink); }
 .info-card__list .hours-week__row { display: flex; justify-content: space-between; gap: var(--s3); align-items: baseline; }
 .info-card__list .hours-week__day { display: inline; color: var(--ink-soft); font-weight: 600; text-transform: none; letter-spacing: normal; font-size: var(--fs-sm); }
 .info-card__list .hours-week__value { display: inline; text-transform: none; letter-spacing: normal; font-size: var(--fs-sm); }
@@ -2551,49 +2698,111 @@ button {
 }
 
 .booking-confirm strong { display: block; color: var(--primary-strong); }
-.booking-confirm p { font-size: var(--fs-sm); color: var(--ink-soft); margin-top: 2px; }
+.booking-confirm p { font-size: var(--fs-sm); color: var(--ink-soft); margin-top: var(--s0h); }
 
-/* Location map on the detail page (Google Maps embed) */
-.detail-map {
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  overflow: hidden;
+/* ── Venue map on the detail page ───────────────────────────────────────────
+   `.detail-map`, `.detail-map iframe`, `.detail-map__bar`,
+   `.detail-map__address` and `.detail-map__actions` were here and are gone
+   with the iframe they styled. The 240px height on that iframe was the whole
+   reason the failure looked like a styling bug and not a blocked frame: the
+   box was always exactly the right size, it just had nothing in it.
+
+   The replacement hosts `map/MapProvider` instead. `.map-surface` is
+   `position: absolute; inset: 0` (line 1937 of this file), so the canvas MUST
+   be a positioned box with an explicit height — a height-less host renders a
+   0px map that looks identical to the bug just fixed. */
+.venue-map {
   margin-top: var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
-.detail-map iframe {
-  display: block;
-  width: 100%;
-  height: 240px;
-  border: 0;
+.venue-map__canvas {
+  position: relative;
+  height: 260px;
+  /* Paper, not grey: the tiles fade in over it, and for the ~300ms before
+     they do this is what the reader sees. */
+  background: var(--paper-200);
 }
 
-.detail-map__bar {
+/* The tiles arrive as one calm fade rather than a checkerboard of loads. */
+.venue-map__canvas .map-surface {
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+
+.venue-map--ready .venue-map__canvas .map-surface { opacity: 1; }
+
+/* Drawn edge, matching the atlas. `.map-surface` carries `z-index: 0`, so it
+   is its own stacking context and every Leaflet pane is trapped inside it —
+   which is why a plain `z-index: 1` here is above the whole map and no pane
+   number needs to be matched. `pointer-events: none` keeps the map's own
+   controls usable through it. */
+.venue-map__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(28, 23, 16, 0.06), inset 0 0 26px 10px rgba(253, 249, 241, 0.55);
+}
+
+.venue-map__loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  background: var(--grad-paper);
+  font-size: var(--fs-sm);
+  color: var(--ink-faint);
+}
+
+.venue-map__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--paper-400);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: kk-spin 900ms linear infinite;
+}
+
+.venue-map__plate {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s3);
   flex-wrap: wrap;
   padding: var(--s3);
+  border-top: 1px solid var(--border-soft);
 }
 
-.detail-map__address {
+.venue-map__address {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--s1h);
   font-size: var(--fs-sm);
   color: var(--ink-soft);
   min-width: 0;
 }
 
-.detail-map__actions { display: flex; gap: var(--s2); flex-shrink: 0; }
+.venue-map__address svg { flex-shrink: 0; color: var(--ink-faint); }
 
-.btn--sm {
-  padding: 0.35rem 0.75rem;
-  font-size: var(--fs-sm);
-  border-radius: var(--r-sm);
+.venue-map__actions { display: flex; gap: var(--s2); flex-shrink: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .venue-map__spinner { animation: none; }
+  .venue-map__canvas .map-surface { transition: none; }
 }
+
+/* `.btn--sm` moved to primitives.css. Its padding here was already
+   dead (editorial.css restated base `.btn` padding at equal specificity
+   from a later file) and so was its `border-radius: var(--r-sm)`, which
+   refine.css's `.btn` overrode the same way. */
 
 /* Stacked offer list (detail page) */
 .offers-strip--stack { grid-template-columns: 1fr; gap: var(--s3); }
@@ -2603,7 +2812,7 @@ button {
 .offer-card__tag-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   margin-bottom: var(--s2);
 }
 
@@ -2619,22 +2828,10 @@ button {
 }
 
 /* Lightbox */
-.lightbox {
-  position: fixed;
-  inset: 0;
-  z-index: 80;
-  background: rgba(20, 17, 12, 0.94);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fade-in var(--dur-med) var(--ease);
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
+/* The scrim and the box that centres the photo are `Dialog`'s `media`
+   variant now (primitives.css §8). What is left here is the chrome that
+   positions itself against that box: the photo, its caption and the three
+   round controls. */
 .lightbox__img {
   max-width: min(1100px, 92vw);
   max-height: 84vh;
@@ -2669,7 +2866,7 @@ button {
   border: 1px solid rgba(255, 255, 255, 0.25);
   background: rgba(0, 0, 0, 0.35);
   color: #fff;
-  transition: background var(--dur-fast) var(--ease);
+  transition: background var(--tr-settle);
 }
 
 .lightbox__btn:hover { background: rgba(0, 0, 0, 0.6); }
@@ -2695,7 +2892,8 @@ button {
   border-radius: var(--r-full);
   box-shadow: var(--shadow-lg);
   padding: var(--s2) var(--s3);
-  animation: pop-in var(--dur-med) var(--ease-out);
+  animation: kk-rise var(--dur-med) var(--ease-out);
+  --kk-rise-from: -4px;
 }
 
 .compare-tray__items { display: flex; gap: var(--s1); }
@@ -2703,7 +2901,7 @@ button {
 .compare-tray__item {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   background: var(--surface-2);
   border-radius: var(--r-full);
   padding: 0.3rem 0.7rem;
@@ -2721,29 +2919,9 @@ button {
 
 .compare-tray__hint { font-size: var(--fs-sm); color: var(--ink-faint); }
 
-.compare-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 75;
-  background: rgba(20, 17, 12, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--s4);
-  animation: fade-in var(--dur-med) var(--ease);
-}
-
-.compare-modal__panel {
-  background: var(--surface);
-  border-radius: var(--r-lg);
-  max-width: 960px;
-  width: 100%;
-  max-height: 88vh;
-  overflow-y: auto;
-  padding: var(--s6);
-  position: relative;
-  box-shadow: var(--shadow-lg);
-}
+/* `.compare-modal` and `.compare-modal__panel` are gone: the scrim and the
+   panel are `Dialog`'s `panel` variant at `size="lg"` (primitives.css §8).
+   Only the table below was ever particular to comparing. */
 
 .compare-table { width: 100%; border-collapse: collapse; }
 
@@ -2810,7 +2988,7 @@ button {
 }
 
 .favorites-head h1 { font-size: var(--fs-h1); }
-.favorites-head p { color: var(--ink-soft); margin-top: 2px; }
+.favorites-head p { color: var(--ink-soft); margin-top: var(--s0h); }
 .favorites-recs { margin-top: var(--s12); }
 
 /* ============================================================
@@ -2850,7 +3028,7 @@ button {
   color: #fff;
 }
 
-.footer__brand p { font-size: var(--fs-md); color: #a8b0a9; margin-top: 4px; max-width: 34ch; }
+.footer__brand p { font-size: var(--fs-md); color: #a8b0a9; margin-top: var(--s1); max-width: 34ch; }
 
 .footer__col { display: flex; flex-direction: column; gap: var(--s2); }
 
@@ -2866,7 +3044,7 @@ button {
 .footer__col a {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   font-size: var(--fs-md);
   color: #c6cdc6;
   width: fit-content;
@@ -2887,12 +3065,29 @@ button {
    ============================================================ */
 .img-wrap { position: relative; overflow: hidden; background: var(--surface-2); }
 
-.img-wrap img {
-  opacity: 0;
-  transition: opacity var(--dur-med) var(--ease);
-}
+.img-wrap img { opacity: 0; }
 
-.img-wrap--loaded img { opacity: 1; }
+/* An animation, not a transition, and the reason is the mount order.
+   `RestaurantImage` renders the `<img>` only once its preload has resolved —
+   the same commit that puts `--loaded` on this wrapper. A node that has never
+   been styled has no before-change style, so the browser generates no
+   transition for it and the photo simply appeared, at full opacity, in one
+   frame. Every photo in the product landed that way.
+
+   A keyframe animation has no such requirement: it runs on the element's
+   first style resolution. It also survives the four families
+   (`.rcard__media img`, `.card__media img`, `.offer-card__media img`,
+   `.ranked__media img`) that declare `transition: transform` at higher
+   specificity and, being a shorthand, would have dropped an opacity
+   transition on the floor. `both` holds the from-state through any delay and
+   the to-state after, so the declared `opacity: 1` below is only the
+   no-animation fallback. Under reduced motion the blanket in editorial.css
+   collapses the duration to 0.01ms and the photo lands instantly, which is
+   the same end state. */
+.img-wrap--loaded img {
+  opacity: 1;
+  animation: kk-fade-in var(--dur-med) var(--ease-out) both;
+}
 
 .img-fallback {
   display: flex;
@@ -2924,25 +3119,12 @@ button {
   border-radius: var(--r-sm);
 }
 
-.skeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
-  animation: shimmer 1.4s infinite;
-}
-
-@keyframes shimmer {
-  100% { transform: translateX(100%); }
-}
-
 .skeleton--image { position: absolute; inset: 0; border-radius: 0; }
 .skeleton--art { height: 180px; border-radius: 0; }
 .skeleton--hero { height: 340px; border-radius: 0; }
 .skeleton--title { height: 20px; width: 65%; }
 .skeleton--wide { width: 45%; height: 30px; }
-.skeleton--line { height: 13px; width: 90%; margin-top: 10px; }
+.skeleton--line { height: 13px; width: 90%; margin-top: var(--s2h); }
 .skeleton--short { width: 55%; }
 .skeleton--chip { height: 24px; width: 70px; border-radius: var(--r-full); }
 .skeleton--stat { height: 56px; border-radius: var(--r-sm); width: 100%; }
@@ -2961,11 +3143,7 @@ button {
   border-radius: 50%;
   border: 3px solid var(--primary-soft);
   border-top-color: var(--primary);
-  animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  animation: kk-spin 0.9s linear infinite;
 }
 
 /* ============================================================
@@ -3033,26 +3211,41 @@ button {
 @media (max-width: 900px) {
   .nav__search { display: none; }
   .detail__grid { grid-template-columns: 1fr; }
-  .info-card { position: static; }
+  /* `.info-card { position: static }` was here to cancel the sticky the card no
+     longer has. Removed with it. */
 }
 
 @media (max-width: 768px) {
-  .nav__links { display: none; }
-  .nav__burger { display: block; }
+  /* `.nav__links` / `.nav__burger` are not toggled here. Both were dead — the
+     unconditional rules in editorial.css and phase-c.css load later and win.
+     The compact header is owned by the ≤900px block in phase-c.css. */
   .nav__mobile { display: flex; }
 
   .hero__stats { flex-wrap: wrap; }
 
   .builder { padding: var(--s3); }
   .builder__fields { grid-template-columns: repeat(2, 1fr); }
-  .builder__cta { width: 100%; margin-left: 0; }
+  /* The action bar breaks in one place: the status line (and the undo, if it is
+     there) keep the first line, the button takes the second one whole. Given a
+     line of its own it reads as a destination rather than as the end of a
+     sentence — and at 375 there is no arrangement where a 319px button and a
+     status line share a row without one of them being squeezed. */
+  .builder__action { gap: var(--s2h) var(--s3); }
+  .builder__cta { flex: 1 1 100%; width: 100%; }
   .builder__popover {
     position: fixed;
     inset: auto var(--gutter) var(--s4);
     top: auto;
+    /* The sheet is sized by its insets, so the dropdown's content sizing has
+       to be given back: a `width: max-content` box with both `left` and
+       `right` set is over-constrained and the right inset would be dropped. */
+    width: auto;
+    min-width: 0;
     max-width: none;
-    max-height: 50vh;
-    overflow-y: auto;
+    /* The 50vh a sheet gets is stated as `--menu-max` in polish.css section
+       14, where the rest of the sheet's geometry is — the cap belongs to the
+       scroller now, and a custom property is the one thing that reaches it
+       from here without this file having to know the inner element. */
     border-radius: var(--r-lg);
   }
 
@@ -3152,37 +3345,14 @@ button {
   margin: var(--s4) 0;
 }
 
-.auth-card__dev-otp-label {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--primary);
-}
-
-.auth-card__dev-otp-code {
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--primary);
-  background: var(--surface);
-  padding: var(--s1) var(--s2);
-  border-radius: var(--r-sm);
-  min-width: 4.5rem;
-  text-align: center;
-}
-
-.auth-card__dev-otp-copy {
-  font-size: var(--fs-xs);
-  padding: var(--s1) var(--s2);
-  border-radius: var(--r-sm);
-}
-
-.auth-card__dev-otp-copy:hover {
-  background: var(--primary);
-  color: #fff;
-}
+/* `.auth-card__dev-otp-label`, `-code` and `-copy` were the first version of
+   this banner and none of the three has markup any more: LoginPage renders
+   `.dev-otp-banner__badge` / `__note` / `__code` / `__copy` inside an element
+   that keeps `.auth-card__dev-otp` only for its dashed frame. `-copy` was the
+   loudest of the three — declared twice in this file, with two `:hover` rules
+   between them and a `transition: all` on the second — so it looked like a
+   control being maintained. Its live counterpart is `.dev-otp-banner__copy`
+   below, which is the one that got the §8b pair. */
 
 .auth-card__otp-actions {
   display: flex;
@@ -3264,7 +3434,9 @@ button {
   border-radius: var(--r-md);
   color: var(--ink-soft);
   background: var(--surface-2);
-  transition: all var(--dur-fast) var(--ease);
+  transition:
+    background var(--tr-settle), border-color var(--tr-settle),
+    color var(--tr-settle);
   flex-shrink: 0;
 }
 
@@ -3292,27 +3464,6 @@ button {
   color: var(--warning);
 }
 
-/* Override for inline copy button in older style */
-.auth-card__dev-otp-copy {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: var(--r-sm);
-  color: var(--ink-soft);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  transition: all var(--dur-fast) var(--ease);
-}
-
-.auth-card__dev-otp-copy:hover {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-}
-
 /* Search autocomplete — lightweight, zero-egress suggestions. */
 .search-suggest {
   position: relative;
@@ -3326,7 +3477,7 @@ button {
   right: 0;
   z-index: 50;
   margin: 0;
-  padding: 4px;
+  padding: var(--s1);
   list-style: none;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -3340,10 +3491,10 @@ button {
 .search-suggest__item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s2h);
   width: 100%;
   text-align: left;
-  padding: 9px 12px;
+  padding: var(--s2h) var(--s3);
   background: transparent;
   border: 0;
   border-radius: 8px;
@@ -3366,7 +3517,7 @@ button {
   color: var(--primary);
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 2px 8px;
+  padding: var(--s0h) var(--s2);
 }
 
 .search-suggest__label {
@@ -3374,4 +3525,39 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ============================================================
+   THE ENTER — see design-system.css §8b
+   ============================================================
+   Every rule above declares its LEAVE (`var(--tr-settle)`). This is the
+   other half of the pair: the answer, grouped here rather than repeated
+   across the individual state rules, so the two halves stay legible and
+   the whole file retunes from one place.
+   ------------------------------------------------------------ */
+.builder-field__trigger:hover,
+.builder__option:hover,
+.detail__gallery-thumbs button:hover,
+.dev-otp-banner__copy:hover,
+.fav-btn:hover,
+.filters__clear:focus-visible,
+.filters__clear:hover,
+.input-wrap:focus-within,
+.lightbox__btn:hover,
+.map-controls__btn:hover,
+.match-indicator:hover .match-indicator__trigger,
+.match-indicator__trigger:focus-visible,
+.match-indicator__trigger:hover,
+.nav__link:hover,
+.nav__link:hover::after,
+.nav__search-mobile:focus-within,
+.quick-chip:hover {
+  transition-duration: var(--tr-answer);
+}
+.card:hover,
+.collection-card:hover,
+.dish:hover,
+.offer-card:hover,
+.tile:hover {
+  transition-duration: var(--tr-answer-heavy);
 }

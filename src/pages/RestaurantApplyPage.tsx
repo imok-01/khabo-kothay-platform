@@ -1,9 +1,11 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { ArrowLeft, Send } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getAuthUserId } from '../integrations/supabase/client';
 import { insertRestaurantApplication } from '../integrations/supabase/queries';
 import { developmentOtpAuth } from '../lib/developmentOtpAdapter';
+import { Button, Field } from '../components/ui';
 
 const isDevMock = import.meta.env.VITE_DEV_AUTH_MOCK === 'true';
 import { usePageTitle } from '../lib/usePageTitle';
@@ -38,22 +40,38 @@ export default function RestaurantApplyPage() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Which required field the applicant left blank, rather than one sentence at
+   * the bottom naming both. `required` on the inputs already catches an empty
+   * field before the form submits, so this only ever fires on the case the
+   * browser accepts and we do not: whitespace. A listing called " " is a
+   * listing nobody can find.
+   */
+  const [blank, setBlank] = useState<{ name?: boolean; address?: boolean }>({});
   const [submitted, setSubmitted] = useState(false);
 
   if (!session) {
     return <Navigate to="/login?intent=partner" replace />;
   }
 
-  const update = (key: keyof FormState) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+  const update = (key: keyof FormState) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((f) => ({ ...f, [key]: e.target.value }));
+    // An error that survives the correction is an error that stops being read.
+    if (key === 'restaurant_name') setBlank((b) => (b.name ? { ...b, name: undefined } : b));
+    if (key === 'address') setBlank((b) => (b.address ? { ...b, address: undefined } : b));
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
 
-    if (!form.restaurant_name.trim() || !form.address.trim()) {
-      setError('Restaurant name and address are required.');
+    const missing = {
+      name: !form.restaurant_name.trim() || undefined,
+      address: !form.address.trim() || undefined,
+    };
+    setBlank(missing);
+    if (missing.name || missing.address) {
       setBusy(false);
       return;
     }
@@ -88,7 +106,7 @@ export default function RestaurantApplyPage() {
       });
       setSubmitted(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not submit your application. Please try again.');
+      setError(err instanceof Error ? err.message : 'Your application did not reach us. Nothing was lost — send it once more.');
     } finally {
       setBusy(false);
     }
@@ -101,16 +119,16 @@ export default function RestaurantApplyPage() {
           <div className="auth-card">
             <div className="auth-card__head">
               <span className="section-heading__eyebrow">Application received</span>
-              <h1>Thank you — we'll be in touch</h1>
+              <h1>We have your application</h1>
               <p>
-                Your application to list <strong>{form.restaurant_name}</strong> has been submitted to Khabo
-                Kothay. Our team reviews every submission. If approved, you'll gain access to manage your
-                restaurant's listing.
+                Your claim on <strong>{form.restaurant_name}</strong> is with our editors, and a person
+                reads every one. We'll come back to you on the number you signed in with. Once it clears,
+                the listing is yours to run — menu, photos, offers and replies to your reviews.
               </p>
             </div>
-            <button type="button" className="btn btn--primary btn--block" onClick={() => navigate('/')}>
+            <Button variant="primary" block to="/" icon={ArrowLeft}>
               Back to home
-            </button>
+            </Button>
           </div>
         </div>
       </main>
@@ -121,50 +139,70 @@ export default function RestaurantApplyPage() {
     <main className="section section--narrow">
       <div className="section__inner">
         <div className="auth-card">
-          <div className="auth-card__head">
+          <div className="auth-card__head auth-card__head--form">
             <span className="section-heading__eyebrow">Partner with Khabo Kothay</span>
             <h1>List your restaurant</h1>
             <p>
-              Tell us about your restaurant. A Khabo Kothay executive reviews every application before
-              ownership access is activated — this keeps the platform trustworthy for diners.
+              Tell us where to find you and what comes out of your kitchen. Every application is read by
+              a person before a listing changes hands — that check is the reason diners trust what they
+              read here.
             </p>
           </div>
 
           <form className="auth-card__form" onSubmit={submit}>
-            <label className="field">
-              <span className="field__label">Restaurant name *</span>
-              <input value={form.restaurant_name} onChange={update('restaurant_name')} required placeholder="e.g. The Bengal Kitchen" />
-            </label>
+            {/* No asterisks. The convention primitives.css §6 ships is the
+                inverse — a field says so when it is *optional*, so the two that
+                matter are simply unmarked and the other five carry the quiet
+                mark. An asterisk typed into a label is also read aloud: "Full
+                address star". */}
+            <Field
+              label="Restaurant name"
+              error={blank.name ? 'A name, not a space — this is what a diner searches for.' : undefined}
+            >
+              <input
+                value={form.restaurant_name}
+                onChange={update('restaurant_name')}
+                required
+                placeholder="The name above your door"
+              />
+            </Field>
 
-            <label className="field">
-              <span className="field__label">Area / neighbourhood</span>
+            <Field label="Neighbourhood" optional>
               <input value={form.area} onChange={update('area')} placeholder="e.g. Gulshan 1" />
-            </label>
+            </Field>
 
-            <label className="field">
-              <span className="field__label">Full address *</span>
-              <input value={form.address} onChange={update('address')} required placeholder="Street, building, city" />
-            </label>
+            <Field
+              label="Full address"
+              hint="Written the way you would give it to a delivery rider."
+              error={blank.address ? 'An address, not a space — nobody can find a blank one.' : undefined}
+            >
+              <input
+                value={form.address}
+                onChange={update('address')}
+                required
+                placeholder="House and road, then the area"
+              />
+            </Field>
 
-            <label className="field">
-              <span className="field__label">Cuisine type</span>
-              <input value={form.cuisine} onChange={update('cuisine')} placeholder="e.g. Bengali, North Indian" />
-            </label>
+            <Field label="What you cook" optional>
+              <input value={form.cuisine} onChange={update('cuisine')} placeholder="e.g. Bengali, Mughlai, Thai" />
+            </Field>
 
-            <label className="field">
-              <span className="field__label">Contact phone or email</span>
+            <Field label="Best way to reach you" optional>
               <input value={form.contact_details} onChange={update('contact_details')} placeholder={verifiedPhone || 'e.g. +8801XXXXXXXXX'} />
-            </label>
+            </Field>
 
-            <label className="field">
-              <span className="field__label">Website / social (optional)</span>
+            <Field label="Website or social" optional>
               <input value={form.website} onChange={update('website')} placeholder="https://…" />
-            </label>
+            </Field>
 
-            <label className="field">
-              <span className="field__label">Why do you want to list with us? (optional)</span>
-              <textarea value={form.notes} onChange={update('notes')} rows={3} placeholder="A short note about your restaurant" />
-            </label>
+            <Field
+              label="Tell us about the place"
+              hint="What you are known for, how long you have been open — whatever you would want a diner to know first."
+              optional
+            >
+              <textarea value={form.notes} onChange={update('notes')} rows={3} placeholder="A dish, a room, a year" />
+            </Field>
 
             {error && (
               <p className="form-error" role="alert">
@@ -172,13 +210,16 @@ export default function RestaurantApplyPage() {
               </p>
             )}
 
-            <button type="submit" className="btn btn--primary btn--block" disabled={busy}>
-              {busy ? 'Submitting…' : 'Submit application'}
-            </button>
+            {/* `busy`, so the wait shows a spinner rather than relying on one
+                word changing at the bottom of a long form. */}
+            <Button type="submit" variant="primary" block busy={busy} icon={Send}>
+              {busy ? 'Sending…' : 'Submit application'}
+            </Button>
           </form>
 
           <p className="auth-card__foot">
-            Already submitted? <button type="button" className="linklike" onClick={() => navigate('/')}>Back to home</button>.
+            Already applied? We come back on the number you signed in with.{' '}
+            <button type="button" className="linklike" onClick={() => navigate('/')}>Back to home</button>.
           </p>
         </div>
       </div>

@@ -1,7 +1,7 @@
-import { Link } from 'react-router-dom';
-import { Compass, UserRound, Sparkles } from 'lucide-react';
+import { Compass, Bookmark, LogIn, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePageTitle } from '../lib/usePageTitle';
+import { Button } from '../components/ui';
 
 export default function ForYouPage() {
   const { session } = useAuth();
@@ -24,17 +24,15 @@ export default function ForYouPage() {
 
         <div className="surprise__actions" style={{ justifyContent: 'center' }}>
           {session ? (
-            <Link to="/saved" className="btn btn--primary">
-              <UserRound size={16} aria-hidden="true" /> View your saved places
-            </Link>
+            <Button variant="primary" to="/saved" icon={Bookmark}>View your saved places</Button>
           ) : (
-            <Link to="/login" className="btn btn--primary">
-              <UserRound size={16} aria-hidden="true" /> Sign in to get started
-            </Link>
+            /* `LogIn`, not `UserRound`: the mark should say what the press
+               does, and a person-shape says who you are. The signed-in half
+               keeps its own verb too — that one goes to a collection, so it
+               carries the bookmark it is made of. */
+            <Button variant="primary" to="/login" icon={LogIn}>Sign in to get started</Button>
           )}
-          <Link to="/discover" className="btn btn--ghost">
-            <Compass size={16} aria-hidden="true" /> Discover instead
-          </Link>
+          <Button variant="ghost" to="/discover" icon={Compass}>Discover instead</Button>
         </div>
       </div>
     </main>

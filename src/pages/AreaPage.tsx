@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { MapPin, ArrowRight } from 'lucide-react';
 import { useRestaurants } from '../hooks/useRestaurants';
 import { NEIGHBORHOODS } from '../hooks/useTaxonomy';
@@ -8,6 +8,7 @@ import SectionHeading from '../components/SectionHeading';
 import EmptyState from '../components/EmptyState';
 import { SkeletonGrid } from '../components/Skeleton';
 import { usePageTitle } from '../lib/usePageTitle';
+import { Button } from '../components/ui';
 
 export default function AreaPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -47,8 +48,8 @@ export default function AreaPage() {
             <SkeletonGrid count={8} />
           ) : restaurants.length === 0 ? (
             <EmptyState
-              title={`No restaurants listed in ${area} yet`}
-              message="We don't have live matches for this area right now. Try a broader search."
+              title={`${area} isn't on our map yet`}
+              message="We build Dhaka neighbourhood by neighbourhood, and this one is still ahead of us. Search by cuisine, budget or dish instead — the places we do know are worth the detour."
               actionLabel="Search restaurants"
               actionTo="/search"
             />
@@ -66,8 +67,12 @@ export default function AreaPage() {
         <div className="section__inner">
           <SectionHeading eyebrow="Keep exploring" title="Other ways to discover" lede="Browse guides or cuisines." />
           <div className="surprise__actions" style={{ justifyContent: 'flex-start' }}>
-            <Link to="/guides" className="btn btn--ghost"><ArrowRight size={15} aria-hidden="true" /> Browse guides</Link>
-            <Link to="/discover" className="btn btn--ghost"><ArrowRight size={15} aria-hidden="true" /> Discover hub</Link>
+            {/* `iconAfter`, not a leading arrow. A right-pointing arrow in
+                front of its own label points back at the margin; behind it,
+                it points where the link goes — and the primitive travels it
+                3px on hover, which the hand-written icon never did. */}
+            <Button variant="ghost" to="/guides" iconAfter={ArrowRight}>Browse guides</Button>
+            <Button variant="ghost" to="/discover" iconAfter={ArrowRight}>Discover hub</Button>
           </div>
         </div>
       </section>

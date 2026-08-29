@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { formatOpeningHours, formatScrapedHours, isOpenNow, minutesUntilOpen, openNowLabel, parseOpenHours } from '../openHours';
+import {
+  formatOpeningHours,
+  formatScrapedHours,
+  isOpenNow,
+  minutesUntilOpen,
+  openNowLabel,
+  openStateNow,
+  parseOpenHours,
+  recordedHoursHeadline,
+} from '../openHours';
 
 const at = (h: number, m = 0) => new Date(2026, 6, 15, h, m); // fixed Wednesday
 
@@ -181,5 +190,75 @@ describe('formatScrapedHours', () => {
     expect(formatScrapedHours('')).toBeNull();
     expect(formatScrapedHours('Saturday: 11:00 AM – 12:00 AM; Sunday: Closed')).toBeNull();
     expect(formatScrapedHours('completely unrelated')).toBeNull();
+  });
+});
+
+describe('openStateNow', () => {
+  it('evaluates a single unambiguous window', () => {
+    expect(openStateNow('12:00 PM – 10:30 PM', at(13))).toBe('Open now');
+    expect(openStateNow('12:00 PM – 10:30 PM', at(23))).toBe('Closed now');
+  });
+
+  it('treats "Open 24 hours" as always open', () => {
+    expect(openStateNow('Open 24 hours', at(4))).toBe('Open now');
+  });
+
+  it('reads TODAY’s row from a weekly schedule, not the first one listed', () => {
+    // The regression guard. `HOURS_RE` is unanchored, so the old
+    // `openNowLabel` matched Saturday’s 11am–3pm window and called this
+    // Wednesday lunchtime "Open now" — on a venue that opens at 6pm.
+    const weekly = 'Saturday: 11:00 AM – 3:00 PM; Wednesday: 6:00 PM – 11:00 PM';
+    expect(openNowLabel(weekly, at(13))).toBe('Open now'); // the bug, still there
+    expect(openStateNow(weekly, at(13))).toBe('Closed now');
+    expect(openStateNow(weekly, at(19))).toBe('Open now');
+  });
+
+  it('honours a day recorded as Closed', () => {
+    expect(openStateNow('Wednesday: Closed; Thursday: 6:00 PM – 11:00 PM', at(19))).toBe('Closed now');
+  });
+
+  it('says nothing when the schedule never covered today', () => {
+    expect(openStateNow('Friday: 6:00 PM – 11:00 PM; Saturday: Closed', at(19))).toBeNull();
+  });
+
+  it('credits a window that crossed midnight to the day it started on', () => {
+    // Tuesday 6 PM – 2 AM is still running at 1 AM Wednesday.
+    const weekly = 'Tuesday: 6:00 PM – 2:00 AM; Wednesday: 6:00 PM – 11:00 PM';
+    expect(openStateNow(weekly, at(1))).toBe('Open now');
+    expect(openStateNow(weekly, at(3))).toBe('Closed now');
+  });
+
+  it('refuses every Google scrape fragment', () => {
+    // The heart of the bug this fixed: these carry a state word that was true
+    // when the listing was scraped and says nothing about now.
+    expect(openStateNow('Closed Opens 12 pm Sat', at(13))).toBeNull();
+    expect(openStateNow('Open Closes 1 am', at(13))).toBeNull();
+    expect(openStateNow('Closes soon 11:30 pm · Opens 12 pm', at(13))).toBeNull();
+  });
+
+  it('never rescues a weekly-shaped string that failed to parse', () => {
+    expect(openStateNow('Saturday: 11:00 AM – 3:00 PM; Sunday: whenever', at(13))).toBeNull();
+  });
+
+  it('returns null for nothing at all', () => {
+    expect(openStateNow('', at(13))).toBeNull();
+    expect(openStateNow('completely unrelated', at(13))).toBeNull();
+  });
+});
+
+describe('recordedHoursHeadline', () => {
+  it('drops the stale moment-word and keeps the schedule fact', () => {
+    expect(recordedHoursHeadline(formatScrapedHours('Closed Opens 12 pm Sat'))).toBe('Opens 12:00 PM Saturday');
+    expect(recordedHoursHeadline(formatScrapedHours('Open Closes 5 am Sat'))).toBe('Closes 5:00 AM Saturday');
+  });
+
+  it('keeps "Open 24 hours", which is a schedule and not a moment', () => {
+    expect(recordedHoursHeadline(formatScrapedHours('Open 24 hours'))).toBe('Open 24 hours');
+  });
+
+  it('returns null when the moment-word was all there was', () => {
+    expect(recordedHoursHeadline(formatScrapedHours('Closed'))).toBeNull();
+    expect(recordedHoursHeadline(null)).toBeNull();
+    expect(recordedHoursHeadline(undefined)).toBeNull();
   });
 });

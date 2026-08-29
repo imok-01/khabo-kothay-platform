@@ -6,8 +6,26 @@ import { uid } from '../lib/uid';
 import type { UserReview } from '../domain/review';
 import { reviewService } from '../hooks/useReviews';
 import { grantFirstReviewReward } from '../lib/rewards';
+import { Button, Chip, Field } from './ui';
 
 const RATING_LABELS = ['', 'Dreadful', 'Meh', 'Okay', 'Good', 'Excellent'];
+
+/**
+ * Writing your own review of a venue.
+ *
+ * Every layer under this component says review and always has: the entity is
+ * `UserReview`, the service is documented "KK community reviews only", the
+ * repository interface is `ReviewRepository`, the payload carries a 1–5
+ * rating with word labels, `favoriteDishes`, `visitStatus` and `helpfulCount`,
+ * and saving one grants `grantFirstReviewReward`. Only the copy here had
+ * drifted to "note", which made a five-star review form read like a scratchpad
+ * and left the page with two vocabularies for one feature.
+ *
+ * The one true caveat — these are stored on the device and not published yet,
+ * because every sync path still writes to the local store — is stated ONCE, by
+ * the section heading on the page. It used to appear six times between here and
+ * there, which is how a disclosure becomes noise instead of honesty.
+ */
 
 interface WriteReviewProps {
   restaurant: Restaurant;
@@ -27,8 +45,8 @@ export default function WriteReview({ restaurant, onChanged }: WriteReviewProps)
     return (
       <div className="write-review write-review--locked">
         <p>
-          <Star size={13} aria-hidden="true" /> Love this place?{' '}
-          <a href={`/login`} onClick={(e) => { e.preventDefault(); window.location.href = '/login'; }}>Sign in</a> to save a private note.
+          <Star size={14} aria-hidden="true" /> Been to {restaurant.name}?{' '}
+          <a href={`/login`} onClick={(e) => { e.preventDefault(); window.location.href = '/login'; }}>Sign in</a> to write your review.
         </p>
       </div>
     );
@@ -77,14 +95,22 @@ export default function WriteReview({ restaurant, onChanged }: WriteReviewProps)
   if (mine) {
     return (
       <div className="write-review write-review--done">
-        <p><Check size={13} aria-hidden="true" /> You saved a note about this place — thanks! <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>(saved on this device only)</span></p>
+        <p><Check size={14} aria-hidden="true" /> Your review is saved.</p>
         <div className="write-review__actions">
-          <button type="button" className="btn btn--ghost btn--sm" onClick={() => { setRating(mine.rating); setComment(mine.comment); setDish(mine.favoriteDishes?.[0] ?? ''); setOpen(true); }}>
-            <Pencil size={12} aria-hidden="true" /> Edit
-          </button>
-          <button type="button" className="btn btn--subtle btn--sm" onClick={remove}>
-            <Trash2 size={12} aria-hidden="true" /> Delete
-          </button>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={Pencil}
+            onClick={() => { setRating(mine.rating); setComment(mine.comment); setDish(mine.favoriteDishes?.[0] ?? ''); setOpen(true); }}
+          >
+            Edit
+          </Button>
+          {/* `danger`, not `subtle`: deleting your own note is the destructive
+              half of this pair, and subtle is the paint of a benign text
+              action. Quiet at rest, red the moment you reach for it. */}
+          <Button variant="danger" size="sm" icon={Trash2} onClick={remove}>
+            Delete
+          </Button>
         </div>
       </div>
     );
@@ -93,19 +119,22 @@ export default function WriteReview({ restaurant, onChanged }: WriteReviewProps)
   if (!open) {
     return (
       <div className="write-review">
-          <button type="button" className="btn btn--ghost btn--sm" onClick={() => setOpen(true)}>
-            <Star size={12} aria-hidden="true" /> Write a note
-          </button>
-          <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>Saved on this device only — not shared publicly yet.</span>
+        <Button variant="ghost" size="sm" icon={Star} onClick={() => setOpen(true)}>
+          Write your review
+        </Button>
       </div>
     );
   }
 
   return (
     <form className="write-review write-review--form" onSubmit={submit}>
-      <div className="write-review__row">
-        <span className="field__label">Your rating</span>
-        <div className="rating-input" role="radiogroup" aria-label="Rating">
+      {/* `Field group`, not a hand-written `.field__label`. The visible label
+          said "Your rating" while the group's own `aria-label` said "Rating" —
+          two names for one question, and the one a screen reader read was the
+          one nobody could see. The label owns the name now, so they cannot
+          drift apart again. */}
+      <Field label="Your rating" group>
+        <div className="rating-input" role="radiogroup">
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               key={n}
@@ -121,35 +150,31 @@ export default function WriteReview({ restaurant, onChanged }: WriteReviewProps)
           ))}
           <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{RATING_LABELS[rating]}</span>
         </div>
-      </div>
+      </Field>
 
-      <label className="field">
-        <span className="field__label">Your review</span>
+      <Field label="Your review" error={error}>
         <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder={`What was ${restaurant.name} really like?`} />
-      </label>
+      </Field>
 
-      <div className="write-review__row">
-        <span className="field__label">Did you visit?</span>
-        <div className="chip-row">
-          <button type="button" className={`chip chip--toggle ${visited === true ? 'chip--on' : ''}`} onClick={() => setVisited(true)} aria-pressed={visited === true}>I visited</button>
-          <button type="button" className={`chip chip--toggle ${visited === false ? 'chip--on' : ''}`} onClick={() => setVisited(false)} aria-pressed={visited === false}>Not yet</button>
+      {/* The chips announced nothing: a screen reader arrived at "I visited /
+          Not yet" with no trace of the question. `role="group"` is the honest
+          role — these two are a toggle pair, not radios, since either can be
+          left unset. */}
+      <Field label="Did you visit?" group>
+        <div className="chip-row" role="group">
+          <Chip size="sm" selected={visited === true} onClick={() => setVisited(true)}>I visited</Chip>
+          <Chip size="sm" selected={visited === false} onClick={() => setVisited(false)}>Not yet</Chip>
         </div>
-      </div>
+      </Field>
 
-      <label className="field">
-        <span className="field__label">Favourite dish (optional)</span>
+      <Field label="Favourite dish" optional>
         <input value={dish} onChange={(e) => setDish(e.target.value)} placeholder="e.g. Mutton Biryani" />
-      </label>
-
-      {error && <p className="form-error" role="alert">{error}</p>}
+      </Field>
 
       <div className="write-review__actions">
-        <button type="submit" className="btn btn--primary btn--sm">Save note</button>
-        <button type="button" className="btn btn--subtle btn--sm" onClick={() => setOpen(false)}>Cancel</button>
+        <Button type="submit" variant="primary" size="sm" icon={Check}>Save review</Button>
+        <Button variant="subtle" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
       </div>
-      <p className="t-xs" style={{ color: 'var(--ink-faint)' }}>
-        Your note is saved on this device only for now — it isn't shared publicly yet, and isn't sent to Google.
-      </p>
     </form>
   );
 }

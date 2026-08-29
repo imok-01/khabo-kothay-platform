@@ -12,6 +12,8 @@ export interface MapSurfaceProps {
   onActiveChange: (id: string | null) => void;
   onViewChange: (viewport: MapViewport) => void;
   onReady: () => void;
+  /** match score per restaurant, when a match is meaningful — drives the pin tier */
+  scores?: Map<string, number>;
 }
 
 /**

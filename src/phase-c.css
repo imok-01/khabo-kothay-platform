@@ -1,0 +1,3012 @@
+/* ============================================================
+   KHABO KOTHAY — PHASE C
+   CONSUMER DISCOVERY: HOME, CARDS, DISCOVER, NAVIGATION
+   ============================================================
+   Loaded LAST. Owns component rules only — every token it uses
+   is declared in design-system.css (see the "PHASE C — INK
+   CANVAS" block there).
+
+   Why a new layer rather than edits spread through index.css /
+   phase3.css / editorial.css: Phase C rebuilds four surfaces on
+   new markup with new class names (`band`, `hero-c`, `rcard`,
+   `rail`, `ranked`, `mosaic`, `craving`, `dsc-*`). Keeping them
+   in one file means the redesign is reviewable in one place and
+   cannot regress the surfaces it does not own (explore, manage,
+   admin, partners, info).
+
+   The design direction:
+
+   - CADENCE. Paper and ink alternate. The hero, the offers band
+     and the closing principles sit on an espresso ink canvas;
+     everything between them is warm paper. Twelve cream sections
+     in a row was the single biggest reason the old homepage read
+     as one long scroll.
+
+   - VARIETY OF KIND, not of colour. Each section is a different
+     *layout type* — console, rail, spread, ranked list, mosaic,
+     strip — so the page never repeats a card grid.
+
+   - INTELLIGENCE ON THE SURFACE. A Khabo Kothay card states why
+     it is in front of you: the match, the specialty, the price
+     honesty level. That is the product's actual differentiator,
+     so it is visible without interaction.
+
+   - EDITORIAL TYPOGRAPHY. Newsreader at display sizes, tight
+     tracking, real hierarchy. Numerals are a design element
+     (ranked lists, stats) rather than metadata.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. BANDS — the section system
+   ------------------------------------------------------------
+   `.band` replaces `.section` on Phase C surfaces. It exists
+   mainly so the ink variant can carry its own colour context:
+   every nested primitive needs re-toning on a dark ground, and
+   scoping that to `.band--ink` keeps it out of the light layer.
+   ------------------------------------------------------------ */
+.band {
+  position: relative;
+  padding: var(--section-y) var(--gutter);
+}
+.band__inner {
+  max-width: var(--container);
+  margin: 0 auto;
+}
+.band__inner--wide { max-width: var(--container-wide); }
+
+.band--tight { padding-block: var(--section-y-sm); }
+.band--tall { padding-block: var(--section-y-lg); }
+
+/* Hairline between two consecutive paper bands. Cheaper than a
+   tint and it keeps the paper continuous, which is the point. */
+.band--ruled { border-top: 1px solid var(--border); }
+
+/* A raised paper panel — used where a section needs to feel like
+   an object on the page rather than a region of it. */
+.band--panel .band__inner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-md), var(--ring-inset);
+  padding: clamp(1.75rem, 4vw, 3.25rem);
+}
+
+/* The ink canvas. */
+.band--ink {
+  background: var(--grad-canvas);
+  color: var(--on-ink);
+  isolation: isolate;
+}
+/* A single warm hairline at each edge so the transition from
+   paper to ink reads as intentional, not as a missing image. */
+.band--ink::before,
+.band--ink::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(242, 179, 80, 0.45), transparent);
+}
+.band--ink::before { top: 0; }
+.band--ink::after { bottom: 0; }
+
+.band--ink h1,
+.band--ink h2,
+.band--ink h3,
+.band--ink h4 { color: var(--on-ink); }
+.band--ink p { color: var(--on-ink-soft); }
+
+/* ------------------------------------------------------------
+   2. BAND HEADINGS
+   ------------------------------------------------------------
+   The old SectionHeading stacked eyebrow / title / lede in one
+   column with the action floated right. At display sizes that
+   left a ragged column of three different measures. Phase C
+   splits it: title on the left at full display weight, lede and
+   action in a narrower right column, joined by a rule.
+   ------------------------------------------------------------ */
+.band-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: var(--s6) var(--s10);
+  align-items: end;
+  margin-bottom: var(--s8);
+}
+.band-head--stack {
+  grid-template-columns: 1fr;
+  gap: var(--s4);
+  align-items: start;
+}
+.band-head--center {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  text-align: center;
+}
+.band-head--center .band-head__lede { max-width: 54ch; }
+
+.band-head__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--terracotta);
+}
+.band-head__eyebrow::before {
+  content: '';
+  width: 26px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--grad-gold);
+}
+.band--ink .band-head__eyebrow { color: var(--on-ink-accent); }
+
+.band-head__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  font-weight: var(--weight-bold);
+  line-height: 1.02;
+  letter-spacing: var(--tracking-tight);
+  margin-top: var(--s3);
+  text-wrap: balance;
+}
+.band-head__title em {
+  font-style: italic;
+  font-weight: var(--weight-medium);
+  color: var(--primary);
+}
+.band--ink .band-head__title em { color: var(--on-ink-primary); }
+
+.band-head__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s4);
+  padding-bottom: var(--s1);
+}
+.band-head__lede {
+  font-size: var(--fs-md);
+  line-height: 1.65;
+  color: var(--ink-soft);
+  max-width: 46ch;
+}
+.band--ink .band-head__lede { color: var(--on-ink-soft); }
+
+.band-head__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  font-weight: var(--weight-bold);
+  color: var(--primary);
+  background: none;
+  border: 0;
+  border-bottom: 1.5px solid var(--primary-line);
+  padding: 0 0 var(--s1);
+  cursor: pointer;
+  transition: border-color var(--tr-settle), gap var(--tr-settle);
+}
+.band-head__action:hover {
+  text-decoration: none;
+  border-color: var(--primary);
+  gap: var(--s3);
+}
+.band--ink .band-head__action {
+  color: var(--on-ink-primary);
+  border-color: rgba(242, 179, 80, 0.4);
+}
+.band--ink .band-head__action:hover { border-color: var(--on-ink-primary); }
+
+/* ------------------------------------------------------------
+   3. HERO — the ink console
+   ------------------------------------------------------------
+   Two jobs, in this order: say what this product is for in one
+   line, then put the discovery builder within immediate reach.
+   The photo mosaic on the right is built from real lead photos of
+   real venues — it is the product's own data used as art, never
+   stock imagery.
+   ------------------------------------------------------------ */
+.hero-c {
+  position: relative;
+  padding: clamp(2.75rem, 7vw, 5.5rem) var(--gutter) clamp(2.5rem, 6vw, 4.5rem);
+  background: var(--grad-canvas);
+  color: var(--on-ink);
+  overflow: hidden;
+  isolation: isolate;
+}
+/* Fine warm grain. Without it a large flat dark area bands badly
+   on 8-bit displays. */
+.hero-c::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: radial-gradient(rgba(247, 240, 228, 0.045) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+.hero-c__grid {
+  position: relative;
+  z-index: 1;
+  max-width: var(--container-wide);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(2rem, 5vw, 4.5rem);
+  align-items: center;
+}
+
+.hero-c__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1h) var(--s3) var(--s1h) var(--s2h);
+  border-radius: var(--r-full);
+  border: 1px solid var(--on-ink-line-strong);
+  background: var(--on-ink-surface);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--on-ink);
+}
+/* A live dot — the product's data is current, and the badge says
+   so without a sentence. */
+.hero-c__pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--on-ink-primary);
+  box-shadow: 0 0 0 0 rgba(242, 179, 80, 0.6);
+  animation: kk-pulse 2.6s var(--ease-out) infinite;
+}
+/* kk-pulse itself is in design-system.css now — the save toggle in the
+   primitive layer wanted the same ring, so the keyframe moved up to the
+   vocabulary and took two properties with it. The defaults are this dot's
+   original gold and 9px reach, which is why nothing is stated here. */
+
+.hero-c__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-mega);
+  font-weight: var(--weight-bold);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  color: var(--on-ink);
+  margin: var(--s5) 0 var(--s5);
+  text-wrap: balance;
+}
+/* "Kothay?" — the question is the brand. Gold, italic, and given
+   its own line so the headline reads as a spoken question. */
+.hero-c__title em {
+  display: block;
+  font-style: italic;
+  font-weight: var(--weight-medium);
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-c__lede {
+  font-size: var(--fs-lead);
+  line-height: 1.55;
+  color: var(--on-ink-soft);
+  max-width: 46ch;
+  margin-bottom: var(--s7);
+}
+.hero-c__lede strong {
+  color: var(--on-ink);
+  font-weight: var(--weight-semi);
+}
+
+/* The builder shell. It is the primary action on the page, so it
+   gets the only bright surface in the hero. */
+.hero-c__console {
+  background: rgba(255, 253, 249, 0.97);
+  border: 1px solid rgba(247, 240, 228, 0.5);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-ink);
+  padding: var(--s3) var(--s3) var(--s4);
+  color: var(--ink);
+}
+.hero-c__console-label {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3) var(--s3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.hero-c__console-label svg { color: var(--primary); }
+/* The builder brings its own card chrome; inside the console it is
+   already on a raised surface, so it drops back to a plain panel. */
+.hero-c__console .builder {
+  max-width: none;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: transparent;
+  box-shadow: none;
+  padding: 0 var(--s1);
+}
+
+/* Quick intents, re-toned for ink. */
+.hero-c__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.hero-c__copy > .hero-c__console,
+.hero-c__copy > .quick-strip { align-self: stretch; }
+
+/* QuickShortcuts keeps its own markup (`.quick-strip` / `.quick-chip`) — it is
+   shared with other surfaces. Only its colours change on the ink ground. */
+.hero-c .quick-strip {
+  margin-top: var(--s6);
+  gap: var(--s2);
+}
+.hero-c .quick-chip {
+  border-color: var(--on-ink-line-strong);
+  background: var(--on-ink-surface);
+  color: var(--on-ink);
+  box-shadow: none;
+}
+.hero-c .quick-chip svg { color: var(--on-ink-accent); }
+.hero-c .quick-chip:hover {
+  background: var(--on-ink-surface-2);
+  border-color: var(--on-ink);
+  color: var(--on-ink);
+  transform: translateY(-1px);
+}
+/* Flat, not `--grad-primary-bright` — decision 2, and the last two chip-sized
+   gradients in the product. On a dark hero the ramp was never legible as a
+   ramp anyway: at 34px tall over a photograph it read as a single muddy
+   value, so the shadow was doing all of the lifting. `--primary-bright` is
+   the top step of the same ramp the gradient started from, and the glow
+   stays because that is what separates the chip from the image behind it. */
+.hero-c .quick-chip--primary {
+  background: var(--primary-bright);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-glow-primary);
+}
+.hero-c .quick-chip--primary svg { color: rgba(255, 255, 255, 0.9); }
+
+.hero-c__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s6);
+}
+.hero-c__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  padding: var(--s2) var(--s3h);
+  border-radius: var(--r-full);
+  border: 1px solid var(--on-ink-line-strong);
+  background: var(--on-ink-surface);
+  color: var(--on-ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  transition: background var(--tr-settle), border-color var(--tr-settle), transform var(--tr-settle);
+}
+.hero-c__chip svg { color: var(--on-ink-accent); }
+.hero-c__chip:hover {
+  background: var(--on-ink-surface-2);
+  border-color: var(--on-ink);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+/* Flat, for the reason given on `.hero-c .quick-chip--primary` above. */
+.hero-c__chip--primary {
+  background: var(--primary-bright);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-glow-primary);
+}
+.hero-c__chip--primary svg { color: rgba(255, 255, 255, 0.9); }
+.hero-c__chip--primary:hover {
+  /* Restated, not inherited: `.hero-c__chip:hover` sets the translucent
+     white fill at the same specificity and later in the cascade would
+     take it, which would make the one primary chip in the hero go pale
+     under the cursor. Brightness does the lift instead. */
+  background: var(--primary-bright);
+  border-color: transparent;
+  filter: brightness(1.08);
+}
+
+/* One statistic. The row that holds them is `.hero-c__ledger`, which spans the
+   full hero rather than stacking inside the copy column — see refine.css §5.
+   (The old `.hero-c__stats` flex row is gone with the markup that used it.) */
+.hero-c__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s0h);
+}
+.hero-c__stat dt {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 2.6vw, 2.05rem);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--on-ink);
+}
+.hero-c__stat dd {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--on-ink-faint);
+}
+
+/* The mosaic. Three real venue photos, offset, with the tallest
+   carrying a caption so the art is also information. */
+.hero-c__mosaic {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+  aspect-ratio: 1 / 1.02;
+  max-height: 560px;
+}
+.hero-c__tile {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--on-ink-line-strong);
+  background: var(--canvas-ink-3);
+  box-shadow: var(--shadow-ink);
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+.hero-c__tile:hover { transform: translateY(-4px); }
+.hero-c__tile--lead {
+  grid-row: span 2;
+  border-radius: var(--r-xl);
+}
+.hero-c__tile .img-wrap,
+.hero-c__tile .img-fallback,
+.hero-c__tile img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero-c__tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--grad-media);
+  pointer-events: none;
+}
+.hero-c__tile-cap {
+  position: absolute;
+  z-index: 1;
+  left: var(--s4);
+  right: var(--s4);
+  bottom: var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s0h);
+}
+.hero-c__tile-cap strong {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: var(--weight-semi);
+  line-height: 1.15;
+  color: #fff;
+  letter-spacing: var(--tracking-snug);
+}
+.hero-c__tile-cap span {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+.hero-c__tile--lead .hero-c__tile-cap strong { font-size: 1.3rem; }
+
+/* ------------------------------------------------------------
+   4. RESTAURANT CARD
+   ------------------------------------------------------------
+   One component, three variants, and — this is the part that
+   changed in Phase C — the same intelligence in all three. The
+   previous compact variant hid `card__chips` and the whole match
+   zone, which meant both homepage rails showed generic listings
+   with no reason for being there. Compact now carries a condensed
+   intelligence line instead of hiding it.
+
+   Layers on the media, from the top: photo, scrim, flags
+   (top-left), actions (top-right), match + open status (bottom).
+   Nothing overlaps because each corner has exactly one owner.
+   ------------------------------------------------------------ */
+.rcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  /* No `transform` here, in any state, and that is load-bearing rather than an
+     omission. The card is its own hover target: a `translateY(-5px)` on this
+     rule carried the card's bottom edge up past a cursor resting in that
+     5px band, which dropped `:hover`, which dropped the lift, which restored
+     `:hover` — an oscillation that also restarted the photo's zoom from
+     mid-flight on every turn. The lift is gone; the elevation it was standing
+     in for is carried by the shadow and the border, and the photograph is what
+     moves (see RestaurantCard.tsx, which springs `.rcard__zoom`). */
+  transition: box-shadow var(--tr-settle), border-color var(--tr-settle);
+}
+.rcard:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card-hover);
+}
+.rcard:focus-within {
+  border-color: var(--primary-line);
+  box-shadow: var(--shadow-card-hover);
+}
+.rcard__link {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  color: inherit;
+}
+.rcard__link:hover { text-decoration: none; }
+
+/* Media ------------------------------------------------------- */
+.rcard__media {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--surface-3);
+  flex: none;
+}
+.rcard__media .img-wrap,
+.rcard__media .img-fallback,
+.rcard__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* The spring's own layer. It carries the photo's scale and nothing else, so
+   react-spring writes one `transform` per frame to an element with no other
+   inline style to preserve. The rules above are descendant selectors, so the
+   image inside still gets its `position: absolute; inset: 0` through it.
+
+   `will-change` is scoped to the hovered card deliberately: declaring it on
+   `.rcard__zoom` unconditionally would promote a layer for every card in a
+   207-venue grid. One card at a time is all that is ever animating, and
+   `.rcard:hover` is a stable signal now that the frame does not move. */
+.rcard__zoom {
+  position: absolute;
+  inset: 0;
+  /* MEDIA_REST in RestaurantCard.tsx. The spring's initial value is the same
+     number, so the inline transform it writes on mount lands exactly on top of
+     this one — which is what keeps the prerendered HTML from popping when the
+     JS arrives. Change one and change the other. */
+  transform: scale(1.03);
+}
+.rcard:hover .rcard__zoom {
+  will-change: transform;
+}
+/* Top-of-image scrim only, so flags and buttons stay legible
+   without dulling the food. It thins under the pointer — the photograph
+   clarifying is half of what the removed lift used to signal, and an
+   opacity change is the cheapest signal there is. */
+.rcard__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--grad-media-top);
+  pointer-events: none;
+  transition: opacity var(--tr-settle);
+}
+/* Editorial is excluded because its scrim is not decoration: that variant lifts
+   the name and tagline out of the body and lays them ON the photograph, and the
+   gradient is the only thing holding their contrast. Thinning it on hover would
+   trade legibility for a flourish. */
+.rcard:not(.rcard--editorial):hover .rcard__media::after {
+  opacity: 0.7;
+}
+
+.rcard__flags {
+  position: absolute;
+  z-index: 2;
+  top: var(--s3);
+  left: var(--s3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s1h);
+  max-width: calc(100% - 96px);
+}
+.rcard__flag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  padding: var(--s1) var(--s2h);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-black);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--glass-ink);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.rcard__flag--featured {
+  background: linear-gradient(100deg, rgba(224, 140, 20, 0.95), rgba(201, 79, 51, 0.95));
+  border-color: rgba(255, 255, 255, 0.28);
+}
+.rcard__flag--offer {
+  background: linear-gradient(100deg, rgba(6, 96, 60, 0.95), rgba(4, 55, 35, 0.95));
+  border-color: rgba(168, 221, 194, 0.4);
+}
+
+/* Bottom-left cluster: live open status and the veg mark. Facts
+   you want before you read the name. */
+.rcard__status {
+  position: absolute;
+  z-index: 2;
+  bottom: var(--s3);
+  left: var(--s3);
+  display: flex;
+  align-items: center;
+  gap: var(--s1h);
+  flex-wrap: wrap;
+}
+.rcard__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  padding: var(--s1) var(--s2h);
+  border-radius: var(--r-full);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--glass-ink);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.rcard__pill--open { color: #8fe3b6; }
+.rcard__pill--open::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4cc38c;
+  box-shadow: 0 0 0 3px rgba(76, 195, 140, 0.25);
+}
+.rcard__pill--shut { color: var(--on-ink-soft); }
+.rcard__pill--veg { color: #a8e6bd; }
+.rcard__pill--nonveg { color: #f0b3a3; }
+
+/* The KK match badge. Bottom-right on the media so it reads as a
+   verdict on the photo rather than as a row of metadata. */
+.rcard__match-badge {
+  position: absolute;
+  z-index: 2;
+  right: var(--s3);
+  bottom: var(--s3);
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1h) var(--s2h) var(--s1h) var(--s2);
+  border-radius: var(--r-full);
+  background: var(--glass-ink);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.rcard__match-badge strong {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+.rcard__match-badge span {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.1;
+  max-width: 5.5em;
+}
+/* A ring rather than a bar: at badge scale a 3px bar reads as a
+   rendering artefact, an arc reads as a score. */
+.rcard__ring {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  background: conic-gradient(var(--on-ink-primary) calc(var(--pct) * 1%), rgba(255, 255, 255, 0.22) 0);
+  display: grid;
+  place-items: center;
+}
+.rcard__ring::after {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(20, 16, 11, 0.82);
+}
+.rcard__match-badge--low .rcard__ring {
+  background: conic-gradient(var(--on-ink-faint) calc(var(--pct) * 1%), rgba(255, 255, 255, 0.18) 0);
+}
+
+/* Action cluster ---------------------------------------------
+   Outside `.rcard__link` in the DOM so a save never navigates.
+   Revealed on hover/focus at pointer widths; always visible on
+   touch, where there is no hover to reveal it with. */
+.rcard__actions {
+  position: absolute;
+  z-index: 3;
+  top: var(--s3);
+  right: var(--s3);
+  display: flex;
+  flex-direction: column;
+  /* 10px, not 6px. The buttons are 34px circles carrying a 44px pointer
+     target, so each one reaches 5px past its own edge; at a 6px gap two
+     neighbouring targets would overlap by 4px and a tap landing in the
+     seam would be answered by whichever came later in the DOM. 10px lets
+     the three targets tile exactly — no overlap, and no dead strip
+     between them either. Three 34px circles at this gap stand 122px in a
+     215px media, so the column still clears the body. */
+  gap: var(--s2h);
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity var(--tr-settle), transform var(--tr-settle);
+}
+.rcard:hover .rcard__actions,
+.rcard:focus-within .rcard__actions,
+.rcard__actions:focus-within {
+  opacity: 1;
+  transform: none;
+}
+@media (hover: none) {
+  .rcard__actions { opacity: 1; transform: none; }
+}
+/* The cluster is the IconButton primitive now (`kk-ib kk-ib--md
+   kk-ib--glass`), which owns the circle, the glass recipe, the press and
+   — the point of the exercise — a 44px pointer target on a 34px mark.
+   What stays here is only what is specific to a *restaurant card*: the
+   responsive box/reach overrides below, and the one-shot pop when a list
+   gains a member.
+
+   The "on" colours are NOT set on these classes. They are passed from
+   RestaurantCard as --kk-ib-on-bg, because primitives.css loads later and
+   `.kk-ib[aria-pressed='true']` is (0,2,0) against a modifier class's
+   (0,1,0) — a `background` written here would lose twice over and all
+   three toggles would turn espresso. The border goes with the fill in
+   that same rule, so there is nothing left for these selectors to say
+   about paint; they survive only as the hook the pop is keyed off. */
+/* A one-shot pop when a card is added to a list, so the toggle is
+   felt as well as seen. */
+.rcard__act--fav-on svg,
+.rcard__act--save-on svg { animation: kk-pop var(--dur-med) var(--ease-spring); }
+
+/* Body -------------------------------------------------------- */
+.rcard__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s4);
+  flex: 1;
+  min-width: 0;
+}
+.rcard__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.rcard__name {
+  font-family: var(--font-display);
+  font-size: 1.24rem;
+  font-weight: var(--weight-semi);
+  line-height: 1.16;
+  letter-spacing: var(--tracking-snug);
+  color: var(--ink);
+  transition: color var(--tr-settle);
+}
+.rcard:hover .rcard__name { color: var(--primary-strong); }
+.rcard__rating { flex: none; }
+
+.rcard__tagline {
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The intelligence line. This is the card's reason for existing:
+   what this kitchen is known for, drawn from approved
+   intelligence or community signals — never from the tagline. */
+.rcard__intel {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  padding: var(--s2) 0 0;
+  margin-top: auto;
+}
+.rcard__intel-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  padding: var(--s1) var(--s2) var(--s1) var(--s1h);
+  border-radius: var(--r-xs);
+  background: var(--primary-faint);
+  border: 1px solid var(--primary-line);
+  color: var(--primary-strong);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.02em;
+}
+.rcard__intel-item svg { color: var(--primary); }
+/* A recorded signature dish is the one concrete fact on the line
+   ("Beef Cheese Burger" beats "Fast food"), so it is the only chip
+   that fills — at most one per card, and it anchors the eye. */
+.rcard__intel-item--dish {
+  background: var(--primary-strong);
+  border-color: var(--primary-strong);
+  color: var(--ink-on-primary);
+}
+.rcard__intel-item--dish svg { color: var(--ink-on-primary); opacity: 0.85; }
+.rcard__intel-item--spice {
+  background: var(--accent-faint);
+  border-color: var(--accent-line);
+  color: var(--accent-strong);
+}
+.rcard__intel-item--spice svg { color: var(--accent); }
+.rcard__intel-item--vibe {
+  background: var(--vibe-soft);
+  border-color: #ddd5f9;
+  color: var(--vibe-strong);
+}
+.rcard__intel-item--vibe svg { color: var(--vibe); }
+/* Service facts ("Delivery") are true but generic, and only ever
+   appear when nothing better is recorded — so they stay neutral and
+   never compete with the coloured intelligence chips. */
+.rcard__intel-item--service {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--ink-soft);
+  font-weight: var(--weight-semi);
+}
+.rcard__intel-item--service svg { color: var(--ink-faint); }
+
+/* Facts row: where, how far, how much. Separated from the
+   intelligence line by a rule because they answer different
+   questions — one is "is this for me", one is "can I go". */
+.rcard__facts {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border-soft);
+  font-size: var(--fs-sm);
+}
+.rcard__where {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  min-width: 0;
+  color: var(--ink-soft);
+  font-weight: var(--weight-semi);
+}
+.rcard__where svg { flex: none; color: var(--ink-faint); }
+.rcard__where-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rcard__distance {
+  flex: none;
+  color: var(--ink-faint);
+  font-weight: var(--weight-semi);
+}
+.rcard__price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s0h);
+  flex: none;
+  text-align: right;
+}
+.rcard__price-value {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: var(--weight-bold);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-snug);
+  color: var(--ink);
+}
+.rcard__price-note {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+/* An estimate is never dressed as a verified price. */
+.rcard__price-note--est { color: var(--prov-recorded); }
+.rcard__price-note--none { color: var(--prov-derived); }
+
+/* Foot — the full match explanation, kept outside the link. */
+.rcard__foot {
+  padding: var(--s3) var(--s4);
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface-2);
+}
+.rcard__nudge {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-semi);
+  color: var(--ink-faint);
+}
+
+/* The match explainer in the foot. It is the whole signal now, not a caption
+   for the media badge: the foot carries the number, the bar, the WHY
+   affordance and the engine's strongest reason, because the badge above is
+   `aria-hidden` decoration that polish.css section 10 hides outright in the
+   ≤640 grid. polish.css restates the label's own weight and colour — this
+   rule is kept because it owns the transition the hover below animates. */
+.rcard__foot .match-indicator__label {
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-bold);
+  color: var(--ink-soft);
+  letter-spacing: -0.005em;
+  transition: color var(--tr-settle);
+}
+.rcard__foot .match-indicator:hover .match-indicator__label,
+.rcard__foot .match-indicator__trigger:focus-visible .match-indicator__label {
+  color: var(--primary);
+}
+.rcard__foot .match-indicator--low .match-indicator__label {
+  color: var(--ink-faint);
+}
+.band--ink .rcard__foot .match-indicator__label {
+  color: var(--on-ink-soft);
+}
+
+/* Highlighted — the explore map's hover sync target. */
+.rcard--highlighted {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-soft), var(--shadow-card-hover);
+}
+
+/* Variant: editorial ----------------------------------------
+   A full-bleed lead card. Name and rating move onto the photo,
+   which is the only place a 2.2rem serif name can sit without
+   dwarfing the body copy under it. */
+.rcard--editorial { border-radius: var(--r-xl); }
+.rcard--editorial .rcard__media { aspect-ratio: 16 / 10; }
+.rcard--editorial .rcard__media::after { background: var(--grad-media); }
+.rcard--editorial .rcard__overlay {
+  position: absolute;
+  z-index: 2;
+  left: clamp(1rem, 3vw, 1.75rem);
+  right: clamp(1rem, 3vw, 1.75rem);
+  bottom: calc(var(--s3) + 36px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.rcard--editorial .rcard__name {
+  font-size: clamp(1.6rem, 3.1vw, 2.35rem);
+  line-height: 1.04;
+  color: #fff;
+  letter-spacing: var(--tracking-tight);
+}
+.rcard--editorial:hover .rcard__name { color: #fff; }
+.rcard--editorial .rcard__tagline {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: var(--fs-md);
+  -webkit-line-clamp: 2;
+  max-width: 46ch;
+}
+.rcard--editorial .rcard__body { gap: var(--s3); padding: var(--s5); }
+.rcard--editorial .rcard__facts { font-size: var(--fs-md); }
+.rcard--editorial .rcard__price-value { font-size: 1.15rem; }
+
+/* Variant: featured -----------------------------------------
+   The lead entry of a guide, cuisine or area page.
+
+   This variant exists because `featured` used to be an alias for
+   `editorial`, and editorial's overlay treatment only works at the
+   width the homepage `.spread` gives it. In a 272px `auto-fill`
+   column the name sat on the photo, the body opened on chips, and
+   the card read as one whose content had failed to load — while
+   being, at the same time, the *smallest* photo on a page where it
+   was meant to lead.
+
+   So the prominence comes from the grid, not from moving text onto
+   the image. The card claims the whole row and turns horizontal:
+   photo on the left at the row's full height, the ordinary card
+   body on the right. Two consequences worth stating:
+
+     - It keeps `.rcard__head`, so the name and rating are exactly
+       where they are on every other card. There is no arrangement
+       of data that can make this body look unfinished, because it
+       is the same body.
+     - `grid-column: 1 / -1` is safe in `repeat(auto-fill,
+       minmax(272px, 1fr))` — auto-fill generates explicit tracks,
+       so `-1` resolves. At one column it is a no-op, which is why
+       the stacked form below needs no `grid-column` reset.
+
+   No rank badge. Guide pages order by `data.filter(...)`, which is
+   catalogue order; "#1" or "Top pick" would be a claim the data
+   does not make. Larger is a presentation choice and says nothing.
+   ------------------------------------------------------------ */
+.rcard--featured {
+  grid-column: 1 / -1;
+  border-radius: var(--r-xl);
+}
+.rcard--featured .rcard__link {
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(0, 1fr);
+  /* The photo's height is the row's height, and the row would
+     otherwise be as short as the text. A floor gives the media a
+     shape worth looking at (~1.9:1 at 1386px) without ever
+     capping it, so a long tagline still grows the card. */
+  min-height: clamp(19rem, 25vw, 24rem);
+}
+.rcard--featured .rcard__media {
+  /* `aspect-ratio` has to go, not be replaced: the column is doing
+     the sizing now, and leaving a ratio in place would fight it. */
+  aspect-ratio: auto;
+  height: 100%;
+}
+.rcard--featured .rcard__body {
+  gap: var(--s3);
+  padding: clamp(1.25rem, 2.4vw, 2.25rem);
+  /* Centred, and this is the load-bearing part. `.rcard__intel`
+     carries `margin-top: auto` so the chips and facts sit at the
+     foot of a short card — in a 300px-tall column that same rule
+     opens a visible hole under the name, which is the very thing
+     this variant was written to remove. Centre the stack and drop
+     the push. */
+  justify-content: center;
+}
+.rcard--featured .rcard__intel { margin-top: 0; }
+.rcard--featured .rcard__name {
+  font-size: clamp(1.5rem, 2.3vw, 2rem);
+  line-height: 1.08;
+  letter-spacing: var(--tracking-tight);
+}
+.rcard--featured .rcard__tagline {
+  font-size: var(--fs-lg);
+  -webkit-line-clamp: 3;
+  max-width: 52ch;
+}
+.rcard--featured .rcard__facts { font-size: var(--fs-md); }
+.rcard--featured .rcard__price-value { font-size: 1.15rem; }
+
+/* Below two comfortable columns the horizontal form has no room to
+   be horizontal: the photo narrows faster than the text does, and
+   the two halves start competing. It becomes a tall standard card
+   with the larger type kept. */
+@media (max-width: 860px) {
+  .rcard--featured .rcard__link {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .rcard--featured .rcard__media {
+    aspect-ratio: 16 / 10;
+    height: auto;
+  }
+  .rcard--featured .rcard__body { justify-content: flex-start; }
+  .rcard--featured .rcard__intel { margin-top: auto; }
+}
+
+/* Variant: compact ------------------------------------------
+   Horizontal, for rails. It keeps the match badge and one
+   intelligence chip — the whole point of the rewrite. */
+.rcard--compact {
+  flex-direction: row;
+  border-radius: var(--r-md);
+}
+.rcard--compact .rcard__link {
+  flex-direction: row;
+  align-items: stretch;
+}
+.rcard--compact .rcard__media {
+  aspect-ratio: auto;
+  width: 128px;
+  flex: none;
+  align-self: stretch;
+}
+.rcard--compact .rcard__media::after { background: var(--grad-media-top); }
+.rcard--compact .rcard__flags {
+  top: 6px;
+  left: 6px;
+  max-width: calc(100% - 12px);
+}
+.rcard--compact .rcard__flag {
+  padding: var(--s0h) var(--s1h);
+  font-size: 0.58rem;
+  letter-spacing: 0.06em;
+}
+/* At 128px wide the media cannot host the status cluster, the
+   match badge and the flags without collision. Status and match
+   move into the body; flags stay because they are the shortest. */
+.rcard--compact .rcard__status,
+.rcard--compact .rcard__match-badge { display: none; }
+.rcard--compact .rcard__body {
+  padding: var(--s3) var(--s4) var(--s3) var(--s3);
+  gap: var(--s1h);
+}
+.rcard--compact .rcard__name { font-size: 1.05rem; }
+.rcard--compact .rcard__tagline {
+  font-size: var(--fs-sm);
+  -webkit-line-clamp: 1;
+}
+.rcard--compact .rcard__rating { display: none; }
+.rcard--compact .rcard__intel { padding-top: 0; }
+.rcard--compact .rcard__facts {
+  padding-top: var(--s2);
+  font-size: var(--fs-xs);
+  flex-wrap: wrap;
+  row-gap: var(--s1);
+}
+.rcard--compact .rcard__price-value { font-size: 0.9rem; }
+.rcard--compact .rcard__actions {
+  top: 6px;
+  right: 6px;
+  flex-direction: row;
+  /* Back to 6px: this cluster is a ROW inside a 128px media, and three
+     28px circles at the 10px gap the column uses would occupy 104 of
+     those 128px. */
+  gap: var(--s1h);
+}
+/* A row, so the axes swap: the pointer targets have to tile
+   horizontally (28 + 6 = 34) and are free to take the full 44 in the
+   vertical, where nothing is stacked above or below them. 34x44 against
+   the 28x28 this control used to offer. */
+.rcard--compact .rcard__act {
+  --kk-ib-box: 28px;
+  --kk-ib-reach-x: 34px;
+  --kk-ib-reach-y: 44px;
+}
+.rcard--compact .rcard__foot { padding: var(--s2) var(--s3); }
+
+/* The condensed intelligence strip that replaces the hidden match
+   zone on compact cards. */
+.rcard__mini {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  align-self: flex-start;
+  padding: var(--s1) var(--s2h) var(--s1) var(--s1h);
+  border-radius: var(--r-full);
+  background: var(--primary-faint);
+  border: 1px solid var(--primary-line);
+}
+.rcard__mini strong {
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-strong);
+  line-height: 1;
+}
+.rcard__mini span {
+  font-size: 0.62rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.rcard__mini .rcard__ring {
+  width: 20px;
+  height: 20px;
+  background: conic-gradient(var(--primary-bright) calc(var(--pct) * 1%), var(--primary-line) 0);
+}
+.rcard__mini .rcard__ring::after {
+  width: 14px;
+  height: 14px;
+  background: var(--primary-faint);
+}
+
+/* The same slot before any behaviour exists to score. Dashed and unfilled
+   so it reads as a reserved space rather than a fact of its own — the
+   intel chips directly beneath it are solid, and this must not be mistaken
+   for one. Sentence case at the body's smallest size: the pill's own label
+   is uppercase, which a whole sentence cannot carry calmly. Hidden below
+   641 in polish.css section 10, where the rail body is too narrow to hold
+   the line. */
+.rcard__mini-nudge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  padding: var(--s1) var(--s2h);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-full);
+  color: var(--ink-faint);
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-semi);
+  line-height: 1.25;
+}
+
+/* Cards on an ink band. */
+.band--ink .rcard {
+  background: var(--on-ink-surface);
+  border-color: var(--on-ink-line-strong);
+  box-shadow: none;
+}
+.band--ink .rcard:hover { border-color: var(--on-ink); }
+.band--ink .rcard__name { color: var(--on-ink); }
+.band--ink .rcard:hover .rcard__name { color: var(--on-ink-primary); }
+.band--ink .rcard__tagline { color: var(--on-ink-soft); }
+.band--ink .rcard__facts { border-color: var(--on-ink-line); }
+.band--ink .rcard__where { color: var(--on-ink-soft); }
+.band--ink .rcard__where svg,
+.band--ink .rcard__distance { color: var(--on-ink-faint); }
+.band--ink .rcard__price-value { color: var(--on-ink); }
+.band--ink .rcard__foot {
+  background: transparent;
+  border-color: var(--on-ink-line);
+}
+
+/* Skeleton, shaped to the card above. The art block has to be absolutely
+   positioned because `.rcard__media` owns the aspect ratio. */
+.rcard__media > .skeleton--art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+.rcard > .rcard__body > .skeleton--title { height: 1.15rem; max-width: 72%; }
+.rcard__intel > .skeleton--chip { height: 20px; width: 78px; }
+.rcard__facts > .skeleton--line { height: 0.85rem; max-width: 60%; }
+
+/* ------------------------------------------------------------
+   5. GRIDS, RAILS, SPREADS
+   ------------------------------------------------------------
+   Four layout types instead of one card grid, so consecutive
+   sections differ in shape rather than only in heading text.
+   ------------------------------------------------------------ */
+
+/* Plain responsive grid, still used where a grid is genuinely the
+   right answer (search results, collection pages). */
+.c-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+  gap: var(--s5);
+}
+
+/* Rail — horizontal, snapping, for "continue" and "right now"
+   sections. A rail says "there are more of these" in a way a
+   truncated grid cannot. */
+.rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(310px, 1fr);
+  gap: var(--s4);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: var(--s3);
+  /* Bleed to the gutter so the last card is visibly cut off —
+     the clearest possible affordance that the rail scrolls. */
+  margin-inline: calc(var(--gutter) * -1);
+  padding-inline: var(--gutter);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.rail > * { scroll-snap-align: start; }
+.rail::-webkit-scrollbar { height: 8px; }
+.rail::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--r-full);
+}
+.band--ink .rail { scrollbar-color: var(--on-ink-line-strong) transparent; }
+.band--ink .rail::-webkit-scrollbar-thumb { background: var(--on-ink-line-strong); }
+
+/* Spread — one editorial lead plus a column of standard cards.
+   The asymmetry is the point: a 4-up grid gives four things equal
+   weight, and a recommendation set is ranked. */
+.spread {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: var(--s5);
+  align-items: start;
+}
+.spread__rest {
+  display: grid;
+  gap: var(--s4);
+}
+
+/* Both columns, one height -----------------------------------
+   `align-items: start` left each column at whatever its own
+   content came to. Measured at 1440: the lead card stood 613px
+   and the three cards beside it summed to 522 (163 + 163 + 163
+   with two 16px gaps), so the right column ran out 91px early
+   and the last card read as floating above the fold of the
+   section.
+
+   The lead card is the right anchor because its height is not
+   content at all: an editorial card is a 16:10 media box plus
+   one intelligence row, one facts row and one foot row, every
+   one of them a single line. So the row is stretched to it and
+   the three cards divide what it gives — `grid-auto-rows: 1fr`
+   on a column whose height is now definite, with the gap left
+   exactly as it was. Equal cards, one fixed gap, and both
+   columns ending on the same pixel.
+
+   `1fr` is the right tool here and the wrong one in `.grid`
+   (see polish.css section 12): there it would level all 207
+   cards to the tallest of them, here it divides one known
+   height between exactly three siblings.
+
+   `min-height: 0` is the part that does the work. A grid item's
+   automatic minimum is its content, so without it a card whose
+   name wrapped would push its row past its share and the three
+   would go uneven again for the same reason as before. With it,
+   the share is the height and the card's existing clamps and
+   `overflow: hidden` absorb anything longer.
+
+   Gated to the two-column range. At 1100 and below the spread
+   is a single column (section 16) and each card is its own
+   height, which is what a stack should do — untouched. */
+@media (min-width: 1101px) {
+  .spread { align-items: stretch; }
+  .spread__rest {
+    grid-auto-rows: 1fr;
+    min-height: 0;
+  }
+  .spread__rest > .rcard { min-height: 0; }
+}
+
+/* Loading state. The skeletons borrow `.rcard` and its variants
+   so the fallback is the same shape and height as the content it
+   stands in for (Skeleton.tsx). They are not links and hold no
+   controls, so nothing in them should answer a pointer. */
+.rcard--skeleton { pointer-events: none; }
+.rcard--skeleton:hover {
+  border-color: var(--border);
+  box-shadow: var(--shadow-card);
+}
+/* The lead card is what the whole spread is measured against, so
+   these two boxes are pinned rather than left to the bars inside
+   them. The real card, measured identically at 1440 / 1280 / 1120
+   / 1024 — only the media changes with the column, the rest of it
+   is structural:
+
+     media  422.4  at 1440 (16:10 of the column — matches for free)
+     body   141.7  = 20 + intel 33.8 + 12 + facts 55.9 + 20
+     foot    47.0  = 1px rule + 12 + one 22px indicator row + 12
+     borders  2.0
+     ------
+            613.1
+
+   `min-height` on the body, and that is the whole point. The
+   body is `flex: 1 1 0%`, so its flex base size is 0% and a
+   `height` on it is never the size the flex algorithm starts
+   from: the body simply takes whatever the card has left over,
+   and the card's own intrinsic height is the sum of what its
+   children *contribute*. A `height: 142px` body contributed
+   nothing, the lead card's intrinsic height came out below the
+   three cards beside it, the grid row was sized by them instead,
+   and the body then grew into 131.6 — the skeleton stood 603
+   against the real 613.1 and the section still moved 10px on the
+   swap. `min-height` does raise a flex item's contribution.
+
+   The foot is the other way round: it is `flex: 0 1 auto`, so its
+   `height` *is* its flex base size and does contribute — and it
+   has to be `height`, because the bar inside it plus the 10px top
+   margin `.skeleton--line` carries for stacked copy comes to
+   48.6, which a `min-height` would leave standing 1px over the
+   real foot's 47.
+
+   The foot is also the one box with two real heights, so it has
+   two pins. A personalised lead card foots with a match row:
+   1 + 12 + 22 + 12 = 47. Before any of that exists the foot
+   carries one line of "Complete your profile…" instead:
+   1 + 12 + 19.44 + 12 = 44.44. Skeleton.tsx is told which, so
+   both loads land on the nose rather than splitting 2.56px
+   between them.
+
+   So the lead card measures 422.4 + 141.7 + 47 + 2 = 613.1
+   personalised, 610.5 fresh, and the swap is a no-op either way.
+   Restate these if the editorial card gains or loses a row;
+   nothing else in the file depends on them.
+
+   One place they do not reach: below about 420px the real foot's
+   sentence wraps to two lines and the card runs ~20px taller than
+   a one-line skeleton. That is the copy's length, not a layout
+   bug, and matching it would mean pinning a height that is wrong
+   for the other string the foot can carry — so the skeleton stays
+   honest about the structure and lets that one line land. */
+.rcard--skeleton.rcard--editorial .rcard__body { min-height: 141.7px; }
+.rcard--skeleton.rcard--editorial .rcard__foot { height: 47px; }
+.rcard--skeleton-nudge.rcard--editorial .rcard__foot { height: 44.44px; }
+/* The spend cluster's two lines. `.skeleton--line` carries a
+   10px top margin for stacked copy, which a two-line cluster
+   with its own 1px gap does not want. */
+.skeleton--price { height: 20px; width: 64px; }
+.skeleton--price-note { height: 13px; width: 78px; margin-top: var(--s0h); }
+
+/* Duo — two wide cards, for "worth the trip" where the copy
+   matters as much as the photo. */
+.duo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--s5);
+}
+
+/* ------------------------------------------------------------
+   6. RANKED LIST — hidden gems
+   ------------------------------------------------------------
+   A grid of four cards implies "here are four options". A ranked
+   list implies "we looked and these came out on top", which is
+   the actual claim. Numerals in Newsreader, gold, oversized —
+   the ranking is the visual motif of the section.
+   ------------------------------------------------------------ */
+.ranked {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+.ranked__item {
+  display: grid;
+  grid-template-columns: auto 96px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s5);
+  padding: var(--s5) var(--s2);
+  border-bottom: 1px solid var(--border);
+  color: inherit;
+  position: relative;
+  transition: background var(--tr-settle), padding-inline var(--tr-settle);
+}
+.ranked__item:hover {
+  text-decoration: none;
+  background: var(--surface);
+  padding-inline: var(--s4) var(--s3);
+}
+.ranked__num {
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 3.4vw, 2.9rem);
+  font-weight: var(--weight-bold);
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.05em;
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  min-width: 2.1ch;
+  text-align: right;
+}
+.ranked__media {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface-3);
+  box-shadow: var(--shadow-sm);
+}
+.ranked__media .img-wrap,
+.ranked__media .img-fallback,
+.ranked__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ranked__media img { transition: transform var(--dur-slow) var(--ease-out); }
+.ranked__item:hover .ranked__media img { transform: scale(1.08); }
+
+.ranked__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  min-width: 0;
+}
+.ranked__name {
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  font-weight: var(--weight-semi);
+  line-height: 1.18;
+  letter-spacing: var(--tracking-snug);
+  color: var(--ink);
+  transition: color var(--tr-settle);
+}
+.ranked__item:hover .ranked__name { color: var(--primary-strong); }
+/* The reason this venue is under-discovered — a real sentence
+   built from its own data, not a generic "hidden gem" label. */
+.ranked__why {
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+.ranked__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s3);
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: var(--s0h);
+}
+.ranked__meta span { display: inline-flex; align-items: center; gap: var(--s1); }
+.ranked__go {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  color: var(--ink-soft);
+  background: var(--surface);
+  transition: background var(--tr-settle), color var(--tr-settle), transform var(--tr-settle), border-color var(--tr-settle);
+}
+.ranked__item:hover .ranked__go {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  transform: translateX(3px);
+}
+
+/* ------------------------------------------------------------
+   7. MOSAIC — collections / guides
+   ------------------------------------------------------------
+   Nine collections in a 3-column grid of equal cards is a
+   directory. A magazine mosaic — one tall lead, one wide, the
+   rest small — reads as curation, which is what a collection is.
+   ------------------------------------------------------------ */
+.mosaic {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: 176px;
+  gap: var(--s3);
+}
+.mosaic__card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--canvas-ink-2);
+  color: var(--on-ink);
+  isolation: isolate;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
+}
+.mosaic__card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+  text-decoration: none;
+}
+/* Lead: 2×2. Wide: 2×1. Everything else 1×1. Set on the first two
+   children so the pattern survives a changing collection count. */
+.mosaic__card--lead {
+  grid-column: span 2;
+  grid-row: span 2;
+  border-radius: var(--r-xl);
+}
+.mosaic__card--wide { grid-column: span 2; }
+
+.mosaic__media {
+  position: absolute;
+  inset: 0;
+}
+.mosaic__media .img-wrap,
+.mosaic__media .img-fallback,
+.mosaic__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.mosaic__media img {
+  transform: scale(1.04);
+  transition: transform var(--dur-slower) var(--ease-out);
+}
+.mosaic__card:hover .mosaic__media img { transform: scale(1.11); }
+.mosaic__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--grad-media);
+}
+.mosaic__body {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--s1);
+  padding: var(--s4);
+}
+.mosaic__index {
+  position: absolute;
+  top: var(--s4);
+  left: var(--s4);
+  font-family: var(--font-display);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  color: var(--on-ink-accent);
+  font-variant-numeric: tabular-nums;
+}
+.mosaic__title {
+  font-family: var(--font-display);
+  font-size: 1.16rem;
+  font-weight: var(--weight-semi);
+  line-height: 1.16;
+  letter-spacing: var(--tracking-snug);
+  color: #fff;
+  text-wrap: balance;
+}
+.mosaic__card--lead .mosaic__title { font-size: clamp(1.5rem, 2.6vw, 2.05rem); }
+.mosaic__desc {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.8);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 48ch;
+}
+/* Only the lead gets a description — on a 1×1 tile two lines of
+   body copy leave no room for the title to breathe. */
+.mosaic__card:not(.mosaic__card--lead):not(.mosaic__card--wide) .mosaic__desc { display: none; }
+.mosaic__count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  align-self: flex-start;
+  margin-top: var(--s1h);
+  padding: var(--s1) var(--s2h);
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: #fff;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+/* ------------------------------------------------------------
+   8. CRAVING STRIP — cuisines
+   ------------------------------------------------------------
+   Cuisine is a craving, not a category. So: circular photo
+   portholes in a horizontal strip, big enough to want. Nothing
+   about it resembles the tile grid it replaces.
+   ------------------------------------------------------------ */
+.craving {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(132px, 1fr);
+  gap: var(--s4);
+  overflow-x: auto;
+  padding-block: var(--s2) var(--s4);
+  margin-inline: calc(var(--gutter) * -1);
+  padding-inline: var(--gutter);
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  /* Only the x axis, and only `contain`. A two-finger swipe that runs off
+     the end of this row is a back-navigation gesture in Chrome and Safari,
+     and losing the page because you looked at one cuisine too many is not
+     a scroll bug, it is data loss. Vertical chaining is left alone on
+     purpose: the page below this row must keep scrolling, which is the
+     same rule `useWheelPan` enforces for the wheel. */
+  overscroll-behavior-x: contain;
+}
+.craving::-webkit-scrollbar { display: none; }
+.craving__item {
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  color: inherit;
+  text-align: center;
+}
+.craving__item:hover { text-decoration: none; }
+.craving__media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--surface-3);
+  box-shadow: 0 0 0 1px var(--border), var(--shadow-md);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
+}
+.craving__item:hover .craving__media {
+  transform: translateY(-5px) scale(1.04);
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg);
+}
+.craving__media .img-wrap,
+.craving__media .img-fallback,
+.craving__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.craving__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20, 16, 11, 0) 40%, rgba(20, 16, 11, 0.45) 100%);
+}
+.craving__label {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: var(--weight-semi);
+  line-height: 1.2;
+  letter-spacing: var(--tracking-snug);
+  color: var(--ink);
+}
+.craving__item:hover .craving__label { color: var(--primary-strong); }
+.craving__count {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: -6px;
+}
+
+/* ------------------------------------------------------------
+   9. AREAS — neighbourhoods
+   ------------------------------------------------------------
+   Dhaka's food identity is neighbourhood-shaped, so areas get
+   wide landscape cards with the cuisine mix named on the face.
+   ------------------------------------------------------------ */
+.areas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--s4);
+}
+.area-card {
+  position: relative;
+  min-height: 220px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--canvas-ink-2);
+  isolation: isolate;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
+}
+.area-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+  text-decoration: none;
+}
+.area-card__media { position: absolute; inset: 0; }
+.area-card__media .img-wrap,
+.area-card__media .img-fallback,
+.area-card__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.area-card__media img {
+  transform: scale(1.04);
+  transition: transform var(--dur-slower) var(--ease-out);
+}
+.area-card:hover .area-card__media img { transform: scale(1.1); }
+.area-card__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--grad-media);
+}
+.area-card__body {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1h);
+}
+.area-card__name {
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 2.4vw, 1.85rem);
+  font-weight: var(--weight-bold);
+  line-height: 1.1;
+  letter-spacing: var(--tracking-tight);
+  color: #fff;
+}
+.area-card__count {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--on-ink-accent);
+}
+.area-card__cuisines {
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.78);
+  margin-top: var(--s0h);
+}
+
+/* ------------------------------------------------------------
+   10. DECIDE — the surprise / can't-decide band
+   ------------------------------------------------------------
+   The old "Surprise me" was four buttons and a result card in a
+   tinted section. Phase C treats it as the product's cleverest
+   moment: a labelled console with the pick presented as a verdict,
+   including *why* it was picked.
+   ------------------------------------------------------------ */
+.decide {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  align-items: center;
+}
+.decide__copy { display: flex; flex-direction: column; gap: var(--s4); }
+.decide__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--weight-bold);
+  line-height: 1.06;
+  letter-spacing: var(--tracking-tight);
+  text-wrap: balance;
+}
+.decide__title em {
+  font-style: italic;
+  font-weight: var(--weight-medium);
+  color: var(--terracotta);
+}
+.decide__lede {
+  font-size: var(--fs-md);
+  line-height: 1.65;
+  color: var(--ink-soft);
+  max-width: 42ch;
+}
+.decide__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.decide__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  padding: var(--s2) var(--s3h);
+  border-radius: var(--r-full);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition:
+    background var(--tr-settle), border-color var(--tr-settle),
+    color var(--tr-settle), transform var(--tr-settle);
+}
+.decide__mode svg { color: var(--ink-faint); }
+.decide__mode:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+.decide__mode--on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper-50);
+}
+.decide__mode--on svg { color: var(--accent); }
+.decide__roll {
+  align-self: flex-start;
+  margin-top: var(--s1);
+}
+
+/* The verdict panel. */
+.decide__result {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  min-height: 260px;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  animation: kk-rise var(--dur-slow) var(--ease-out);
+}
+.decide__result-media {
+  position: relative;
+  background: var(--surface-3);
+  min-height: 200px;
+}
+.decide__result-media .img-wrap,
+.decide__result-media .img-fallback,
+.decide__result-media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.decide__result-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: clamp(1.25rem, 2.6vw, 2rem);
+  justify-content: center;
+}
+.decide__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  align-self: flex-start;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-black);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--terracotta);
+}
+.decide__name {
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 2.9vw, 2.1rem);
+  font-weight: var(--weight-bold);
+  line-height: 1.06;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+}
+.decide__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s3);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  color: var(--ink-soft);
+}
+.decide__facts span { display: inline-flex; align-items: center; gap: var(--s1h); }
+/* Why this one — the honest, data-backed reason. */
+.decide__reason {
+  padding: var(--s3) var(--s4);
+  border-left: 2px solid var(--accent);
+  background: var(--accent-faint);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--ink);
+}
+.decide__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s1);
+}
+
+/* Empty state before the first roll. */
+.decide__await {
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+  padding: var(--s8);
+  border-radius: var(--r-xl);
+  border: 1.5px dashed var(--border-strong);
+  background: var(--surface-2);
+  text-align: center;
+}
+.decide__await-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  max-width: 34ch;
+}
+.decide__await svg { color: var(--accent); }
+.decide__await p {
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+/* ------------------------------------------------------------
+   11. DEALS — today's offers, on ink
+   ------------------------------------------------------------
+   Offers on paper compete with everything else on paper. On the
+   ink canvas a discount reads like a headline.
+   ------------------------------------------------------------ */
+.deals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: var(--s4);
+}
+.deal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--on-ink-line-strong);
+  background: var(--on-ink-surface);
+  color: var(--on-ink);
+  transition: transform var(--tr-settle), border-color var(--tr-settle), background var(--tr-settle);
+}
+.deal:hover {
+  transform: translateY(-4px);
+  border-color: var(--on-ink-accent);
+  background: var(--on-ink-surface-2);
+  text-decoration: none;
+}
+.deal__media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--canvas-ink-3);
+  overflow: hidden;
+}
+.deal__media .img-wrap,
+.deal__media .img-fallback,
+.deal__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.deal__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(20, 16, 11, 0.15), rgba(20, 16, 11, 0.75));
+}
+.deal__tag {
+  position: absolute;
+  z-index: 1;
+  top: var(--s3);
+  left: var(--s3);
+  padding: var(--s1h) var(--s3);
+  border-radius: var(--r-xs);
+  background: var(--grad-gold);
+  color: #2a1705;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-black);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  box-shadow: var(--shadow-sm);
+}
+.deal__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  padding: var(--s4);
+  flex: 1;
+}
+.deal__title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: var(--weight-semi);
+  line-height: 1.2;
+  letter-spacing: var(--tracking-snug);
+  color: var(--on-ink);
+}
+.deal__where {
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--on-ink-faint);
+}
+.deal__terms {
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--on-ink-soft);
+  margin-top: var(--s1);
+}
+.deal__go {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  margin-top: auto;
+  padding-top: var(--s3);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-bold);
+  color: var(--on-ink-primary);
+}
+.deal:hover .deal__go { gap: var(--s2); }
+
+/* ------------------------------------------------------------
+   12. PRINCIPLES — the closing trust band
+   ------------------------------------------------------------
+   "Why Khabo Kothay" was six icon blocks. Trust is not sold by
+   icons; it is sold by stated commitments. Numbered, on ink, as
+   the last thing on the page.
+   ------------------------------------------------------------ */
+.principles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--on-ink-line);
+}
+.principle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s7) var(--s5) var(--s7) 0;
+  border-bottom: 1px solid var(--on-ink-line);
+  border-right: 1px solid var(--on-ink-line);
+}
+.principle__num {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  color: var(--on-ink-accent);
+}
+.principle__title {
+  font-family: var(--font-display);
+  font-size: 1.22rem;
+  font-weight: var(--weight-semi);
+  line-height: 1.18;
+  letter-spacing: var(--tracking-snug);
+  color: var(--on-ink);
+}
+.principle__body {
+  font-size: var(--fs-md);
+  line-height: 1.65;
+  color: var(--on-ink-soft);
+  max-width: 40ch;
+}
+
+/* ------------------------------------------------------------
+   13. DISCOVER — the exploration console
+   ------------------------------------------------------------
+   Home is emotional; Discover is intentional. So Discover opens
+   with a working header, not a hero: search, live counts, and a
+   jump index into the page's own sections. Everything below is
+   denser and more index-like than anything on the homepage.
+   ------------------------------------------------------------ */
+.dsc-head {
+  position: relative;
+  padding: clamp(1.75rem, 4.5vw, 3rem) var(--gutter) clamp(1.5rem, 3vw, 2.25rem);
+  background: var(--grad-canvas);
+  color: var(--on-ink);
+  isolation: isolate;
+}
+.dsc-head__inner {
+  max-width: var(--container);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+}
+.dsc-head__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  font-weight: var(--weight-bold);
+  line-height: 0.96;
+  letter-spacing: -0.035em;
+  color: var(--on-ink);
+  margin-top: var(--s3);
+}
+.dsc-head__title em {
+  font-style: italic;
+  font-weight: var(--weight-medium);
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.dsc-head__lede {
+  font-size: var(--fs-lead);
+  line-height: 1.55;
+  color: var(--on-ink-soft);
+  max-width: 56ch;
+}
+.dsc-head__tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s3);
+  align-items: center;
+  padding-top: var(--s2);
+}
+.dsc-head__search {
+  background: rgba(255, 253, 249, 0.97);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-ink);
+  padding: var(--s2);
+  color: var(--ink);
+}
+
+/* Live counts — the taxonomy, measured. */
+.dsc-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s6);
+  padding-top: var(--s5);
+  margin-top: var(--s2);
+  border-top: 1px solid var(--on-ink-line);
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--on-ink-faint);
+}
+.dsc-counts strong {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-snug);
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-ink);
+  margin-right: var(--s1h);
+}
+
+/* Jump index. */
+.dsc-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.dsc-index__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  padding: var(--s2) var(--s3h);
+  border-radius: var(--r-full);
+  border: 1px solid var(--on-ink-line-strong);
+  background: var(--on-ink-surface);
+  color: var(--on-ink-soft);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  /* No transition here: polish.css §11 declares this control's explicit
+     transition list at the same (0,1,0) specificity in a later file, so the
+     `transition: all var(--dur-fast) var(--ease)` this line used to carry
+     never reached the page. The ENTER that pairs with it is polish.css:1887. */
+}
+.dsc-index__item svg { color: var(--on-ink-accent); }
+.dsc-index__item:hover {
+  background: var(--on-ink-surface-2);
+  border-color: var(--on-ink);
+  color: var(--on-ink);
+  text-decoration: none;
+}
+
+/* Moods — now with real photography behind them. */
+.dsc-moods {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(224px, 1fr));
+  gap: var(--s4);
+}
+.mood-card {
+  position: relative;
+  min-height: 168px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--canvas-ink-2);
+  isolation: isolate;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
+}
+.mood-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  text-decoration: none;
+}
+.mood-card__media { position: absolute; inset: 0; }
+.mood-card__media .img-wrap,
+.mood-card__media .img-fallback,
+.mood-card__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.mood-card__media img {
+  transform: scale(1.04);
+  transition: transform var(--dur-slower) var(--ease-out);
+}
+.mood-card:hover .mood-card__media img { transform: scale(1.1); }
+.mood-card__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--grad-media);
+}
+.mood-card__body {
+  position: relative;
+  z-index: 1;
+  padding: var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.mood-card__icon {
+  position: absolute;
+  top: var(--s4);
+  right: var(--s4);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.mood-card__label {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: var(--weight-semi);
+  line-height: 1.16;
+  letter-spacing: var(--tracking-snug);
+  color: #fff;
+}
+.mood-card__sub {
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.76);
+}
+
+/* Cuisine index — dense, measured, with a share bar. A list is
+   the right shape for "show me everything"; the homepage strip is
+   the right shape for "make me hungry". */
+.dsc-cuisines {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0 var(--s8);
+}
+.cuisine-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--border);
+  color: inherit;
+  transition: padding-left var(--tr-settle), background var(--tr-settle);
+}
+.cuisine-row:hover {
+  text-decoration: none;
+  padding-left: var(--s2);
+  background: var(--surface);
+}
+.cuisine-row__thumb {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface-3);
+  flex: none;
+}
+.cuisine-row__thumb .img-wrap,
+.cuisine-row__thumb .img-fallback,
+.cuisine-row__thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cuisine-row__main { min-width: 0; }
+.cuisine-row__name {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: var(--weight-semi);
+  line-height: 1.2;
+  letter-spacing: var(--tracking-snug);
+  color: var(--ink);
+  display: block;
+}
+.cuisine-row:hover .cuisine-row__name { color: var(--primary-strong); }
+/* Share of the catalogue, so the index also says which cuisines
+   Dhaka actually has depth in. */
+.cuisine-row__bar {
+  margin-top: var(--s1h);
+  height: 3px;
+  border-radius: 3px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+.cuisine-row__bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--grad-primary);
+  width: calc(var(--pct) * 1%);
+  transition: width var(--dur-slower) var(--ease-out);
+}
+.cuisine-row__count {
+  flex: none;
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Handoff to the full filter surface. Discover browses; Explore
+   filters. The boundary is stated rather than left to be guessed. */
+.dsc-handoff {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s5);
+  align-items: center;
+  padding: clamp(1.5rem, 3.5vw, 2.5rem);
+  border-radius: var(--r-xl);
+  background: var(--grad-canvas);
+  color: var(--on-ink);
+  box-shadow: var(--shadow-lg);
+}
+.dsc-handoff h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--weight-bold);
+  line-height: 1.06;
+  letter-spacing: var(--tracking-tight);
+  color: var(--on-ink);
+}
+.dsc-handoff p {
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  color: var(--on-ink-soft);
+  max-width: 52ch;
+  margin-top: var(--s2);
+}
+.dsc-handoff__facets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s4);
+}
+.dsc-handoff__facet {
+  padding: var(--s1) var(--s2h);
+  border-radius: var(--r-xs);
+  border: 1px solid var(--on-ink-line-strong);
+  background: var(--on-ink-surface);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--on-ink-soft);
+}
+/* Stacked, not wrapped: this column is `auto`-width inside the handoff
+   grid, and a horizontal wrap here would starve the copy column. */
+.dsc-handoff__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-width: 200px;
+}
+.dsc-handoff__actions .btn {
+  justify-content: flex-start;
+}
+/* The shared ghost button is inked text on paper; on this ground it has to
+   invert or it disappears into the canvas. */
+.dsc-handoff__actions .btn--ghost {
+  border-color: var(--on-ink-line-strong);
+  background: var(--on-ink-surface);
+  color: var(--on-ink);
+}
+.dsc-handoff__actions .btn--ghost:hover {
+  border-color: var(--on-ink-primary);
+  background: var(--on-ink-surface-2);
+  color: var(--on-ink);
+}
+
+/* Anchored bands. The jump index and the homepage's `/discover#cuisines`
+   links both land here, and the nav is sticky — without this the target
+   heading arrives underneath it. */
+.band[id],
+.dsc-head[id] {
+  scroll-margin-top: calc(var(--nav-h) + var(--s4));
+}
+
+/* ------------------------------------------------------------
+   14. COLLECTION — Saved + Favourites as one area
+   ------------------------------------------------------------
+   Two pages that both said "Saved" was the confusion. One header,
+   one switcher, and a stated definition of each list so the
+   difference is taught rather than assumed.
+   ------------------------------------------------------------ */
+.coll-head {
+  padding: clamp(1.75rem, 4vw, 2.75rem) var(--gutter) 0;
+}
+.coll-head__inner {
+  max-width: var(--container);
+  margin: 0 auto;
+}
+.coll-head__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--terracotta);
+}
+.coll-head__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  font-weight: var(--weight-bold);
+  line-height: 1.02;
+  letter-spacing: var(--tracking-tight);
+  margin: var(--s3) 0 var(--s2);
+}
+.coll-head__lede {
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  color: var(--ink-soft);
+  max-width: 58ch;
+}
+.coll-tabs {
+  display: flex;
+  gap: var(--s1);
+  margin-top: var(--s6);
+  border-bottom: 1px solid var(--border);
+}
+.coll-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  border: 0;
+  background: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-weight: var(--weight-bold);
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color var(--tr-settle), border-color var(--tr-settle);
+}
+.coll-tab:hover {
+  color: var(--ink);
+  text-decoration: none;
+}
+.coll-tab--on {
+  color: var(--ink);
+  border-bottom-color: var(--primary);
+}
+.coll-tab__count {
+  min-width: 22px;
+  padding: var(--s0h) var(--s1h);
+  border-radius: var(--r-full);
+  background: var(--surface-3);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-black);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+.coll-tab--on .coll-tab__count {
+  background: var(--primary);
+  color: #fff;
+}
+/* "Clear all" belongs on the tab row, not above the title — it acts on the
+   active list, so it sits at the end of the thing that selects the list. */
+.coll-tabs__action {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding-bottom: var(--s2);
+}
+/* One line explaining what the active list is for. */
+.coll-def {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  margin-top: var(--s4);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 68ch;
+}
+.coll-def svg { flex: none; margin-top: var(--s0h); color: var(--ink-faint); }
+
+/* ------------------------------------------------------------
+   15. NAVIGATION
+   ------------------------------------------------------------
+   One coherent system: four destinations, glass chrome, and a
+   sliding underline so the current section is unmistakable. The
+   drawer's duplicate Discover entry is gone in the markup; here it
+   just gets premium chrome.
+   ------------------------------------------------------------ */
+.nav {
+  background: rgba(255, 253, 249, 0.82);
+  /* Third and last of the bare-`.nav` blur declarations retired in Phase 3
+     item 6 (index.css and editorial.css held the other two). All three lost
+     to polish.css's state rules, which is the right place for it: the header
+     is glass only once it has content behind it to frost. */
+  border-bottom: 1px solid var(--border-soft);
+  transition: box-shadow var(--dur-med) var(--ease), background var(--dur-med) var(--ease);
+}
+.nav--scrolled {
+  background: rgba(255, 253, 249, 0.94);
+  border-bottom-color: var(--border);
+  box-shadow: 0 1px 0 var(--border-soft), 0 10px 30px rgba(28, 23, 16, 0.06);
+}
+.nav__brand-mark {
+  font-family: var(--font-display);
+  font-size: 1.32rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--ink);
+}
+.nav__brand-mark em {
+  font-style: italic;
+  font-weight: var(--weight-medium);
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.nav__brand-sub {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: var(--s1);
+}
+
+.nav__links {
+  display: flex;
+  align-items: center;
+  gap: var(--s0h);
+}
+
+/* The compact-header breakpoint has to be re-stated here, and this is the only
+   place that now owns it.
+   `.nav__links { display: flex }` above sits outside any media query, and
+   phase-c.css is the last stylesheet loaded — so it was beating the three
+   `display: none` rules in index.css (≤768) and editorial.css (≤820, ≤900).
+   A later rule of equal specificity wins whether or not the rule it overrides
+   is inside a media query, so the desktop links never hid: at 375px the bar's
+   content measured 686px inside a 375px container, pushing the hamburger to
+   x=644 and Sign in to x=545 — both off-screen, which left mobile navigation
+   unreachable.
+   1139px, not the 900 this used to be, and the number comes out of the search
+   field. The field is centred on the bar and opens to 460px, so it clears the
+   right-hand cluster only once half the content width beats 494px — 1053px of
+   content, 1140px of viewport. Below that the three destinations leave the bar
+   rather than be crossed by the field, and the drawer carries them along with
+   Guides and Partners, so nothing is lost. Between 901 and 1139 the bar is
+   brand, centred field, actions and menu, which is a composition rather than a
+   squeeze. polish.css §2 has the arithmetic. */
+@media (max-width: 1139px) {
+  .nav__links { display: none; }
+}
+.nav__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2h) var(--s3h);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-md);
+  font-weight: var(--weight-semi);
+  color: var(--ink-soft);
+  transition: color var(--tr-settle), background var(--tr-settle);
+}
+.nav__link svg { color: var(--ink-faint); transition: color var(--tr-settle); }
+.nav__link:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+  text-decoration: none;
+}
+.nav__link:hover svg { color: var(--primary); }
+.nav__link--on { color: var(--ink); font-weight: var(--weight-bold); }
+.nav__link--on svg { color: var(--primary); }
+.nav__link--on::after {
+  content: '';
+  position: absolute;
+  left: 13px;
+  right: 13px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--grad-gold);
+  /* The base `.nav__link::after` parks the underline at scaleX(0) and reveals
+     it on hover. The active state is not a hover, so it has to un-park it. */
+  transform: scaleX(1);
+  animation: kk-fade-in var(--dur-med) var(--ease-out);
+}
+.nav__count {
+  min-width: 18px;
+  padding: 0 var(--s1h);
+  border-radius: var(--r-full);
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: var(--weight-black);
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The header's one commit action, so it follows the same two rules as
+   `.btn--primary` rather than inventing a third treatment: a 14px
+   rectangle, and a flat espresso fill instead of --grad-primary. It was
+   the last gradient pill left on a paper page, which made "Sign in" read
+   as the loudest object in the bar — louder than the brand — while being
+   shaped like the ten `.quick-chip` filters below it.
+   Radius is restated in polish.css (a later file owns the height row).
+   docs/KK_VISUAL_DIRECTION.md §2, §3. */
+.nav__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  padding: var(--s2h) var(--s4);
+  border-radius: var(--r-md);
+  background: var(--primary);
+  color: var(--ink-on-primary);
+  font-size: var(--fs-md);
+  font-weight: var(--weight-bold);
+  box-shadow: var(--shadow-primary);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle), background var(--tr-settle);
+}
+.nav__cta:hover {
+  transform: translateY(-1px);
+  background: var(--primary-strong);
+  box-shadow: var(--shadow-primary-hover);
+  text-decoration: none;
+}
+.nav__cta:active { transform: translateY(0); }
+
+/* Mobile bottom bar. */
+.mobile-nav {
+  background: rgba(255, 253, 249, 0.9);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -6px 24px rgba(28, 23, 16, 0.07);
+}
+.mobile-nav__item {
+  position: relative;
+  color: var(--ink-faint);
+  font-size: 0.62rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.03em;
+  transition: color var(--tr-settle);
+}
+.mobile-nav__item--on { color: var(--primary-strong); }
+.mobile-nav__item--on::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 2px;
+  border-radius: 0 0 3px 3px;
+  background: var(--grad-gold);
+}
+.mobile-nav__badge {
+  position: absolute;
+  top: 6px;
+  right: calc(50% - 18px);
+  min-width: 15px;
+  padding: 0 var(--s1);
+  border-radius: var(--r-full);
+  background: var(--terracotta);
+  color: #fff;
+  font-size: 0.56rem;
+  font-weight: var(--weight-black);
+  line-height: 15px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------
+   16. RESPONSIVE
+   ------------------------------------------------------------
+   Each layout collapses along its own logic rather than all of
+   them stacking at one breakpoint.
+   ------------------------------------------------------------ */
+@media (max-width: 1100px) {
+  .band-head {
+    grid-template-columns: 1fr;
+    gap: var(--s4);
+    align-items: start;
+  }
+  .band-head__side {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: var(--s4);
+  }
+  .mosaic { grid-auto-rows: 156px; }
+  .decide { grid-template-columns: 1fr; }
+  .spread { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 960px) {
+  .hero-c__grid { grid-template-columns: 1fr; }
+  /* The mosaic becomes a wide banner above the copy on tablet —
+     a square photo block would push the builder below the fold. */
+  .hero-c__mosaic {
+    order: -1;
+    aspect-ratio: 16 / 9;
+    max-height: 300px;
+  }
+  .dsc-head__tools { grid-template-columns: 1fr; }
+  .dsc-handoff { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .band { padding-block: var(--section-y-sm); }
+  .hero-c__title { font-size: clamp(2.9rem, 13vw, 4.2rem); }
+  .ranked__item {
+    grid-template-columns: auto 72px minmax(0, 1fr);
+    gap: var(--s3);
+    padding-block: var(--s4);
+  }
+  .ranked__go { display: none; }
+  .ranked__why { display: none; }
+  .mosaic {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 148px;
+  }
+  .mosaic__card--wide { grid-column: span 2; }
+  .principle {
+    padding-right: 0;
+    border-right: 0;
+  }
+  .band--panel .band__inner { padding: var(--s5); }
+  .decide__result { grid-template-columns: 1fr; }
+  .decide__result-media { aspect-ratio: 16 / 9; min-height: 0; }
+  .coll-tabs { overflow-x: auto; scrollbar-width: none; }
+  .coll-tabs::-webkit-scrollbar { display: none; }
+}
+
+@media (max-width: 560px) {
+  .rail { grid-auto-columns: minmax(272px, 1fr); }
+  .craving { grid-auto-columns: minmax(108px, 1fr); }
+  .mosaic__card--lead { grid-column: span 2; grid-row: span 2; }
+  .rcard--editorial .rcard__name { font-size: 1.5rem; }
+  .rcard--editorial .rcard__overlay { bottom: calc(var(--s3) + 34px); }
+
+  /* The mosaic's 16/9 banner leaves the two support tiles about 90px tall at
+     this width, and the caption is bottom-anchored — so a name that wrapped to
+     two lines overflowed above the tile edge ("Arrowhead Grill" started 5px
+     outside it). The support-tile name clamps to one line and the inset
+     tightens; the lead tile is twice as tall and keeps its wrap. */
+  .hero-c__tile:not(.hero-c__tile--lead) .hero-c__tile-cap {
+    left: var(--s2);
+    right: var(--s2);
+    bottom: var(--s2);
+  }
+  .hero-c__tile:not(.hero-c__tile--lead) .hero-c__tile-cap strong {
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* ------------------------------------------------------------
+   17. MOTION PREFERENCES
+   ------------------------------------------------------------
+   No transform on `<main>` anywhere in this file — a transform,
+   even an identity one, makes it a containing block for
+   position:fixed descendants and would push the mobile filter
+   drawer off-screen. Documented here so the constraint survives.
+   ------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .hero-c__pulse { animation: none; }
+  .decide__result { animation: none; }
+  .rcard,
+  .rcard__media::after,
+  .mosaic__card,
+  .mosaic__media img,
+  .area-card,
+  .area-card__media img,
+  .mood-card,
+  .mood-card__media img,
+  .craving__media,
+  .ranked__media img,
+  .hero-c__tile {
+    transition-duration: 1ms;
+  }
+  /* `.rcard` is absent from both lists below on purpose: it no longer carries a
+     transform in any state, and its photo is sprung from JS, where the opt-out
+     is `immediate: prefersReducedMotion()` rather than a duration this blanket
+     could reach. */
+  .mosaic__card:hover,
+  .area-card:hover,
+  .mood-card:hover,
+  .hero-c__tile:hover { transform: none; }
+  .mosaic__card:hover .mosaic__media img,
+  .area-card:hover .area-card__media img,
+  .mood-card:hover .mood-card__media img,
+  .ranked__item:hover .ranked__media img { transform: none; }
+  .craving__item:hover .craving__media { transform: none; }
+  .rcard__act--fav-on svg,
+  .rcard__act--save-on svg { animation: none; }
+  .cuisine-row__bar i { transition: none; }
+}
+
+/* ============================================================
+   THE ENTER — see design-system.css §8b
+   ============================================================
+   Every rule above declares its LEAVE (`var(--tr-settle)`). This is the
+   other half of the pair: the answer, grouped here rather than repeated
+   across the individual state rules, so the two halves stay legible and
+   the whole file retunes from one place.
+   ------------------------------------------------------------ */
+.band-head__action:hover,
+.coll-tab:hover,
+.cuisine-row:hover,
+.decide__mode:hover,
+.hero-c__chip:hover,
+.nav__cta:hover,
+.nav__link:hover svg,
+.ranked__item:hover,
+.ranked__item:hover .ranked__go,
+.ranked__item:hover .ranked__name,
+.rcard--editorial:hover .rcard__name,
+.rcard:hover .rcard__name {
+  transition-duration: var(--tr-answer);
+}
+.area-card:hover,
+.craving__item:hover .craving__media,
+.deal:hover,
+.mood-card:hover,
+.mosaic__card:hover,
+.rcard:focus-within,
+.rcard:focus-within .rcard__actions,
+.rcard:hover,
+.rcard:hover .rcard__actions,
+.rcard:hover .rcard__media::after,
+.rcard__actions:focus-within {
+  transition-duration: var(--tr-answer-heavy);
+}

@@ -27,13 +27,19 @@ export default function GuidesDetailPage() {
     return data.filter((r) => collection.match(r));
   }, [collection, data]);
 
+  // Depends on `data` alone, so it lives above the not-found return with the
+  // other hook: a bad slug renders early, and a hook called after that branch
+  // would change hook order between renders the moment `collection` resolves
+  // on a later pass.
+  const byId = useMemo(() => new Map((data ?? []).map((r) => [r.id, r])), [data]);
+
   if (!collection) {
     return (
       <main className="section">
         <div className="section__inner">
           <EmptyState
-            title="Guide not found"
-              message="We couldn't find that guide. Browse all our guides instead."
+            title="No such guide"
+            message="The link may be old, or that shortlist has been retired since."
             actionLabel="All guides"
             actionTo="/guides"
           />
@@ -45,7 +51,6 @@ export default function GuidesDetailPage() {
   const cover = data?.find((r) => r.id === collection.coverRestaurantId);
   const others = collections.filter((c) => c.slug !== collection.slug).slice(0, 4);
   const exploreHref = '/explore?' + new URLSearchParams(collection.exploreParams).toString();
-  const byId = useMemo(() => new Map((data ?? []).map((r) => [r.id, r])), [data]);
 
   return (
     <main>
@@ -76,8 +81,8 @@ export default function GuidesDetailPage() {
             <SkeletonGrid count={8} />
           ) : restaurants.length === 0 ? (
             <EmptyState
-              title="No matching restaurants yet"
-              message="This guide doesn't have live matches right now. Check back as our data grows."
+              title="This shortlist is still being built"
+              message="Guides are assembled from live restaurant data, so this one stays empty until a place qualifies for it. The full catalogue is worth a browse meanwhile."
               actionLabel="Explore restaurants"
               actionTo={exploreHref}
             />
@@ -106,7 +111,7 @@ export default function GuidesDetailPage() {
                     <div className="collection-card__body">
                       <h3>{c.title}</h3>
                       <p>{c.description}</p>
-                      <span className="collection-card__count">View guide <ArrowRight size={13} aria-hidden="true" /></span>
+                      <span className="collection-card__count">View guide <ArrowRight size={14} aria-hidden="true" /></span>
                     </div>
                   </Link>
                 );

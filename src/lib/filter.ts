@@ -167,6 +167,14 @@ export function filterRestaurants(
  * can say "X isn't recorded for the current catalogue yet" instead of a vague
  * "no results". Each filter is evaluated in isolation — the query text is
  * intentionally excluded.
+ *
+ * The labels are prose fragments, not chips. They are written to drop into the
+ * middle of Explore's sentence — "Nothing we list matches ___ yet" — because
+ * that is their only consumer. The earlier `Key: value` form was a debug list
+ * wearing a sentence's clothes: inlined and lowercased it produced "we don't
+ * have location: mirpur data", which is the kind of string that tells a diner
+ * they are looking at somebody's database. Keep them lowercase except where the
+ * value is a proper noun the catalogue supplied.
  */
 export function uncoveredFilters(
   list: Restaurant[],
@@ -176,20 +184,20 @@ export function uncoveredFilters(
   const labels: string[] = [];
   const single = (partial: FilterCriteria) => filterRestaurants(list, partial, now).length;
 
-  if (criteria.delivery && single({ delivery: true }) === 0) labels.push('Delivery');
-  if (criteria.outdoorSeating && single({ outdoorSeating: true }) === 0) labels.push('Outdoor seating');
-  if (criteria.openNow && single({ openNow: true }) === 0) labels.push('Open now');
-  if (criteria.budget && single({ budget: criteria.budget }) === 0) labels.push(`Budget: ${criteria.budget}`);
-  if (criteria.maxPriceForTwo !== undefined && single({ maxPriceForTwo: criteria.maxPriceForTwo }) === 0) labels.push('Max cost for two');
-  if (criteria.vibe && single({ vibe: criteria.vibe }) === 0) labels.push(`Vibe: ${criteria.vibe}`);
-  if (criteria.vegOnly && single({ vegOnly: true }) === 0) labels.push('Pure veg');
-  if (criteria.nonVegOnly && single({ nonVegOnly: true }) === 0) labels.push('Non-veg');
-  if (criteria.familyFriendly && single({ familyFriendly: true }) === 0) labels.push('Family friendly');
-  if (criteria.quiet && single({ quiet: true }) === 0) labels.push('Quiet');
-  if (criteria.location && single({ location: criteria.location }) === 0) labels.push(`Location: ${criteria.location}`);
-  if (criteria.mealType && single({ mealType: criteria.mealType }) === 0) labels.push(`Meal: ${criteria.mealType}`);
-  if (criteria.specialty && single({ specialty: criteria.specialty }) === 0) labels.push(`Craving: ${criteria.specialty}`);
-  if (criteria.cuisine && single({ cuisine: criteria.cuisine }) === 0) labels.push(`Cuisine: ${criteria.cuisine}`);
+  if (criteria.delivery && single({ delivery: true }) === 0) labels.push('delivery');
+  if (criteria.outdoorSeating && single({ outdoorSeating: true }) === 0) labels.push('outdoor seating');
+  if (criteria.openNow && single({ openNow: true }) === 0) labels.push('open right now');
+  if (criteria.budget && single({ budget: criteria.budget }) === 0) labels.push(`the ${criteria.budget} band`);
+  if (criteria.maxPriceForTwo !== undefined && single({ maxPriceForTwo: criteria.maxPriceForTwo }) === 0) labels.push('that price cap');
+  if (criteria.vibe && single({ vibe: criteria.vibe }) === 0) labels.push(`a ${criteria.vibe} vibe`);
+  if (criteria.vegOnly && single({ vegOnly: true }) === 0) labels.push('pure veg');
+  if (criteria.nonVegOnly && single({ nonVegOnly: true }) === 0) labels.push('non-veg');
+  if (criteria.familyFriendly && single({ familyFriendly: true }) === 0) labels.push('family friendly');
+  if (criteria.quiet && single({ quiet: true }) === 0) labels.push('quiet');
+  if (criteria.location && single({ location: criteria.location }) === 0) labels.push(`${criteria.location}`);
+  if (criteria.mealType && single({ mealType: criteria.mealType }) === 0) labels.push(`${criteria.mealType}`);
+  if (criteria.specialty && single({ specialty: criteria.specialty }) === 0) labels.push(`${criteria.specialty}`);
+  if (criteria.cuisine && single({ cuisine: criteria.cuisine }) === 0) labels.push(`${criteria.cuisine}`);
 
   return labels;
 }

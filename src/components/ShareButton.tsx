@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link2, Check } from 'lucide-react';
 import { track } from '../lib/analytics';
+import { Button } from './ui';
 
 interface ShareButtonProps {
   url: string;
@@ -36,9 +37,8 @@ export default function ShareButton({ url, title, text }: ShareButtonProps) {
   };
 
   return (
-    <button type="button" className="btn btn--ghost" onClick={share} aria-live="polite">
-      {copied ? <Check size={15} aria-hidden="true" /> : <Link2 size={15} aria-hidden="true" />}
+    <Button variant="ghost" icon={copied ? Check : Link2} onClick={share} aria-live="polite">
       {copied ? 'Link copied' : 'Share'}
-    </button>
+    </Button>
   );
 }

@@ -166,8 +166,15 @@ describe('filterRestaurants', () => {
 });
 
 describe('uncoveredFilters', () => {
+  /**
+   * The labels are prose fragments, not chips: Explore inlines them into "No
+   * place we list matches ___ yet". So these assertions are about the sentence
+   * that ships, which is why they pin the exact wording — a label rewritten to
+   * `Cuisine: Fusion-Salad` still passes a `.toBeTruthy()` and still puts a
+   * database key in front of a diner.
+   */
   it('flags a cuisine filter that matches nothing', () => {
-    expect(uncoveredFilters(restaurants, { cuisine: 'Fusion-Salad' })).toEqual(['Cuisine: Fusion-Salad']);
+    expect(uncoveredFilters(restaurants, { cuisine: 'Fusion-Salad' })).toEqual(['Fusion-Salad']);
   });
 
   it('does not flag a filter the catalogue supports', () => {
@@ -176,7 +183,17 @@ describe('uncoveredFilters', () => {
   });
 
   it('flags a vibe with no matching venue', () => {
-    expect(uncoveredFilters(restaurants, { vibe: 'Skydiving' })).toEqual(['Vibe: Skydiving']);
+    expect(uncoveredFilters(restaurants, { vibe: 'Skydiving' })).toEqual(['a Skydiving vibe']);
+  });
+
+  it('keeps the catalogue’s own casing so a neighbourhood stays a proper noun', () => {
+    expect(uncoveredFilters(restaurants, { location: 'Narayanganj' })).toEqual(['Narayanganj']);
+  });
+
+  it('reads as a sentence rather than as a key-value pair', () => {
+    const labels = uncoveredFilters(restaurants, { vegOnly: true, maxPriceForTwo: 1 });
+    expect(labels.length).toBeGreaterThan(0);
+    for (const label of labels) expect(label).not.toContain(':');
   });
 
   it('returns nothing when every individual filter is supported', () => {
@@ -242,6 +259,6 @@ describe('search quality alignment (production-like thin data)', () => {
   });
 
   it('reports an unsupported cuisine honestly in uncoveredFilters', () => {
-    expect(uncoveredFilters(list, { cuisine: 'Korean' })).toEqual(['Cuisine: Korean']);
+    expect(uncoveredFilters(list, { cuisine: 'Korean' })).toEqual(['Korean']);
   });
 });

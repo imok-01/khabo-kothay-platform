@@ -153,6 +153,14 @@ export function costForTwoValue(restaurant: Restaurant): number | undefined {
  *
  * The budget tier (`tierLabel`) always reflects `budgetDisplay`, so the
  * categorical signal is never lost. Estimates are never labelled "verified".
+ *
+ * `amount` / `amountNote` are the same spend expectation split at the seam
+ * between the number and the words about it. `spendLabel` reads as a sentence
+ * and is kept for anywhere that wants one; the detail page's decision bar wants
+ * a figure it can set in display type, and "About ৳1,800 for two (approx., no
+ * drinks)" at 13px grey is what "the stats are plain text" meant. The split is
+ * presentational only — no new price data is derived here, and both are absent
+ * when there is no price to state.
  */
 export interface PriceSummary {
   kind: 'verified' | 'estimated' | 'notListed';
@@ -160,6 +168,10 @@ export interface PriceSummary {
   tierLabel: string;
   /** Spend expectation, e.g. "About ৳1,800 for two (approx., no drinks)". */
   spendLabel: string;
+  /** Just the money, e.g. "৳1,800" or "৳900 – ৳1,400". Absent when unpriced. */
+  amount?: string;
+  /** What the money buys, e.g. "for two, approx. · no drinks". */
+  amountNote?: string;
   /** Per-person hint — present ONLY when a real price range exists. */
   perPersonLabel?: string;
   /** Honesty / source note shown beneath the price block. */
@@ -172,10 +184,24 @@ export function priceSummary(restaurant: Restaurant, menu?: Menu | null): PriceS
   // Priority 1 — menu-derived estimate with enough supporting dishes.
   const estimate = restaurant.menuEstimate ?? (menu ? estimateCostForTwo(menu) : null);
   if (estimate && estimate.confidence !== 'low') {
+    // `budgetDisplay` only sees `restaurant.menuEstimate`. When the estimate
+    // arrived via the `menu` argument instead, its tier is still "Not listed" —
+    // which put "Not listed" on the same row as a ৳800 – ৳960 band. The tier is
+    // derived from the estimate we actually used, by the same ladder
+    // `budgetDisplay` would have used, and stays labelled "(estimated)".
+    const tierLabel =
+      tier.kind === 'notListed'
+        ? `${budgetSymbol(budgetTierForPerPerson(estimate.median))} ${budgetTierForPerPerson(estimate.median)} (estimated)`
+        : tier.label;
     return {
       kind: 'estimated',
-      tierLabel: tier.label,
+      tierLabel,
       spendLabel: `${formatCurrency(estimate.low)} – ${formatCurrency(estimate.high)} for two · estimated from menu prices`,
+      amount: `${formatCurrency(estimate.low)} – ${formatCurrency(estimate.high)}`,
+      // No "estimated from menu prices" here: the Provenance badge directly
+      // below the figure already reads "Estimated from menu", and saying it
+      // twice in one cell is what made this stat a paragraph.
+      amountNote: 'for two',
       perPersonLabel: `about ${formatCurrency(Math.round(estimate.low / 2))} – ${formatCurrency(Math.round(estimate.high / 2))} per person`,
       evidence: 'Estimated from this restaurant’s recorded menu prices — not a verified total.',
     };
@@ -187,6 +213,8 @@ export function priceSummary(restaurant: Restaurant, menu?: Menu | null): PriceS
       kind: 'verified',
       tierLabel: tier.label,
       spendLabel: `About ${formatCurrency(restaurant.priceForTwo)} for two (approx., no drinks)`,
+      amount: formatCurrency(restaurant.priceForTwo),
+      amountNote: 'for two, approx. · no drinks',
       evidence: 'Approximate cost for two — confirm the current menu at the restaurant.',
     };
   }

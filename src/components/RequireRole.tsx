@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { ShieldAlert, LogIn } from 'lucide-react';
+import { ShieldAlert, LogIn, ArrowLeft } from 'lucide-react';
 import type { Role } from '../domain/auth';
 import { useAuth } from '../context/AuthContext';
+import { Button } from './ui';
 
 interface RequireRoleProps {
   roles: Role[];
@@ -24,9 +24,9 @@ export default function RequireRole({ roles, children }: RequireRoleProps) {
             <ShieldAlert size={40} aria-hidden="true" />
             <h1>Sign in to continue</h1>
             <p>This area is only available to signed-in accounts.</p>
-            <Link to="/login" className="btn btn--primary">
-              <LogIn size={15} aria-hidden="true" /> Sign in
-            </Link>
+            <Button variant="primary" to="/login" icon={LogIn}>
+              Sign in
+            </Button>
           </div>
         </div>
       </main>
@@ -41,7 +41,7 @@ export default function RequireRole({ roles, children }: RequireRoleProps) {
             <ShieldAlert size={40} aria-hidden="true" />
             <h1>Not authorised</h1>
             <p>Your account doesn't have access to this area.</p>
-            <Link to="/" className="btn btn--primary">Back to home</Link>
+            <Button variant="primary" to="/" icon={ArrowLeft}>Back to home</Button>
           </div>
         </div>
       </main>

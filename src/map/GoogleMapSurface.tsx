@@ -11,14 +11,47 @@ export interface GoogleMapSurfaceProps {
   onActiveChange: (id: string | null) => void;
   onViewChange: (viewport: MapViewport) => void;
   onReady: () => void;
+  /** match score per restaurant, when a match is meaningful — drives the pin tier */
+  scores?: Map<string, number>;
 }
 
-/** Brand-green pin (SVG data URI) so the map matches Khabo Kothay. */
-function pinSvg(active: boolean): string {
-  const fill = active ? '#04402b' : '#0b6b45';
-  const size = active ? 26 : 22;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${Math.round(size * 1.18)}" viewBox="0 0 22 26"><path d="M11 0C5.5 0 1 4.5 1 10c0 7 10 16 10 16s10-9 10-16C21 4.5 16.5 0 11 0z" fill="${fill}" stroke="#ffffff" stroke-width="1.8"/><circle cx="11" cy="10" r="3.4" fill="#ffffff"/></svg>`;
+/**
+ * The KK pin as an SVG data URI.
+ *
+ * This mirrors the Leaflet surface's three tiers (strong / warm / plain) so the
+ * product looks the same whichever provider is mounted — but it is drawn rather
+ * than styled, because a Google marker is an image and cannot take CSS. The
+ * espresso-and-saffron pair is the brand's action/emphasis split: ink is the
+ * pin, gold marks a strong match.
+ */
+const STRONG_MATCH = 70;
+const WARM_MATCH = 45;
+
+function pinSvg(active: boolean, score?: number): string {
+  const strong = score !== undefined && score >= STRONG_MATCH;
+  const warm = score !== undefined && score >= WARM_MATCH && !strong;
+  const fill = active ? '#1c1710' : strong ? '#2a2318' : warm ? '#3d3324' : '#574a35';
+  const ring = strong ? '#e08c14' : active ? '#f0a833' : '#fdf9f1';
+  const label = score !== undefined && (strong || active) ? Math.round(score) : null;
+  const w = label !== null ? 34 : 22;
+  const h = label !== null ? 40 : 26;
+  const body =
+    label !== null
+      ? `<rect x="1" y="1" width="32" height="26" rx="13" fill="${fill}" stroke="${ring}" stroke-width="2"/>` +
+        `<path d="M17 27l5 11-10 0z" fill="${fill}"/>` +
+        `<text x="17" y="18" text-anchor="middle" font-family="Manrope, sans-serif" font-size="13" font-weight="700" fill="#fdf9f1">${label}</text>`
+      : `<path d="M11 0C5.5 0 1 4.5 1 10c0 7 10 16 10 16s10-9 10-16C21 4.5 16.5 0 11 0z" fill="${fill}" stroke="${ring}" stroke-width="1.8"/>` +
+        `<circle cx="11" cy="10" r="3.4" fill="#fdf9f1"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${label !== null ? '34 40' : '22 26'}">${body}</svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function pinSize(active: boolean, score: number | undefined, gm: typeof google.maps): google.maps.Size {
+  const labelled = score !== undefined && (score >= STRONG_MATCH || active);
+  const scale = active ? 1.18 : 1;
+  return labelled
+    ? new gm.Size(Math.round(34 * scale), Math.round(40 * scale))
+    : new gm.Size(Math.round(22 * scale), Math.round(26 * scale));
 }
 
 function boundsToGoogle(bounds: MapBounds, gm: typeof google.maps): google.maps.LatLngBounds {
@@ -61,12 +94,15 @@ export default function GoogleMapSurface({
   onActiveChange,
   onViewChange,
   onReady,
+  scores,
 }: GoogleMapSurfaceProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const googleRef = useRef<typeof google.maps | null>(null);
   const markersRef = useRef(new Map<string, google.maps.Marker>());
   const readyRef = useRef(false);
+  const scoresRef = useRef(scores);
+  scoresRef.current = scores;
 
   useEffect(() => {
     let disposed = false;
@@ -118,11 +154,12 @@ export default function GoogleMapSurface({
     for (const r of restaurants) {
       let marker = markersRef.current.get(r.id);
       if (!marker) {
+        const score = scoresRef.current?.get(r.id);
         marker = new gm.Marker({
           position: { lat: r.lat, lng: r.lng },
           map,
           title: r.name,
-          icon: { url: pinSvg(false), scaledSize: new gm.Size(22, 26) },
+          icon: { url: pinSvg(false, score), scaledSize: pinSize(false, score, gm) },
         });
         marker.addListener('click', () => {
           onActiveChange(r.id);
@@ -135,16 +172,41 @@ export default function GoogleMapSurface({
     }
   }, [restaurants, onActiveChange]);
 
-  // Emphasise the active marker (hover sync + marker selection).
+  // Emphasise the active marker (hover sync + marker selection) and carry the
+  // match tier.
+  //
+  // Narrowed to the two markers that changed when the selection is all that
+  // moved — the same fix as LeafletMapSurface, and it matters more here: each
+  // pass rebuilds an SVG data URL per marker, so a full sweep on every highlight
+  // was hundreds of string builds charged to whatever caused the highlight.
+  const paintedRef = useRef<{
+    active: string | null;
+    restaurants: Restaurant[] | null;
+    scores: Map<string, number> | undefined;
+  }>({ active: null, restaurants: null, scores: undefined });
   useEffect(() => {
     const gm = googleRef.current;
     if (!gm) return;
-    markersRef.current.forEach((marker, id) => {
+    const repaint = (marker: google.maps.Marker, id: string) => {
       const isActive = id === activeId;
-      marker.setIcon({ url: pinSvg(isActive), scaledSize: new gm.Size(isActive ? 26 : 22, isActive ? 30 : 26) });
-      marker.setZIndex(isActive ? 1000 : 0);
-    });
-  }, [activeId, restaurants]);
+      const score = scores?.get(id);
+      marker.setIcon({ url: pinSvg(isActive, score), scaledSize: pinSize(isActive, score, gm) });
+      marker.setZIndex(isActive ? 1000 : score !== undefined ? Math.round(score) : 0);
+    };
+    const previous = paintedRef.current;
+    const selectionOnly =
+      previous.restaurants === restaurants && previous.scores === scores;
+    paintedRef.current = { active: activeId, restaurants, scores };
+    if (selectionOnly) {
+      for (const id of [previous.active, activeId]) {
+        if (!id) continue;
+        const marker = markersRef.current.get(id);
+        if (marker) repaint(marker, id);
+      }
+      return;
+    }
+    markersRef.current.forEach(repaint);
+  }, [activeId, restaurants, scores]);
 
   // Refit when the target changes.
   useEffect(() => {

@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, Flag, MessagesSquare, AlertTriangle } from 'lucide-react';
+import { Flag, MessagesSquare, AlertTriangle } from 'lucide-react';
 import { usePageTitle } from '../lib/usePageTitle';
+import { Disclosure } from '../components/ui';
 
 interface InfoSection {
   heading: string;
@@ -55,37 +55,36 @@ interface FaqEntry {
   a: string[];
 }
 
+/**
+ * One question, one answer, and nothing else of its own.
+ *
+ * This used to hold its own `useState`, its own `scrollHeight`
+ * measurement and its own animated wrapper, and it shipped two mistakes
+ * the primitive does not let it make: no `aria-controls`, so a screen
+ * reader heard "expanded" with no way to reach what expanded; and
+ * `aria-hidden` on a collapsed panel that stayed in the tab order, which
+ * hides the answer from the screen reader and still lets the keyboard
+ * land inside it.
+ *
+ * `headingLevel={2}` is new. The page has one `h1` and had no headings
+ * below it, so each question is a top-level section under it and the
+ * heading list was previously empty — a person who navigates this page
+ * by headings had nothing to navigate.
+ */
 function FaqItem({ entry }: { entry: FaqEntry }) {
-  const [open, setOpen] = useState(false);
-  const innerRef = useRef<HTMLDivElement>(null);
-  // Answer content is static, so measure it once on mount and animate the
-  // wrapper height between 0 and the measured value (works in every browser;
-  // grid-track interpolation is not supported everywhere).
-  const [contentHeight, setContentHeight] = useState(0);
-  useEffect(() => {
-    if (innerRef.current) setContentHeight(innerRef.current.scrollHeight);
-  }, []);
   return (
-    <div className={`faq-item ${open ? 'faq-item--open' : ''}`}>
-      <button
-        type="button"
-        className="faq-item__q"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <span>{entry.q}</span>
-        <ChevronDown size={18} className="faq-item__chevron" aria-hidden="true" />
-      </button>
-      <div
-        className="faq-item__a"
-        style={{ height: open ? contentHeight : 0 }}
-        aria-hidden={!open}
-      >
-        <div className="faq-item__a-inner" ref={innerRef}>
-          {entry.a.map((p) => <p key={p}>{p}</p>)}
-        </div>
-      </div>
-    </div>
+    <Disclosure
+      summary={entry.q}
+      variant="card"
+      marker="chevron"
+      headingLevel={2}
+      animate
+      panelClassName="faq-item__a"
+    >
+      {entry.a.map((p) => (
+        <p key={p}>{p}</p>
+      ))}
+    </Disclosure>
   );
 }
 
@@ -128,7 +127,7 @@ export const FaqPage = () => {
         <header className="info-hero">
           <span className="section-heading__eyebrow">FAQ</span>
           <h1>Frequently asked questions</h1>
-          <p className="info-hero__lede">A few quick answers about how Khabo Kothay BD works.</p>
+          <p className="info-hero__lede">A few quick answers about how Khabo Kothay works.</p>
         </header>
         <div className="faq-list">
           {FAQ_ENTRIES.map((entry) => (
@@ -199,8 +198,8 @@ export const AboutPage = () => (
   <InfoPage
     page={{
       eyebrow: 'About',
-      title: 'About Khabo Kothay BD',
-      lede: 'Khabo Kothay BD is a restaurant discovery guide for Dhaka — built to help you answer the daily question: where do we eat today?',
+      title: 'About Khabo Kothay',
+      lede: 'Khabo Kothay is a restaurant discovery guide for Dhaka — built to help you answer the daily question: where do we eat today?',
       sections: [
         {
           heading: 'What we do',
@@ -279,12 +278,12 @@ export const TermsPage = () => (
     page={{
       eyebrow: 'Terms',
       title: 'Terms of use',
-      lede: 'Simple, general terms for using the Khabo Kothay BD website.',
+      lede: 'Simple, general terms for using the Khabo Kothay website.',
       sections: [
         {
           heading: 'The service',
           paragraphs: [
-            'Khabo Kothay BD helps people discover restaurants in Dhaka. The website and its features are provided for personal, non-commercial use.',
+            'Khabo Kothay helps people discover restaurants in Dhaka. The website and its features are provided for personal, non-commercial use.',
           ],
         },
         {

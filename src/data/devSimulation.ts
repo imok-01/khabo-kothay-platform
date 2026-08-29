@@ -298,7 +298,13 @@ const KK_DEMO_KHABO_REVIEWS: KhaboReview[] = [
 // Community ("Khabo Kothay photos") imagery for the demo venue — these are
 // clearly-labelled community photos, not fabricated Google imagery.
 const KK_DEMO_PHOTOS: KhaboPhoto[] = [
-  { id: 'kk-photo-1', url: 'https://picsum.photos/seed/kk-kacchi/1200/800', alt: 'Kacchi Biryani platter at KK Demo Restaurant' },
+  // The first entry is what the console Overview shows, so it carries the same
+  // photograph as the venue's cover rather than a random placeholder.
+  {
+    id: 'kk-photo-1',
+    url: 'https://lh3.googleusercontent.com/gps-cs-s/AHRPTWld3EHWw2M94XNdwJ6Le8RnmRzZQqYSHs_sMkcoTuNeXyG0Yo6PtNwk9gXxnuUjokPMSwz_evQY0wwY3tMDU6Uz2DuVF4pUyKqZkB8RMoh3ux1Ez3V90z3h_LtW56bdbUdKcKvu9Q=w114-h86-k-no',
+    alt: 'Dining room at KK Demo Restaurant',
+  },
   { id: 'kk-photo-2', url: 'https://picsum.photos/seed/kk-rooftop/1200/800', alt: 'Rooftop dining area in the evening' },
   { id: 'kk-photo-3', url: 'https://picsum.photos/seed/kk-counter/1200/800', alt: 'Signature dishes on display at the counter' },
   { id: 'kk-photo-4', url: 'https://picsum.photos/seed/kk-biryani/1200/800', alt: 'Freshly served biryani' },

@@ -58,14 +58,34 @@ export function googleMapsDirectionsUrl(restaurant: Restaurant, origin?: GeoPoin
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
-/**
- * Embeddable map (iframe `output=embed`) — used on the restaurant detail
- * page. No API key required; shows the establishment at street level.
+/*
+ * `googleMapsEmbedUrl` lived here and was the detail page's little map. It is
+ * gone, because the URL it built can no longer be framed and the failure is
+ * silent — a blank box, no console error, no failed request in the network
+ * panel, because the block happens at the frame-navigation layer.
+ *
+ * Measured with curl, 2026-08-27:
+ *
+ *   GET https://www.google.com/maps?q=23.79,90.42&z=16&output=embed
+ *     → 301 Moved Permanently
+ *       Location: https://www.google.com/maps/embed?origin=mfe&pb=!1m3!…
+ *       X-Frame-Options: SAMEORIGIN        ← on the redirect, not the target
+ *
+ *   GET https://www.google.com/maps/embed?origin=mfe&pb=!1m3!…
+ *     → 200 OK, no X-Frame-Options at all  ← the target IS frameable
+ *
+ * Chrome enforces `X-Frame-Options` on **every** response in a frame's
+ * redirect chain, so the hop is what kills it. Following the redirect by hand
+ * would work, but only by hard-coding `pb=!1m3!2m1!1s{lat},{lng}!6i{zoom}` —
+ * Google's internal, undocumented protobuf-in-a-querystring — which is a
+ * blank map again the day they renumber a field.
+ *
+ * So the detail page stopped framing a third party. It renders the same map
+ * surface `/explore` renders (`map/MapProvider` → Leaflet + CARTO tiles, no
+ * API key), through `components/RestaurantLocationMap`. The link builders
+ * below are unaffected: they are `<a href>` targets, not frames, and no
+ * X-Frame-Options applies to a top-level navigation.
  */
-export function googleMapsEmbedUrl(restaurant: Restaurant, zoom = 16): string {
-  const { lat, lng } = coordinates(restaurant);
-  return `https://www.google.com/maps?q=${lat}%2C${lng}&z=${zoom}&output=embed`;
-}
 
 /** General Google Maps search — used for fallbacks and "open in maps". */
 export function googleMapsSearchUrl(query: string): string {

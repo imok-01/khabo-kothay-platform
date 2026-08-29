@@ -73,36 +73,50 @@ function intelligence(r: Restaurant) {
   return r.intelligence ?? getEffectiveIntelligence(r);
 }
 
+/**
+ * The two vocabularies below are constants, and they are declared here rather
+ * than inside the functions that read them because both functions are called
+ * once per venue inside `matchScore` — i.e. a few hundred times per keystroke on
+ * Explore. Built inline, each call allocated a fresh ten-key object and its ten
+ * arrays to read one entry out of it and throw the rest away.
+ */
+
 /** Structured occasion/time signals a vibe maps onto (bestFor vocabulary). */
+const VIBE_SIGNALS: Record<string, string[]> = {
+  'Date night': ['Date night'],
+  Family: ['Family dinner'],
+  'Late-night': ['Late night'],
+  Nightlife: ['Late night', 'Friends'],
+  Quiet: [],
+  'Work-friendly': ['Work/study'],
+  Heritage: [],
+  'Live music': [],
+  Rooftop: [],
+  'Instagram-worthy': [],
+};
+
 function vibeSignals(vibe: string | undefined): string[] {
   if (!vibe) return [];
-  const map: Record<string, string[]> = {
-    'Date night': ['Date night'],
-    Family: ['Family dinner'],
-    'Late-night': ['Late night'],
-    Nightlife: ['Late night', 'Friends'],
-    Quiet: [],
-    'Work-friendly': ['Work/study'],
-    Heritage: [],
-    'Live music': [],
-    Rooftop: [],
-    'Instagram-worthy': [],
-  };
-  return [vibe, ...(map[vibe] ?? [])];
+  return [vibe, ...(VIBE_SIGNALS[vibe] ?? [])];
 }
 
+type MealSignals = { bestFor: string[]; specialties: Specialty[]; chars: string[] };
+
 /** Structured signals a meal type maps onto (bestFor + specialty + food chars). */
-function mealSignals(mealType: string | undefined): { bestFor: string[]; specialties: Specialty[]; chars: string[] } {
-  if (!mealType) return { bestFor: [], specialties: [], chars: [] };
-  const map: Record<string, { bestFor: string[]; specialties: Specialty[]; chars: string[] }> = {
-    Breakfast: { bestFor: ['Breakfast'], specialties: ['Breakfast'], chars: [] },
-    Brunch: { bestFor: ['Breakfast', 'Lunch'], specialties: ['Breakfast'], chars: [] },
-    Lunch: { bestFor: ['Lunch'], specialties: [], chars: [] },
-    Snacks: { bestFor: ['Quick bite'], specialties: [], chars: ['Quick bites'] },
-    Dinner: { bestFor: ['Dinner', 'Late night'], specialties: [], chars: [] },
-    Dessert: { bestFor: [], specialties: ['Desserts'], chars: ['Dessert-focused'] },
-  };
-  return map[mealType] ?? { bestFor: [], specialties: [], chars: [] };
+const MEAL_SIGNALS: Record<string, MealSignals> = {
+  Breakfast: { bestFor: ['Breakfast'], specialties: ['Breakfast'], chars: [] },
+  Brunch: { bestFor: ['Breakfast', 'Lunch'], specialties: ['Breakfast'], chars: [] },
+  Lunch: { bestFor: ['Lunch'], specialties: [], chars: [] },
+  Snacks: { bestFor: ['Quick bite'], specialties: [], chars: ['Quick bites'] },
+  Dinner: { bestFor: ['Dinner', 'Late night'], specialties: [], chars: [] },
+  Dessert: { bestFor: [], specialties: ['Desserts'], chars: ['Dessert-focused'] },
+};
+
+const NO_MEAL_SIGNALS: MealSignals = { bestFor: [], specialties: [], chars: [] };
+
+function mealSignals(mealType: string | undefined): MealSignals {
+  if (!mealType) return NO_MEAL_SIGNALS;
+  return MEAL_SIGNALS[mealType] ?? NO_MEAL_SIGNALS;
 }
 
 export function matchScore(r: Restaurant, ctx: RecommendationContext): MatchResult {

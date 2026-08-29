@@ -1,0 +1,963 @@
+/* ============================================================
+   KHABO KOTHAY — DESIGN SYSTEM
+   ============================================================
+   THE single source of truth for design tokens.
+
+   Loaded FIRST, before every other stylesheet. No other file may
+   declare :root tokens — index.css and editorial.css previously
+   both declared a full token set, so a component's final look was
+   decided by import order rather than by design. That is fixed
+   here: one authority, one place to change the brand.
+
+   Identity: Dhaka-first, Bangladesh-focused. Warm paper ground,
+   espresso ink, and a spice range (saffron -> chili) that carries
+   craving, value and energy. Nothing here is city-neutral by
+   accident.
+
+   REFINEMENT PASS — one accent, one action colour.
+   The palette previously ran two competing brand colours: a deep
+   emerald for action and a saffron for craving. On a page that
+   alternates warm paper and espresso ink that read as two products
+   spliced together — emerald buttons and emerald nav states next to
+   gold editorial headlines.
+
+   So the roles are now separated by *job* rather than by hue:
+
+     espresso ink   ACTION. Buttons, active nav, primary CTAs. An
+                    ink button on warm paper is the premium move and
+                    it carries 13:1 contrast for free.
+     gold (saffron) EMPHASIS. One italic serif word per headline,
+                    eyebrows, rank numerals, rules. Never a surface.
+     emerald        VERIFICATION ONLY. It survives untouched in
+                    --success and the --prov-verified family, which
+                    read the raw ramp directly. Green now means
+                    "we checked this", and nothing else.
+
+   That is why --primary below points at the espresso ramp while
+   --emerald-* is left exactly as it was.
+
+   Structure:
+     1.  Colour ramps (raw palette — do not use directly in rules)
+     2.  Semantic colour  (use these)
+     3.  Gradients & ambience
+     4.  Typography
+     5.  Spacing & layout
+     6.  Radius
+     7.  Elevation
+     8.  Motion
+     9.  Component-level tokens
+   ============================================================ */
+
+:root {
+  /* ----------------------------------------------------------
+     1. COLOUR RAMPS
+     Raw palette. Rules should consume the semantic tokens in
+     section 2 instead, so the brand can be retuned in one edit.
+     ---------------------------------------------------------- */
+
+  /* Paper — warm, unbleached, printed-page ground */
+  --paper-50:  #fffdf9;
+  --paper-100: #fdf9f1;
+  --paper-200: #f7f0e4;
+  --paper-300: #efe5d3;
+  --paper-400: #e3d5bd;
+  --paper-500: #d2c0a2;
+
+  /* Espresso — the ink ramp. Brown-black, never blue-black. */
+  --espresso-900: #1c1710;
+  --espresso-800: #2a2318;
+  --espresso-700: #3d3324;
+  --espresso-600: #574a35;
+  --espresso-500: #756548;
+  --espresso-400: #94856a;
+  --espresso-300: #b4a68d;
+
+  /* Emerald — verification. NOT action: see the note at the top of
+     this file. Consumed only by --success* and --prov-verified*. */
+  --emerald-900: #043723;
+  --emerald-800: #054a2f;
+  --emerald-700: #06603c;
+  --emerald-600: #07784a;
+  --emerald-500: #0b9159;
+  --emerald-400: #34ab76;
+  --emerald-200: #a8ddc2;
+  --emerald-100: #d8f0e4;
+  --emerald-50:  #eef8f3;
+
+  /* Saffron — craving, value, offers, energy */
+  --saffron-800: #8a4d05;
+  --saffron-700: #a85f06;
+  --saffron-600: #c87309;
+  --saffron-500: #e08c14;
+  --saffron-400: #f0a833;
+  --saffron-200: #f9dda8;
+  --saffron-100: #fdf0d6;
+  --saffron-50:  #fef8ec;
+
+  /* Chili — heat, urgency, the warm end of the spice range */
+  --chili-700: #8f2f1c;
+  --chili-600: #ad3d25;
+  --chili-500: #c94f33;
+  --chili-200: #f3c8bb;
+  --chili-100: #fae3da;
+
+  /* Indigo — a cool counterweight; vibe/mood, never action */
+  --indigo-700: #3b2f8f;
+  --indigo-500: #5b47d6;
+  --indigo-100: #e9e5fb;
+
+  /* ----------------------------------------------------------
+     2. SEMANTIC COLOUR
+     ---------------------------------------------------------- */
+
+  /* Ground & surfaces */
+  --bg: var(--paper-100);
+  --bg-deep: var(--paper-200);
+  --surface: var(--paper-50);
+  --surface-2: var(--paper-200);
+  --surface-3: var(--paper-300);
+  --surface-inverse: var(--espresso-900);
+
+  /* Ink */
+  --ink: var(--espresso-900);
+  --ink-soft: var(--espresso-600);
+  --ink-faint: var(--espresso-500);
+  --ink-inverse: var(--paper-100);
+  --ink-on-primary: #ffffff;
+
+  /* Primary — espresso ink. The action colour.
+     The soft/faint/line trio is a warm sand rather than a tint of
+     ink: a grey-brown wash on warm paper reads as dirt, and these
+     have to sit next to --surface-2 (paper-200) without merging
+     into it. They carry a trace of gold so a selected option still
+     looks like it belongs to the brand. */
+  --primary: var(--espresso-800);
+  --primary-strong: var(--espresso-900);
+  --primary-bright: var(--espresso-600);
+  --primary-soft: #f6eddc;
+  --primary-faint: #fcf7ec;
+  --primary-line: #e8d9bd;
+
+  /* Accent — saffron */
+  --accent: var(--saffron-600);
+  --accent-strong: var(--saffron-700);
+  --accent-soft: var(--saffron-100);
+  --accent-faint: var(--saffron-50);
+  --accent-line: var(--saffron-200);
+
+  /* Terracotta / chili — editorial warmth + heat */
+  --terracotta: var(--chili-600);
+  --terracotta-soft: var(--chili-100);
+
+  /* Vibe — mood tagging only */
+  --vibe: var(--indigo-500);
+  --vibe-strong: var(--indigo-700);
+  --vibe-soft: var(--indigo-100);
+
+  /* Status */
+  --success: var(--emerald-600);
+  --success-soft: var(--emerald-100);
+  --warning: var(--saffron-700);
+  --warning-soft: var(--saffron-100);
+  --danger: var(--chili-700);
+  --danger-soft: var(--chili-100);
+
+  /* Lines */
+  --border: var(--paper-300);
+  --border-soft: var(--paper-200);
+  --border-strong: var(--paper-400);
+
+  /* ----------------------------------------------------------
+     3. GRADIENTS & AMBIENCE
+     Used for hero washes, feature surfaces and depth. Kept as
+     tokens so the "premium" layer is tunable, not scattered.
+     ---------------------------------------------------------- */
+  --grad-primary: linear-gradient(135deg, var(--espresso-700) 0%, var(--espresso-800) 52%, var(--espresso-900) 100%);
+  --grad-primary-bright: linear-gradient(135deg, var(--espresso-600) 0%, var(--espresso-800) 100%);
+  --grad-spice: linear-gradient(120deg, var(--saffron-500) 0%, var(--chili-500) 100%);
+  --grad-spice-soft: linear-gradient(120deg, var(--saffron-100) 0%, var(--chili-100) 100%);
+  --grad-paper: linear-gradient(180deg, var(--paper-50) 0%, var(--paper-100) 100%);
+  --grad-ink: linear-gradient(160deg, var(--espresso-800) 0%, var(--espresso-900) 100%);
+
+  /* Image scrim — for text over photography */
+  --scrim: linear-gradient(180deg, rgba(28, 23, 16, 0) 0%, rgba(28, 23, 16, 0.06) 42%,
+    rgba(28, 23, 16, 0.55) 76%, rgba(28, 23, 16, 0.86) 100%);
+  --scrim-soft: linear-gradient(180deg, rgba(28, 23, 16, 0) 40%, rgba(28, 23, 16, 0.62) 100%);
+
+  /* Ambient page wash — warm light from above, spice at the edges.
+     Single-temperature on purpose: the emerald radial that used to
+     sit at 92% tinted the top-right of every page a faint green,
+     which fought the gold in the headlines. */
+  --ambient:
+    radial-gradient(900px 420px at 12% -6%, rgba(224, 140, 20, 0.11), transparent 62%),
+    radial-gradient(760px 380px at 92% 2%, rgba(168, 95, 6, 0.07), transparent 60%),
+    radial-gradient(1100px 500px at 50% -180px, rgba(201, 79, 51, 0.05), transparent 70%);
+
+  /* ----------------------------------------------------------
+     4. TYPOGRAPHY
+     Newsreader carries the editorial voice; Manrope carries the
+     interface. The scale is wider than before at both ends: one
+     genuinely large display moment per page, and a properly
+     designed caption size so provenance reads as authoritative
+     rather than as legal fine print.
+
+     The Noto Bengali families sit second in each stack purely to
+     supply the taka sign (৳, U+09F3), which neither primary
+     covers. Per-glyph fallback means Latin never touches them.
+     ---------------------------------------------------------- */
+  --font-display: 'Newsreader', 'Noto Serif Bengali', Georgia, 'Times New Roman', serif;
+  --font-body: 'Manrope', 'Noto Sans Bengali', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+
+  --fs-mega: clamp(3.6rem, 10vw, 7.2rem);
+  --fs-display: clamp(2.9rem, 7.4vw, 5.4rem);
+  --fs-h1: clamp(2.2rem, 4.6vw, 3.4rem);
+  --fs-h2: clamp(1.7rem, 3.1vw, 2.5rem);
+  --fs-h3: clamp(1.2rem, 1.9vw, 1.55rem);
+  --fs-h4: clamp(1.02rem, 1.3vw, 1.16rem);
+  --fs-lead: clamp(1.04rem, 1.5vw, 1.2rem);
+  /* 16px. The step between --fs-body and --fs-lead, added because the
+     large button was already using it as a literal `1.02rem` — the one
+     off-scale type size left in the button system. Rounding it onto the
+     scale moves the rendered size by 0.32px. */
+  --fs-lg: 1rem;
+  --fs-body: 0.9375rem;
+  --fs-md: 0.875rem;
+  --fs-sm: 0.8125rem;
+  --fs-xs: 0.75rem;
+  --fs-2xs: 0.6875rem;
+
+  --lh-tight: 1.06;
+  --lh-snug: 1.24;
+  --lh-body: 1.62;
+  --lh-loose: 1.75;
+
+  --tracking-tight: -0.028em;
+  --tracking-snug: -0.015em;
+  --tracking-wide: 0.08em;
+  --tracking-caps: 0.14em;
+
+  --weight-body: 400;
+  --weight-medium: 500;
+  --weight-semi: 600;
+  --weight-bold: 700;
+  --weight-black: 800;
+
+  /* ----------------------------------------------------------
+     5. SPACING & LAYOUT   (4px scale, 2px half-grid inside controls)
+     ---------------------------------------------------------- */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s7: 28px;
+  --s8: 32px;
+  --s10: 40px;
+  --s12: 48px;
+  --s14: 56px;
+  --s16: 64px;
+  --s20: 80px;
+  --s24: 96px;
+
+  /* Half-steps, named `Nh` for "N and a half" on the same px/4 scale:
+     --s1h is one-and-a-half s1, i.e. 6px.
+
+     They exist because the product measured its own need for them. Every
+     structural gap in KK already used a token; nothing above 12px was ever
+     written raw. What *was* written raw — 145 declarations — sat entirely in
+     the micro band, the space between an icon and its label, a score and its
+     unit, a badge and its text. In that band the 4px grid offers three values
+     (4, 8, 12) for something that needs six, so the missing rungs got invented
+     at the call site instead: 6px in 58 places, 5px in 30, 2px in 23, and a
+     scattering of 1, 3, 7, 9 and 11 that were nobody's decision.
+
+     The grid is not being abandoned. 4px still governs *layout* — the distance
+     between blocks, cards, sections. The 2px half-grid governs the inside of a
+     control or a label, where the type is 13px and a 16px Lucide glyph carries
+     its own side bearing, so 4px of resolution is coarser than the eye. Above
+     --s4 there are no halves, because at that size nothing has ever needed one. */
+  --s0h: 2px;
+  --s1h: 6px;
+  --s2h: 10px;
+  --s3h: 14px;
+
+  /* Section rhythm — varied on purpose so the page has cadence
+     instead of a metronome. Consumed by .section modifiers. */
+  --section-y-sm: clamp(2rem, 4vw, 3rem);
+  --section-y: clamp(3rem, 6.5vw, 5.5rem);
+  --section-y-lg: clamp(4rem, 9vw, 7.5rem);
+
+  --container: 1200px;
+  --container-wide: 1400px;
+  --container-narrow: 720px;
+  --container-text: 62ch;
+  --gutter: clamp(1rem, 3.2vw, 2.25rem);
+
+  /* The header, as one composition rather than five stacked paddings.
+     72px was the sum of its parts — a 38px logo, a 40px button row, a
+     43px link (10px of vertical padding on a 23px line box) and 16px of
+     air above and below whichever of those happened to be tallest — and
+     nothing in it was chosen against anything else. 60px is chosen: one
+     34px band holds the search field, the links, the CTA and the menu
+     button, the brand lockup measures the same 34px from the top of the
+     wordmark to the bottom of its caps line, and 13px of air sits above
+     and below the whole row. Editorial chrome is thin; the bar's job is
+     to be reachable, not to be furniture.
+
+     --nav-ctl is that band. It goes to 40px at ≤900px, where the burger
+     is the only control left in the bar and the pointer is a thumb. */
+  --nav-h: 60px;
+  --nav-ctl: 34px;
+  --bottom-nav-h: 62px;
+
+  /* The header's search field rests short and opens to the full measure.
+     Only the resting width is a token, and only because CSS needs a width
+     for the field before React has hydrated: the animated value belongs to
+     a spring now (REST_W / HINT_W / OPEN_W in components/SearchBar.tsx),
+     and a spring cannot read a token. 128px seats the magnifier and the
+     word "Search" with the pill's own 12px inset either side.
+
+     The continuous `min()` cap that used to ride on the open width is gone
+     with the composition that needed it. The field is centred on the bar at
+     every width ≥901px now, and below 1140px the three destination links
+     step out of the bar entirely (the menu button carries them), so the
+     narrowest case the field ever has to fit is 901px of viewport — where
+     460px of field still clears the brand by 26px and the actions by 42.
+     Nothing has to be negotiated continuously any more. */
+  --nav-search-rest: 8rem;
+
+  /* ----------------------------------------------------------
+     6. RADIUS
+     Radius carries ROLE, not size — see docs/KK_VISUAL_DIRECTION.md
+     §2. Six steps are in active service:
+
+       --r-xs    badges, tags, inline marks (typographic, not tappable)
+       --r-sm    media nested inside a card
+       --r-md    buttons, inputs, selects, textareas
+       --r-card  cards (18px, in the Phase C block below)
+       --r-xl    modals, sheets, drawers — largest radius, highest layer
+       --r-full  chips, filters, toggles, moods, avatars
+
+     Two mechanical rules: a child's radius is always <= its parent's,
+     and radius increases with elevation.
+
+     --r-lg and --r-2xl are retained for legacy consumers and are
+     CLOSED TO NEW USE: seven steps for eight roles is what produces
+     arbitrary radius choices.
+     ---------------------------------------------------------- */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-2xl: 36px;
+  --r-full: 999px;
+
+  /* ----------------------------------------------------------
+     7. ELEVATION
+     Warm-tinted shadows. A neutral grey shadow on warm paper
+     reads as dirt; these are espresso-tinted so depth stays warm.
+     ---------------------------------------------------------- */
+  --shadow-xs: 0 1px 2px rgba(28, 23, 16, 0.05);
+  --shadow-sm: 0 1px 2px rgba(28, 23, 16, 0.04), 0 2px 6px rgba(28, 23, 16, 0.05);
+  --shadow-md: 0 2px 4px rgba(28, 23, 16, 0.04), 0 8px 22px rgba(28, 23, 16, 0.07);
+  --shadow-lg: 0 4px 10px rgba(28, 23, 16, 0.06), 0 20px 50px rgba(28, 23, 16, 0.11);
+  --shadow-xl: 0 8px 18px rgba(28, 23, 16, 0.08), 0 34px 80px rgba(28, 23, 16, 0.16);
+  --shadow-pop: 0 10px 34px rgba(28, 23, 16, 0.14);
+
+  /* Coloured elevation — for primary action and spice surfaces */
+  --shadow-primary: 0 1px 2px rgba(28, 23, 16, 0.34), 0 8px 22px rgba(28, 23, 16, 0.22);
+  --shadow-primary-hover: 0 2px 5px rgba(28, 23, 16, 0.36), 0 14px 34px rgba(28, 23, 16, 0.28);
+  --shadow-accent: 0 6px 20px rgba(200, 115, 9, 0.24);
+
+  /* Inset hairline — the "printed" edge on light surfaces */
+  --ring-inset: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+  /* ----------------------------------------------------------
+     8. MOTION
+     One easing set, one duration scale. Every animated rule in
+     the product should reference these.
+
+     Easing by DIRECTION: arrivals decelerate (--ease-out), things
+     leave faster than they arrive (--ease, one duration step
+     shorter), movement in place uses --ease-in-out.
+
+     Duration by DISTANCE, not importance: in-place state change
+     --dur-fast, element moving under ~100px --dur-med, overlay
+     entering --dur-slow, scroll reveal --dur-slower.
+     ---------------------------------------------------------- */
+  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  /* CLOSED TO NEW USE. Overshoot is the loudest "startup app" signal
+     available and it contradicts calm/confident. Retained only for
+     its existing consumers. Nothing in a restaurant guide springs. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --dur-instant: 90ms;
+  --dur-fast: 160ms;
+  --dur-med: 260ms;
+  --dur-slow: 420ms;
+  --dur-slower: 680ms;
+
+  /* ----------------------------------------------------------
+     8b. THE INTERACTION CONTRACT
+     ----------------------------------------------------------
+
+     An interaction is a PAIR, not a duration. A control's LEAVE
+     lives on its base rule and its ENTER lives on `:hover` /
+     `:focus-visible` / `:focus-within`, which is the one shape of
+     event that reads as physical: it answers immediately and then
+     settles slowly. The same duration in both directions reads as
+     a state toggle instead.
+
+     `.btn` proved this in the primitive layer, and `.match-indicator`
+     copied it by hand; those two were the whole set. Every other
+     interactive rule in the product — about 120 of them, including six
+     of the seven primitives — was on `var(--dur-fast) var(--ease)`,
+     and `--ease` IS the browser's default `ease`. So the whole product
+     was animating on the curve you get by writing nothing at all,
+     symmetrically. These three tokens are that fix, named once instead
+     of copied into 120 declarations.
+
+     Use them as a pair:
+
+       .thing        { transition: background var(--tr-settle); }
+       .thing:hover  { transition-duration: var(--tr-answer); }
+
+     WEIGHT DECIDES THE ENTER. A 44px control can afford to answer in
+     90ms; a 320px card cannot — at that size an instant lift reads as
+     a twitch rather than as a response, so a card takes 160ms to come
+     up and the same 260ms to set back down. Heavier object, slower
+     answer, identical settle. That is the whole rule.
+
+     What these tokens are NOT for: entrances (a dialog, a drawer, a
+     scroll reveal), continuous motion (a media zoom under a card),
+     and anything driven by scroll position rather than by a pointer.
+     Those are arrivals, not answers, and section 8 above still owns
+     them.
+     ---------------------------------------------------------- */
+  --tr-settle: var(--dur-med) var(--ease-out);
+  --tr-answer: var(--dur-instant);
+  --tr-answer-heavy: var(--dur-fast);
+
+  /* ----------------------------------------------------------
+     9. COMPONENT TOKENS
+     ---------------------------------------------------------- */
+  /* ONE focus system. Every one of this token's consumers writes
+     `outline: var(--focus-ring)`, so the token has to BE a valid
+     outline shorthand. The previous value was a box-shadow list,
+     which is invalid for `outline` — measured: the property fell
+     back to `outline-style: none`, and because those selectors are
+     more specific than the global `:focus-visible`, they removed
+     the focus ring instead of restyling it. Saffron is the system
+     (see the note above `:focus-visible`): it is the one indicator
+     that has to read on both the paper and the ink grounds. */
+  --focus-ring: 2px solid var(--accent);
+  /* Alias, not a second decision: --r-card (18px) is the considered
+     value and it sits correctly under a 14px control nested inside
+     a card. Kept so existing consumers need no edit. */
+  --card-radius: var(--r-card);
+  --card-shadow: var(--shadow-sm);
+  --card-shadow-hover: var(--shadow-lg);
+  /* `--header-blur` lived here as an alias of --glass-blur. Removed in
+     Phase 3 item 6: an alias keeps two names alive for one material, and
+     a second name is how the two recipes diverged in the first place. Its
+     consumers were `editorial.css`'s plain `.nav` rule — which never
+     applied, because polish.css governs the header's glass from two more
+     specific state rules — and `.admin-shell__topbar`, now reading
+     `--glass-blur` directly. */
+}
+
+/* Responsive token overrides. These belong with the tokens they
+   change, not scattered through the component layers. */
+@media (max-width: 900px) {
+  :root {
+    /* One control left in the bar and a thumb to hit it with. */
+    --nav-ctl: 40px;
+  }
+}
+@media (max-width: 640px) {
+  :root {
+    --nav-h: 54px;
+  }
+}
+
+/* ============================================================
+   PROVENANCE TOKENS
+   ------------------------------------------------------------
+   The product distinguishes verified / recorded / derived / demo
+   data and never blurs them. Those states get their own tokens so
+   honesty is expressed as a consistent visual system rather than
+   as ad-hoc grey text. Consumed by the provenance components.
+   ============================================================ */
+:root {
+  --prov-verified: var(--emerald-700);
+  --prov-verified-bg: var(--emerald-50);
+  --prov-verified-line: var(--emerald-200);
+
+  --prov-recorded: var(--saffron-700);
+  --prov-recorded-bg: var(--saffron-50);
+  --prov-recorded-line: var(--saffron-200);
+
+  --prov-derived: var(--espresso-500);
+  --prov-derived-bg: var(--paper-200);
+  --prov-derived-line: var(--paper-400);
+
+  --prov-demo: var(--indigo-700);
+  --prov-demo-bg: var(--indigo-100);
+  --prov-demo-line: #d6cef7;
+}
+
+/* ============================================================
+   PHASE C — INK CANVAS & PREMIUM SURFACE TOKENS
+   ------------------------------------------------------------
+   Phase A gave the product one warm paper ground. That is right
+   for reading, but a page built entirely on it has no cadence:
+   twelve cream sections in a row read as one long scroll no
+   matter how the contents differ.
+
+   Phase C introduces a second ground — an espresso ink canvas —
+   for the page's anchor moments (hero, offers, closing
+   principles). Light and dark alternate, so the eye gets
+   punctuation and the photography gets somewhere dark to sit
+   against.
+
+   These are additive: no existing token name changes value, so
+   every surface outside Phase C scope is untouched.
+   ============================================================ */
+:root {
+  /* The ink ground. Darker and warmer than --espresso-900 so
+     photography and emerald both hold up on top of it. */
+  --canvas-ink: #14100b;
+  --canvas-ink-2: #1c1710;
+  --canvas-ink-3: #241d15;
+
+  /* Text and lines ON the ink canvas. Paper-200 rather than pure
+     white: white on warm brown-black reads cold and cheap. */
+  --on-ink: #f7f0e4;
+  --on-ink-soft: #cbbda4;
+  --on-ink-faint: #9d8f79;
+  --on-ink-line: rgba(247, 240, 228, 0.13);
+  --on-ink-line-strong: rgba(247, 240, 228, 0.3);
+  --on-ink-surface: rgba(247, 240, 228, 0.055);
+  --on-ink-surface-2: rgba(247, 240, 228, 0.1);
+
+  /* ON the ink ground, ink itself cannot be the action colour — so
+     gold takes over as both emphasis and action there, and paper
+     becomes the button surface. --on-ink-primary is what an "active
+     / affirmative" mark uses on ink; it is gold, not green, so the
+     ink bands speak the same language as the paper ones. */
+  --on-ink-primary: #f2b350;
+  --on-ink-accent: #f2b350;
+  --on-ink-heat: #e8735a;
+  --on-ink-verified: #4cc38c;
+
+  /* The ink canvas itself: ambient warm light from above, spice
+     at the shoulders, so it is atmospheric rather than flat black. */
+  --grad-canvas:
+    radial-gradient(1200px 620px at 18% -12%, rgba(224, 140, 20, 0.17), transparent 64%),
+    radial-gradient(900px 520px at 88% 4%, rgba(201, 79, 51, 0.13), transparent 62%),
+    radial-gradient(1000px 500px at 60% 108%, rgba(168, 95, 6, 0.12), transparent 68%),
+    linear-gradient(172deg, var(--canvas-ink-2) 0%, var(--canvas-ink) 100%);
+
+  /* The craving mark — used on numerals, rules and one word at a
+     time. Warmer and brighter than --grad-spice. */
+  --grad-gold: linear-gradient(100deg, var(--saffron-400) 0%, var(--saffron-600) 46%, var(--chili-500) 100%);
+
+  /* Card media scrim. Steeper than --scrim: card titles sit lower
+     and need contrast fast, without greying the whole photo. */
+  --grad-media: linear-gradient(
+    180deg,
+    rgba(20, 16, 11, 0.42) 0%,
+    rgba(20, 16, 11, 0.06) 26%,
+    rgba(20, 16, 11, 0.1) 50%,
+    rgba(20, 16, 11, 0.68) 84%,
+    rgba(20, 16, 11, 0.9) 100%
+  );
+  /* The lighter version, for cards whose text sits below the photo. */
+  --grad-media-top: linear-gradient(180deg, rgba(20, 16, 11, 0.5) 0%, rgba(20, 16, 11, 0) 46%);
+
+  /* Frosted overlay for controls sitting on photography. */
+  --glass-ink: rgba(20, 16, 11, 0.55);
+  --glass-paper: rgba(255, 253, 249, 0.86);
+  /* The header's glass, and the reason it is a *gradient* rather than one
+     of the flat fills above. A flat 86%-opaque paper over a blur is a
+     white bar with a soft edge — technically translucent, and it reads as
+     solid. Real glass has a light falloff down its face: brighter where
+     the light catches the top edge, thinner at the bottom where you can
+     see through to what is behind. These three are that falloff at three
+     densities, and the alphas are deliberately low — the material is
+     supposed to show the page moving underneath it.
+
+     Same blur recipe for all three; only the tint changes. --glass-sheet
+     is the bar at rest, --dense once it has scrolled and needs to hold
+     text against busier content, --ink for the homepage hero, where paper
+     glass would be a white band across the top of a dark photograph. */
+  --glass-sheet: linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 253, 249, 0.26) 100%);
+  --glass-sheet-dense: linear-gradient(180deg, rgba(255, 255, 255, 0.68) 0%, rgba(255, 253, 249, 0.42) 100%);
+  --glass-sheet-ink: linear-gradient(180deg, rgba(20, 16, 11, 0.38) 0%, rgba(20, 16, 11, 0.12) 100%);
+  /* THE glass recipe — one material, one recipe. Converged from the
+     old saturate(160%) blur(14px) here and saturate(180%) blur(20px)
+     in --header-blur, which were two descriptions of one surface.
+     The saturate() is not decoration: an unsaturated blur over warm
+     paper desaturates toward grey and the material reads dead.
+
+     Phase 3 item 6 finished the job the name was already promising.
+     A CSSOM audit found 27 `backdrop-filter` declarations across eight
+     files describing five different materials — blur(3px), blur(4px),
+     blur(6px), blur(8px), blur(14px), blur(16px) and blur(22px), at four
+     saturations. Eleven of the 27 never applied: a later file won the
+     cascade on the same selector, and nothing in tsc, lint or the build
+     can see that. This is now the product's only blur recipe, and
+     `--header-blur` is gone rather than aliased — one material should
+     have one name as well as one value.
+
+     Permitted on four surfaces only (KK_VISUAL_DIRECTION.md §4), and the
+     rule that decides the hard cases is **glass is chrome; content is
+     never glass**: the fixed header once it sits over content, the mobile
+     bottom nav, the drawer/refine sheet, and controls floating on
+     photography or the map. Two more tests worth applying before adding a
+     consumer, because both caught a real no-op here: a blur over a flat
+     fill or a smooth gradient returns that same fill, so it costs a
+     compositor pass and buys nothing; and a blur under a heavy dim is
+     invisible, so a scrim does not want one. */
+  --glass-blur: saturate(170%) blur(16px);
+
+  /* Phase C elevation — cards lift off paper more decisively. */
+  --shadow-card: 0 1px 2px rgba(28, 23, 16, 0.05), 0 6px 18px rgba(28, 23, 16, 0.06);
+  --shadow-card-hover: 0 6px 14px rgba(28, 23, 16, 0.08), 0 26px 60px rgba(28, 23, 16, 0.15);
+  --shadow-ink: 0 20px 60px rgba(10, 8, 5, 0.5);
+  --shadow-glow-primary: 0 0 0 1px rgba(242, 179, 80, 0.42), 0 8px 30px rgba(200, 115, 9, 0.3);
+
+  --r-card: 18px;
+}
+
+/* ============================================================
+   BASE — set on top of the reset in index.css
+   ============================================================ */
+body {
+  background-color: var(--bg);
+  background-image: var(--ambient);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1, 'liga' 1;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: var(--weight-semi);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-snug);
+  color: var(--ink);
+  text-wrap: balance;
+  /* Newsreader ships the opsz 6..72 axis and `auto` is already the
+     browser default for a variable font, so this changes no pixels.
+     It is declared to state the intent: the serif is meant to be
+     optically sized, and a future non-variable fallback must not
+     silently lose that. */
+  font-optical-sizing: auto;
+}
+
+h1 { font-size: var(--fs-h1); }
+h2 { font-size: var(--fs-h2); }
+h3 { font-size: var(--fs-h3); }
+h4 { font-size: var(--fs-h4); }
+
+/* Negative tracking is for LARGE type only. Below ~1.6rem, tightening
+   a serif closes its apertures and the text reads muddy rather than
+   refined — so tracking returns to 0 at h3. This is the single rule
+   that most separates type that was set from type that was
+   configured. See KK_VISUAL_DIRECTION.md §1. */
+h3, h4 { letter-spacing: 0; }
+
+p { text-wrap: pretty; }
+a { text-underline-offset: 3px; }
+
+::selection {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+/* Saffron, not ink: the focus ring is the one indicator that has to
+   read on BOTH grounds. Ink is invisible on the ink canvas and the
+   old emerald-500 measured ~2.4:1 against it. Saffron-600 clears the
+   3:1 non-text threshold on warm paper and is unmissable on ink. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   TYPOGRAPHY UTILITIES
+   ============================================================ */
+.t-mega {
+  font-family: var(--font-display);
+  font-size: var(--fs-mega);
+  font-weight: var(--weight-bold);
+  line-height: 0.94;
+  letter-spacing: var(--tracking-tight);
+}
+.t-display {
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+}
+/* The section ranks. Each carries its own weight, leading and
+   tracking so the utility is self-contained on any element, not only
+   on an h1-h4 that already inherits them from the base layer. Note
+   where tracking stops: snug at h1/h2, ZERO at h3 — same optical rule
+   as the base headings above. */
+.t-h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  font-weight: var(--weight-semi);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-snug);
+}
+.t-h2 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  font-weight: var(--weight-semi);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-snug);
+}
+.t-h3 {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--weight-semi);
+  line-height: var(--lh-snug);
+  letter-spacing: 0;
+}
+
+.t-lead {
+  font-size: var(--fs-lead);
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+/* Editorial serif italic — the "human voice" treatment */
+.t-voice {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
+}
+
+/* Uppercase micro-label. Used for eyebrows and provenance. */
+.t-label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* Tabular figures — prices, counts, stats */
+.t-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.01em;
+}
+
+/* A large price / stat moment */
+.t-stat {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.6vw, 3rem);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Gradient ink for a single emphasised word. Used sparingly. */
+.t-spice {
+  background: var(--grad-spice);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.t-balance { text-wrap: balance; }
+.t-measure { max-width: var(--container-text); }
+
+/* ============================================================
+   ELEVATION / SURFACE UTILITIES
+   ============================================================ */
+.u-surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+.u-surface-raised {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-md), var(--ring-inset);
+}
+.u-ink-surface {
+  background: var(--grad-ink);
+  color: var(--ink-inverse);
+  border-radius: var(--card-radius);
+}
+.u-ink-surface h1,
+.u-ink-surface h2,
+.u-ink-surface h3,
+.u-ink-surface h4 { color: var(--paper-50); }
+
+/* Hairline divider with an editorial tick */
+.u-rule {
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-strong), transparent);
+  border: 0;
+}
+
+/* ============================================================
+   MOTION PRIMITIVES
+   ------------------------------------------------------------
+   Canonical keyframes. index.css and editorial.css previously
+   defined three spinners and two shimmers between them; these are
+   the ones to use going forward.
+   ============================================================ */
+@keyframes kk-spin { to { transform: rotate(360deg); } }
+
+@keyframes kk-shimmer { to { background-position: -200% 0; } }
+
+/* The entrance vocabulary has exactly two members: kk-fade-in and
+   kk-rise. Never scale from small — a zoom-in entrance reads as a
+   notification rather than as content — and never slide in from
+   off-screen, which implies the content came from somewhere it
+   didn't.
+
+   "Exactly two" used to be aspirational: twelve stylesheets had grown
+   thirty-odd private keyframes between them, and sixteen of those were
+   a rise that differed from this one only in how far it travelled.
+   kk-rise is now parameterised instead — the pattern the select menu had
+   already arrived at on its own — so a caller states the distance as a
+   value rather than defining a keyframe to hold it:
+
+     .thing { animation: kk-rise var(--dur-med) var(--ease-out) both;
+              --kk-rise-from: 6px; }
+
+   --kk-rise-from may be negative, which is how a menu that opens
+   downward from its trigger arrives from above; --kk-rise-x covers the
+   one drawer that travels on the other axis. Both default to the
+   settled 14px rise, so the common case states nothing. */
+@keyframes kk-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes kk-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(var(--kk-rise-x, 0), var(--kk-rise-from, 14px), 0);
+  }
+  to { opacity: 1; transform: none; }
+}
+
+/* One ring, expanding outward and thinning to nothing. The third member of
+   the vocabulary, and the only one that is not an entrance: it marks a
+   moment rather than an arrival, which is why it is the beat a toggle gets
+   when it turns on.
+
+   It was written for the live dot in the phase-C hero and hardcoded to
+   gold there. Both of its numbers are properties now, because the colour of
+   the ring belongs to whatever it is emanating from — a terracotta heart
+   throwing a gold ring is the product forcing its brand onto a control
+   whose meaning is somebody else's. The defaults reproduce the original dot
+   exactly, so the one older consumer states nothing.
+
+   Fading to `transparent` rather than to the same hue at zero alpha is
+   deliberate: <color> interpolation is premultiplied, so the ring thins out
+   in its own colour instead of dimming toward black on the way. That is
+   what lets the tint be a single `var()` the caller supplies. */
+@keyframes kk-pulse {
+  0%   { box-shadow: 0 0 0 0 var(--kk-pulse-tint, rgba(242, 179, 80, 0.55)); }
+  70%  { box-shadow: 0 0 0 var(--kk-pulse-reach, 9px) transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* CLOSED TO NEW USE — same reasoning as --ease-spring. The 1.03
+   overshoot is a bounce, and bounce is the loudest "startup app"
+   signal available. Retained only for its existing consumers. */
+@keyframes kk-pop {
+  0% { transform: scale(0.92); opacity: 0; }
+  60% { transform: scale(1.03); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* `kk-sheen` — a band of light travelling across the search pill on hover —
+   was declared here and used twice in polish.css. Both uses are gone and so
+   is the keyframe.
+
+   It was the wrong answer to a real complaint. The pill's hover had been a
+   colour swap and read as painted on, so it got a highlight sweeping across
+   it; but a white band raking a search field every time the pointer passes
+   is a flourish the control has not earned, and three of them in a row (the
+   sweep, a 1px lift with a shadow, and a magnifier that scaled and rotated
+   8°) is a demo, not a header. What answers "is this surface real" here is
+   the field itself moving: hovering springs it 16px wider — an anticipation
+   of exactly what a click will do — and clicking carries that velocity
+   straight into the full opening. See components/SearchBar.tsx.
+
+   Sixteen keyframes again, which is where the vocabulary note above says
+   this file should stay. */
+
+/* Scroll-reveal. Applied by the useReveal hook, which flips
+   data-reveal from "pending" to "shown" via IntersectionObserver.
+   Content is fully visible by default so it can never be trapped
+   hidden if JS or the observer is unavailable, and the hook only ever
+   writes the attribute from the browser — it is never rendered, so
+   none of the prerendered documents ship hidden content.
+
+   --dur-slower is the one place §5's duration-by-distance scale uses
+   its longest value: a section arriving as you scroll to it has the
+   reader's attention for as long as the scroll lasts, so 680ms reads
+   as weight. At --dur-slow it reads as a UI transition. */
+[data-reveal='pending'] {
+  opacity: 0;
+  transform: translate3d(0, 18px, 0);
+}
+[data-reveal='shown'] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-slower) var(--ease-out),
+    transform var(--dur-slower) var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal='pending'],
+  [data-reveal='shown'] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* A target that never enters the viewport stays `pending`, which is
+   correct on screen and wrong on paper — printing a restaurant page
+   would emit blank space for every section below the first. Print has
+   no scroll, so it has no reveal. */
+@media print {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

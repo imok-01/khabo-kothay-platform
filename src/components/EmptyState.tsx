@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { SearchX } from 'lucide-react';
+import { SearchX, ArrowRight } from 'lucide-react';
+import { Button } from './ui';
 
 export interface Suggestion {
   label: string;
@@ -31,7 +32,12 @@ export default function EmptyState({
       <p>{message}</p>
       {actionLabel && actionTo && (
         <div className="empty__actions">
-          <Link to={actionTo} className="btn btn--primary">{actionLabel}</Link>
+          {/* `iconAfter`, so the one way out of a dead end leans towards where
+              it goes when you reach for it. An empty state is the moment the
+              product most needs to feel like it is helping. */}
+          <Button variant="primary" to={actionTo} iconAfter={ArrowRight}>
+            {actionLabel}
+          </Button>
         </div>
       )}
       {suggestions && suggestions.length > 0 && (

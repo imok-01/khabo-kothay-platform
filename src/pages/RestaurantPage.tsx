@@ -6,7 +6,6 @@ import {
   Navigation,
   Globe,
   Check,
-  ChefHat,
   BadgePercent,
   History,
   ChevronLeft,
@@ -14,12 +13,21 @@ import {
   ExternalLink,
   Languages,
   Phone,
+  CalendarClock,
+  Flag,
+  Send,
 } from 'lucide-react';
 import type { Restaurant } from '../types';
 import { cleanAddressSegment, formatAddress, formatCurrency, isPoorAddress, pluralize } from '../lib/format';
 import { recommendSimilar } from '../lib/recommendations';
-import { formatOpeningHours, formatScrapedHours, openNowLabel } from '../lib/openHours';
-import { priceForTwoDisplay, priceSummary } from '../lib/priceDisplay';
+import {
+  formatOpeningHours,
+  formatScrapedHours,
+  minutesUntilOpen,
+  openStateNow,
+  recordedHoursHeadline,
+} from '../lib/openHours';
+import { priceSummary } from '../lib/priceDisplay';
 import { usePageMeta } from '../lib/usePageMeta';
 import { buildRestaurantMeta } from '../lib/restaurantMeta';
 import { MARKET } from '../lib/market';
@@ -31,13 +39,15 @@ import { useRestaurantMenu } from '../hooks/useRestaurantMenu';
 import { useDiscoveryFacts } from '../hooks/useDiscoveryFacts';
 import { useReviewSamples } from '../hooks/useReviewSamples';
 import { useGeolocation } from '../hooks/useGeolocation';
+import { useReveal } from '../hooks/useReveal';
 import { selectRestaurantPhotos } from '../lib/photos';
 import { isSupabaseConfigured } from '../integrations/supabase/client';
 import { fetchOwnerImages } from '../repositories/imageUploadRepository';
 import type { RestaurantImageSource } from '../domain/images';
+import { dedupePhotos } from '../domain/images';
 import { getOffersForRestaurant, OFFERS_ENABLED } from '../hooks/useOffers';
-import { distanceKm } from '../lib/geo';
-import { googleMapsDirectionsUrl, googleMapsEmbedUrl, googleMapsPlaceUrl, googleMapsReviewsUrl } from '../lib/maps';
+import { distanceKm, formatDistance } from '../lib/geo';
+import { googleMapsDirectionsUrl, googleMapsReviewsUrl } from '../lib/maps';
 import { effectiveRating, effectiveReviewCount } from '../lib/ratings';
 
 import RatingStars from '../components/RatingStars';
@@ -45,9 +55,12 @@ import RatingSource from '../components/RatingSource';
 import RestaurantSignals from '../components/RestaurantSignals';
 import RestaurantCard from '../components/RestaurantCard';
 import CustomerHighlights from '../components/CustomerHighlights';
+import DiscoveryFacts from '../components/DiscoveryFacts';
+import RestaurantLocationMap from '../components/RestaurantLocationMap';
 
 import ImageGallery from '../components/ImageGallery';
 import ShareButton from '../components/ShareButton';
+import Provenance, { type ProvenanceLevel } from '../components/Provenance';
 import EmptyState from '../components/EmptyState';
 import FetchError from '../components/FetchError';
 import { SkeletonDetail } from '../components/Skeleton';
@@ -61,6 +74,7 @@ import { useUserReviews, upsertFlag } from '../hooks/useReviews';
 import { applyApprovedDraft } from '../lib/restaurantDraft';
 import { useLiveGoogle } from '../hooks/useLiveGoogle';
 import { businessStatusLabel, liveOpenNowLabel, mergeLiveGoogle } from '../lib/liveGoogleView';
+import { Button } from '../components/ui';
 
 export default function RestaurantPage() {
   const { id } = useParams<{ id: string }>();
@@ -74,6 +88,13 @@ export default function RestaurantPage() {
   const navigate = useNavigate();
   const userReviews = useUserReviews();
   useRestaurantDrafts(); // re-render when an approved profile draft lands
+  /* This page has no `__inner` wrapper, so the section itself is the target —
+     safe here because `.detail__section` carries no full-bleed ground of its
+     own. The aside is left out on purpose: it holds the sticky action card, and
+     a card that arrives while it is also being stuck reads as a glitch. */
+  const revealRef = useReveal<HTMLElement>({
+    targets: '.detail__main > .detail__section, .detail__inner > .detail__section',
+  });
   const [priceDish, setPriceDish] = useState<MenuItem | null>(null);
   const [requestingOrigin, setRequestingOrigin] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -129,7 +150,12 @@ export default function RestaurantPage() {
     };
   }, [restaurant, configured]);
 
-  const images = [...gallery.photos, ...ownerPhotos];
+  // `fetchOwnerImages` reads `image_references`, which is the same table the
+  // transformer built `google.photos` from — so every Google photo arrives here
+  // twice, once labelled "photo from Google Maps" and once "owner photo". That
+  // is what made a three-photo restaurant count six and repeat each picture.
+  // Deduped on the photo itself, so a genuine owner upload still appends.
+  const images = dedupePhotos([...gallery.photos, ...ownerPhotos]);
   const photoSourceLabel =
     gallery.leadSource === 'google-photos'
       ? 'Photos from Google Maps'
@@ -204,8 +230,8 @@ export default function RestaurantPage() {
         <div className="section__inner">
           <EmptyState
             icon={<MapPin size={34} />}
-            title="Restaurant not found"
-            message="This place might have moved — or the address is wrong. Let's find you another spot."
+            title="This place isn't in our guide"
+            message="It may have closed, changed its name, or simply not be listed yet. Dhaka has more worth your evening either way."
             actionLabel="Browse all restaurants"
             actionTo="/explore"
           />
@@ -221,7 +247,6 @@ export default function RestaurantPage() {
   const displayRestaurant: Restaurant = googleView ? { ...effective, google: googleView } : effective;
   const similar = recommendSimilar(effective, 4);
   const fav = isFavorite(effective.id);
-  const openStatus = liveOpenNowLabel(liveGoogle.snapshot, openNowLabel(effective.openingHours));
   const businessStatus = businessStatusLabel(liveGoogle.snapshot?.businessStatus);
   const offers = getOffersForRestaurant(effective.id);
   const myReviewsHere = userReviews.filter((r) => r.restaurantId === effective.id);
@@ -238,34 +263,48 @@ export default function RestaurantPage() {
     city: displayRestaurant.city,
     isVerified: !!verifiedAddress,
   });
-  // Honest sub-note: "Verified address" when a verified value is shown;
-  // otherwise the remaining address lines; nothing when a complete recorded
-  // address is displayed; "Address to be verified" only when there is no
-  // usable address at all (the raw value is a fragment/plus code).
+  // Whether the recorded address is actually usable, or a fragment / plus
+  // code. This drives the address confidence level in the aside — the old
+  // free-text `addressNote` is gone, because the full address lines are now
+  // rendered in one place and the source is stated by a provenance badge
+  // rather than by a second sentence repeating part of the address.
   const hasUsableAddress = Boolean(
     (verifiedAddress || displayRestaurant.address) &&
       !isPoorAddress(cleanAddressSegment(verifiedAddress || displayRestaurant.address || '')),
   );
-  const addressNote = verifiedAddress
-    ? 'Address verified'
-    : addressLines.slice(1).join(', ') || (hasUsableAddress ? '' : 'Address to be verified');
 
   // Graceful hours display: weekly maps render per-day, single ranges render
   // one neutral row, and unparseable strings say "Hours being verified".
   // Recorded Google-scrape fragments ("Open Closes 1 am", "Closed Opens
   // 12 pm Sat") render as one honest summary row rather than being hidden.
+  // The rows are rendered once, in the aside — the decision bar shows only
+  // the live open/closed state, never a second copy of the schedule.
   const rawHours = googleView?.openingHours || displayRestaurant.openingHours;
   const structuredHours = formatOpeningHours(rawHours);
   const scrapedRow = formatScrapedHours(rawHours);
   const hoursRows = structuredHours ?? (scrapedRow ? [scrapedRow] : null);
   const hoursFromScrape = !structuredHours && Boolean(scrapedRow);
-  const hoursValue = hoursRows
-    ? hoursRows.length > 1
-      ? `${hoursRows[0].day} ${hoursRows[0].label} · ${hoursRows.length} days`
-      : `${hoursRows[0].day}: ${hoursRows[0].label}`
-    : rawHours
-      ? 'Hours being verified'
-      : 'Not recorded';
+
+  // ---- Open state -------------------------------------------------------
+  // The decision bar and the aside used to read DIFFERENT sources: the stat
+  // took `openNowLabel(effective.openingHours)` while the aside took
+  // `rawHours`. Worse, `openNowLabel` cannot parse a Google scrape fragment,
+  // so on 202 of the 207 catalogue venues the bar said "Hours being verified"
+  // directly above an aside printing the very hours it claimed not to have.
+  //
+  // Both surfaces now read `rawHours`. `openStateNow` returns a state only
+  // when the string genuinely supports one (a schedule, day-aware), and
+  // returns null for every scrape fragment — a fragment's "Closed" was true at
+  // scrape time and says nothing about now. When there is no state to claim,
+  // the stat stops posing as a live indicator and states the recorded schedule
+  // instead, which is the fact the aside is showing anyway.
+  const openStatus = liveOpenNowLabel(liveGoogle.snapshot, openStateNow(rawHours) ?? undefined);
+  const recordedHeadline = recordedHoursHeadline(scrapedRow);
+  const hoursStatLabel = openStatus ? 'Open right now' : 'Opening hours';
+  const hoursStatValue =
+    openStatus ??
+    recordedHeadline ??
+    (structuredHours ? 'Not recorded for today' : rawHours ? 'Hours being verified' : 'Hours not recorded');
 
   // Honest "how expensive?" summary — composes the budget tier, the verified
   // price-for-two, and the menu-derived estimate with no invented ranges.
@@ -293,11 +332,63 @@ export default function RestaurantPage() {
     }
   };
 
+  // ---- Confidence levels ------------------------------------------------
+  // Each level is derived strictly from how the value was obtained. Nothing
+  // is upgraded for presentation: an estimate is never shown as verified,
+  // and a value we merely recorded is never shown as confirmed.
+  const priceProv: ProvenanceLevel | null =
+    priceSummaryData.kind === 'verified' ? 'verified' : priceSummaryData.kind === 'estimated' ? 'derived' : null;
+  const priceProvLabel = priceSummaryData.kind === 'verified' ? 'Verified price' : 'Estimated from menu';
+
+  const addressProv: ProvenanceLevel = verifiedAddress ? 'verified' : hasUsableAddress ? 'recorded' : 'derived';
+
+  // Open-now is only "live" when Google returned a current-hours payload for
+  // this refresh; otherwise the status is computed from recorded hours.
+  const openIsLive = Boolean(
+    liveGoogle.snapshot?.currentHours && liveGoogle.snapshot.currentHours.openNow !== undefined,
+  );
+  const hoursProv: ProvenanceLevel = openIsLive ? 'verified' : hoursRows ? 'recorded' : 'derived';
+
+  // Distance is shown only when the user has actually shared their location —
+  // the city-centre fallback must never be presented as "from you".
+  const userDistanceKm = geo.status === 'ready' ? distanceKm(geo.reference, restaurant) : null;
+
+  // "Where" shows the neighbourhood when we have one, otherwise the city. The
+  // supporting line must never restate the value above it: without a recorded
+  // neighbourhood there is nothing more specific to add, so it is omitted.
+  const neighbourhood = displayRestaurant.location?.trim();
+  const whereValue = neighbourhood || displayRestaurant.city || MARKET.city;
+  const whereSub =
+    userDistanceKm !== null
+      ? `${formatDistance(userDistanceKm)} from you`
+      : neighbourhood
+        ? displayRestaurant.city || MARKET.city
+        : null;
+
+  // "Opens in 2h 15m" for a closed venue with parseable hours. Derived, so it
+  // carries the same confidence level as the hours it came from.
+  //
+  // Restricted to a single unambiguous window on purpose. `minutesUntilOpen`
+  // leans on the unanchored `HOURS_RE`, so on a weekly map it would count down
+  // to the FIRST day's opening whatever day it is — a wrong number stated with
+  // confidence. `openStateNow` is day-aware and can now report "Closed now"
+  // for a weekly schedule, which is exactly the case that would have exposed
+  // it, so the countdown is gated to the one shape it can answer.
+  const hoursAreSingleRange = structuredHours?.length === 1 && structuredHours[0].day === 'Hours';
+  const untilOpenMins =
+    openStatus === 'Closed now' && hoursAreSingleRange ? minutesUntilOpen(rawHours) : null;
+  const opensInLabel =
+    untilOpenMins && untilOpenMins > 0
+      ? untilOpenMins < 60
+        ? `Opens in ${untilOpenMins} min`
+        : `Opens in ${Math.floor(untilOpenMins / 60)}h ${untilOpenMins % 60 > 0 ? `${untilOpenMins % 60}m` : ''}`.trim()
+      : null;
+
   return (
-    <main className="detail">
+    <main className="detail" ref={revealRef}>
       <div className="detail__inner">
         <button type="button" className="detail__back" onClick={goBack}>
-          <ChevronLeft size={15} aria-hidden="true" /> Back
+          <ChevronLeft size={16} aria-hidden="true" /> Back
         </button>
 
         {/* Photo gallery — single source of truth via ImageGallery */}
@@ -342,7 +433,7 @@ export default function RestaurantPage() {
           <div className="detail__chips">
             {restaurant.location && (
               <Link to={`/area/${encodeURIComponent(restaurant.location)}`} className="chip chip--link">
-                <MapPin size={13} aria-hidden="true" /> {restaurant.location}
+                <MapPin size={14} aria-hidden="true" /> {restaurant.location}
               </Link>
             )}
             {restaurant.cuisines.map((c) => (
@@ -362,58 +453,166 @@ export default function RestaurantPage() {
             ))}
           </div>
 
-          {/* Primary actions */}
+          {/*
+            Action hierarchy: exactly one primary. Directions is the real
+            high-intent action on a discovery page, so it takes the primary
+            slot and uses the geolocation-aware handler (routing from where
+            the user actually is) rather than a bare link. Everything else is
+            a genuine but secondary action.
+          */}
           <div className="detail__actions">
-            <span
-              className="btn btn--primary"
-              aria-disabled="true"
-              style={{ cursor: 'not-allowed', opacity: 0.65 }}
-              title="Reservations are not available in this preview"
+            {/* `busy`, not `disabled`. Asking the browser for your location can
+                take a couple of seconds, and the old control's only sign of
+                life was its own label changing — invisible if you were already
+                looking at the map. The primitive puts the spinner in and keeps
+                the specific words, because "Getting your location…" says more
+                than a spinner does. */}
+            <Button
+              variant="primary"
+              icon={Navigation}
+              busy={requestingOrigin && geo.status === 'locating'}
+              onClick={askDirections}
             >
-              Reservations coming soon
-            </span>
-            <a href={directionsUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost">
-              <Navigation size={15} aria-hidden="true" /> Directions
-            </a>
+              {requestingOrigin && geo.status === 'locating' ? 'Getting your location…' : 'Get directions'}
+            </Button>
             {googleView?.phone && (
-              <a href={`tel:${googleView.phone}`} className="btn btn--ghost">
-                <Phone size={15} aria-hidden="true" /> Call
-              </a>
+              <Button variant="ghost" href={`tel:${googleView.phone}`} icon={Phone}>
+                Call
+              </Button>
             )}
             {websiteUrl && (
-              <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="btn btn--ghost">
-                <Globe size={15} aria-hidden="true" /> Website
-              </a>
+              /* Globe names the destination, `ExternalLink` names the fact that
+                 pressing it leaves Khabo Kothay for a site we do not control. */
+              <Button
+                variant="ghost"
+                href={websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                icon={Globe}
+                iconAfter={ExternalLink}
+              >
+                Website
+              </Button>
             )}
             <ShareButton
               url={`/restaurant/${restaurant.id}`}
               title={restaurant.name}
               text={restaurant.tagline || `${restaurant.cuisines.slice(0, 2).join(', ')} restaurant in ${restaurant.location || MARKET.city}`}
             />
+            {/* Fallback for users who prefer a plain map link (and for
+                right-click / open-in-new-tab), kept deliberately quiet. */}
+            <Button
+              variant="subtle"
+              size="sm"
+              href={directionsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              iconAfter={ExternalLink}
+            >
+              Open in Maps
+            </Button>
           </div>
 
+          {/*
+            Reservations stays visible as an intentional forthcoming feature.
+            It is presented as a roadmap promise rather than a disabled
+            primary button: a dead CTA reads as broken and outranks the
+            actions that work, which is the opposite of what this feature
+            should do for trust.
+          */}
+          <p className="soon-strip">
+            <span className="soon-strip__icon" aria-hidden="true">
+              <CalendarClock size={16} />
+            </span>
+            <span className="soon-strip__body">
+              <strong>Table reservations are coming to Khabo Kothay.</strong>{' '}
+              Book a table at {restaurant.name} without leaving the app.
+            </span>
+            <span className="soon-strip__tag">In development</span>
+          </p>
+
+          {/*
+            Decision bar — the three facts that decide whether someone goes.
+            Reference detail (the full address, the weekly schedule, phone)
+            lives only in the "Know before you go" aside, so each fact on
+            this page has exactly one home.
+          */}
           <div className="detail__stats">
-            <div className="stat">
-              <span className="stat__label">How expensive?</span>
-              <span className="stat__value">{priceSummaryData.tierLabel}</span>
-              <span className="stat__sub">{priceSummaryData.spendLabel}</span>
-              {priceSummaryData.perPersonLabel && (
-                <span className="stat__sub">{priceSummaryData.perPersonLabel}</span>
-              )}
-              <span className="stat__sub stat__sub--note">{priceSummaryData.evidence}</span>
-            </div>
-            <div className="stat">
-              <span className="stat__label">Location</span>
-              <span className="stat__value"><MapPin size={14} style={{ verticalAlign: '-2px' }} aria-hidden="true" /> {addressLines[0] ?? (displayRestaurant.location || 'Dhaka')}</span>
-              <span className="stat__sub">{addressNote}</span>
-            </div>
-            <div className="stat">
-              <span className="stat__label">Hours</span>
-              <span className="stat__value">{hoursValue}</span>
+            <div className="stat stat--price">
+              {/*
+                The figure is the money. This cell used to lead with the tier
+                ("৳৳ Mid-range") and bury "About ৳1,800 for two (approx., no
+                drinks)" in 13px grey underneath it, followed by a per-person
+                line and a provenance badge — four stacked lines of text in a
+                cell whose entire job is to answer "how much?". The number
+                leads now and the tier rides beside the label as the
+                qualifier it always was.
+              */}
+              <span className="stat__label">
+                What you'll spend
+                {priceSummaryData.amount && (
+                  <span className="stat__tier">{priceSummaryData.tierLabel}</span>
+                )}
+              </span>
+              <span className={`stat__value${priceSummaryData.amount ? ' stat__figure' : ''}`}>
+                {priceSummaryData.amount ?? priceSummaryData.tierLabel}
+              </span>
               <span className="stat__sub">
-                {hoursFromScrape
-                  ? 'Recorded hours — confirm with restaurant'
-                  : `${businessStatus && businessStatus !== 'Operational' ? `${businessStatus} · ` : ''}${openStatus ?? (rawHours ? (displayRestaurant.hasDelivery ? 'Delivery available' : 'Dine-in only') : 'Hours being verified')}`}
+                {[
+                  priceSummaryData.amountNote ?? priceSummaryData.spendLabel,
+                  priceSummaryData.perPersonLabel,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+              {priceProv ? (
+                <span className="stat__prov">
+                  <Provenance level={priceProv} size="sm" title={priceSummaryData.evidence}>
+                    {priceProvLabel}
+                  </Provenance>
+                </span>
+              ) : (
+                <span className="stat__sub">{priceSummaryData.evidence}</span>
+              )}
+            </div>
+
+            <div className="stat">
+              <span className="stat__label">Where</span>
+              <span className="stat__value">
+                <MapPin size={16} style={{ verticalAlign: '-2px' }} aria-hidden="true" /> {whereValue}
+              </span>
+              {whereSub && <span className="stat__sub">{whereSub}</span>}
+            </div>
+
+            <div className="stat">
+              <span className="stat__label">{hoursStatLabel}</span>
+              <span
+                className={`stat__value${openStatus === 'Open now' ? ' stat__value--open' : openStatus === 'Closed now' ? ' stat__value--shut' : ''}`}
+              >
+                {openStatus && <span className="stat__pip" aria-hidden="true" />}
+                {hoursStatValue}
+              </span>
+              {(opensInLabel || (businessStatus && businessStatus !== 'Operational')) && (
+                <span className="stat__sub">
+                  {[businessStatus && businessStatus !== 'Operational' ? businessStatus : null, opensInLabel]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              )}
+              <span className="stat__prov">
+                <Provenance
+                  level={hoursProv}
+                  size="sm"
+                  title={
+                    openIsLive
+                      ? 'Live opening status from Google for this venue.'
+                      : hoursRows
+                        ? 'Calculated from the opening hours we have on record — confirm with the restaurant.'
+                        : 'We do not have usable opening hours for this venue yet.'
+                  }
+                >
+                  {openIsLive ? 'Live from Google' : hoursRows ? 'From recorded hours' : 'Not yet recorded'}
+                </Provenance>
               </span>
             </div>
           </div>
@@ -421,6 +620,55 @@ export default function RestaurantPage() {
 
         <div className="detail__grid">
           <div className="detail__main">
+            {/*
+              "Did you know?" leads the body, ahead of the menu.
+
+              It used to sit third. That order was right when the section was a
+              grid of tick-marked bullets — an often-empty block of trivia has no
+              business above the menu — but it was ranking the section by how it
+              looked rather than by what it is. These are the only sentences on
+              the page that were researched, sourced and approved one at a time,
+              and they are the whole answer to "why this place and not the one
+              next door", which is the question a reader arrives with and the
+              menu cannot answer. It is also self-limiting in a way a menu is
+              not: it renders nothing at all when there are no approved facts, so
+              on the venues where the menu should lead, it still does.
+            */}
+            {hasDiscoveryFacts && (
+              <section className="detail__section detail__section--dyk">
+                <div className="detail__section-head">
+                  <span className="detail__section-eyebrow">Beyond the listing</span>
+                  <h2>Did you <em>know</em>?</h2>
+                  {/* Under 56 characters on purpose — `.detail__section-sub` is
+                      capped at 56ch, and the sentence this replaced wrapped to
+                      leave one word alone on the second line. */}
+                  <span className="detail__section-sub">
+                    Approved one at a time, each from a named source.
+                  </span>
+                </div>
+                <DiscoveryFacts facts={discoveryFacts.facts} />
+              </section>
+            )}
+
+            {/*
+              The menu is the single most-wanted thing on this page and used
+              to sit fifth, below an often-empty "Signature dishes" block.
+              It leads the body wherever there are no discovery facts to
+              introduce the venue first, and the curated signature dishes are
+              merged into its own Signature pane rather than pre-empting it
+              with a separate section that usually had nothing to show.
+            */}
+            <MenuSection
+              restaurant={restaurant}
+              menu={menuState.menu}
+              menuStatus={menuState.status}
+              onRetryMenu={menuState.reload}
+              priceDish={priceDish}
+              onPriceDish={setPriceDish}
+              website={websiteUrl}
+              curatedSignatures={restaurant.signatureDishes}
+            />
+
             {hasCommunityContent && (
               <section className="detail__section">
                 <h2>Why people like it</h2>
@@ -437,39 +685,6 @@ export default function RestaurantPage() {
                 )}
               </section>
             )}
-
-            {hasDiscoveryFacts && (
-              <section className="detail__section">
-                <h2>Did you know?</h2>
-                <ul className="detail__highlights">
-                  {discoveryFacts.facts.map((f) => (
-                    <li key={f.id}>
-                      <Check size={14} style={{ color: 'var(--success)', verticalAlign: '-2px', marginRight: 6 }} aria-hidden="true" />
-                      {f.factText}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            <section className="detail__section">
-              <h2>Signature dishes</h2>
-              {restaurant.signatureDishes.length > 0 ? (
-                <div className="dishes">
-                  {restaurant.signatureDishes.map((d) => (
-                    <div key={d} className="dish">
-                      <span className="dish__icon"><ChefHat size={18} aria-hidden="true" /></span>
-                      <strong>{d}</strong>
-                      <span className="dish__tag">Chef's pick</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-                  Signature picks will appear here once our team verifies what this kitchen is known for.
-                </p>
-              )}
-            </section>
 
             {OFFERS_ENABLED && (
             <section id="offers" className="detail__section">
@@ -500,7 +715,7 @@ export default function RestaurantPage() {
                                   onClick={() => setPriceDish(dish)}
                                   aria-label={`Price history for ${dish.name}`}
                                 >
-                                  <History size={11} aria-hidden="true" /> {dish.name} · {formatCurrency(dish.price)}
+                                  <History size={12} aria-hidden="true" /> {dish.name} · {formatCurrency(dish.price)}
                                 </button>
                               ) : null;
                             })}
@@ -521,34 +736,27 @@ export default function RestaurantPage() {
               </section>
             )}
 
-            <MenuSection
-              restaurant={restaurant}
-              menu={menuState.menu}
-              menuStatus={menuState.status}
-              onRetryMenu={menuState.reload}
-              priceDish={priceDish}
-              onPriceDish={setPriceDish}
-              website={websiteUrl}
-            />
+            {/*
+              This section was headed "Your notes" and every line in it said
+              note. Nothing underneath ever did: the entity is `UserReview`,
+              the service is documented "KK community reviews only", the form
+              collects a 1–5 rating with word labels, a favourite dish and a
+              visit status, and saving grants the first-review reward. It is a
+              review section that had been relabelled, so the label went back.
 
+              The device-only caveat is real — every sync path still writes to
+              the local store — and is stated here, once. It used to appear six
+              times between this heading and the bottom of the form.
+            */}
             <section className="detail__section">
               <div className="detail__section-head">
-                <h2>Your notes</h2>
+                <span className="detail__section-eyebrow">In your words</span>
+                <h2>Your review</h2>
                 <span className="detail__section-sub">
-                  Notes you save stay on this device only — not shared publicly yet.
+                  Stays on this device for now — not published, and never sent to Google.
                 </span>
               </div>
               <WriteReview restaurant={restaurant} onChanged={() => undefined} />
-              {myReviewsHere.length === 0 && (
-                <p className="t-sm" style={{ color: 'var(--ink-soft)', marginBottom: 'var(--s3)' }}>
-                  Save a private note about this place. It's stored on this device only and isn't shared publicly yet.
-                </p>
-              )}
-              {myReviewsHere.length > 0 && (
-                <p className="t-sm" style={{ color: 'var(--ink-soft)', marginBottom: 'var(--s2)' }}>
-                  Your private notes (saved on this device only):
-                </p>
-              )}
               <div className="reviews">
                 {myReviewsHere.map((r) => (
                   <blockquote key={r.id} className="review review--mine">
@@ -560,7 +768,7 @@ export default function RestaurantPage() {
                       </div>
                       {r.visitStatus && (
                         <span className="visit-badge">
-                          <Check size={11} aria-hidden="true" /> {r.visitStatus === 'regular' ? 'Regular' : 'Visited'}{r.visitCount ? ` · ${r.visitCount}×` : ''}
+                          <Check size={12} aria-hidden="true" /> {r.visitStatus === 'regular' ? 'Regular' : 'Visited'}{r.visitCount ? ` · ${r.visitCount}×` : ''}
                         </span>
                       )}
                       <span className="review__date">{r.date}{r.edited ? ' · edited' : ''}</span>
@@ -575,7 +783,7 @@ export default function RestaurantPage() {
                       </p>
                     )}
                     <div className="review__foot">
-                      <span className="review__helpful"><ThumbsUp size={11} aria-hidden="true" /> {r.helpfulCount} found this helpful</span>
+                      <span className="review__helpful"><ThumbsUp size={12} aria-hidden="true" /> {r.helpfulCount} found this helpful</span>
                     </div>
                   </blockquote>
                 ))}
@@ -585,10 +793,23 @@ export default function RestaurantPage() {
             {googleView && (
               <section className="detail__section">
                 <div className="detail__section-head">
+                  <span className="detail__section-eyebrow">Verified elsewhere</span>
                   <h2>Google reviews</h2>
                   <span className="detail__section-sub">
-                    {googleView.rating.toFixed(1)}★ · {googleView.reviewCount.toLocaleString('en-IN')} reviews on Google Maps
+                    {googleView.rating.toFixed(1)}★ average from {googleView.reviewCount.toLocaleString('en-IN')} reviews
                   </span>
+                  {/* The only route to the full set used to be a bare inline
+                      link at the very bottom, and only when we had no reviews
+                      to show. In the head it is an affordance; down there it
+                      was a loose end. */}
+                  <a
+                    className="detail__section-action"
+                    href={googleMapsReviewsUrl(restaurant)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    All on Google Maps
+                  </a>
                 </div>
                 <CustomerHighlights samples={reviewHighlights.samples} status={reviewHighlights.status} />
                 {liveGoogle.meta.status === 'refreshing' && (
@@ -611,30 +832,45 @@ export default function RestaurantPage() {
                         {g.text && <p>“{g.text}”</p>}
                         {g.translated && (
                           <p className="review__translated">
-                            <Languages size={11} aria-hidden="true" /> Translated from {g.language ?? 'the original language'} by Google
+                            <Languages size={12} aria-hidden="true" /> Translated from {g.language ?? 'the original language'} by Google
                           </p>
                         )}
                         <div className="review__foot">
                           <a href={g.sourceUrl} target="_blank" rel="noopener noreferrer" className="review__source">
-                            See review on Google <ExternalLink size={11} aria-hidden="true" />
+                            See review on Google <ExternalLink size={12} aria-hidden="true" />
                           </a>
                         </div>
                       </blockquote>
                     ))}
                   </div>
-                ) : (
-                  <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-                    {liveGoogle.meta.status === 'refreshing' && <>Refreshing Google reviews… </>}
-                    <a href={googleMapsReviewsUrl(restaurant)} target="_blank" rel="noopener noreferrer" className="review__source">
-                      View all Google reviews <ExternalLink size={11} aria-hidden="true" />
-                    </a>
+                ) : reviewHighlights.samples.length === 0 ? (
+                  /*
+                    This slot used to hold a second copy of the head's
+                    "All on Google Maps" link — the same destination twice,
+                    rendered as a bare underlined link with no styling of its
+                    own, which is what a loose end looks like. What belongs
+                    here is the reason the slot is empty, said once and
+                    quietly. When the highlight deck above has quotes to show,
+                    the slot says nothing at all.
+                  */
+                  <p className="detail__section-note" role={liveGoogle.meta.status === 'refreshing' ? 'status' : undefined}>
+                    {liveGoogle.meta.status === 'refreshing'
+                      ? 'Fetching the latest Google reviews…'
+                      : `No individual Google reviews have come through for this place yet — the ${googleView.rating.toFixed(1)}★ average above is Google’s own.`}
                   </p>
-                )}
+                ) : null}
               </section>
             )}
 
-            <section className="detail__section">
-              <h2>Report incorrect information</h2>
+            {/*
+              No heading. This section carried an `<h2>Report incorrect
+              information</h2>` directly above a button labelled "Report
+              incorrect information" — the same six words at 40px and at 13px,
+              one of them doing nothing. At rest this is a housekeeping row and
+              is sized like one; the `aria-label` keeps the landmark named for
+              anyone navigating by region.
+            */}
+            <section className="detail__section detail__section--quiet" aria-label="Report incorrect information">
               {reportDone ? (
                 <p className="t-sm" style={{ color: 'var(--success)' }}>
                   Thanks — we've logged this and an editor will review it.
@@ -656,10 +892,16 @@ export default function RestaurantPage() {
                     ))}
                   </div>
                   <div className="write-review__actions">
-                    <button
-                      type="button"
-                      className="btn btn--primary btn--sm"
-                      disabled={!reportReason}
+                    {/* `unavailable`, not `disabled`: a keyboard user who tabs
+                        here before picking a reason should reach the control
+                        and be told what it wants, not find a hole in the tab
+                        order. */}
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={Send}
+                      unavailable={!reportReason}
+                      unavailableReason="Choose what's wrong first."
                       onClick={() => {
                         if (!reportReason) return;
                         upsertFlag({
@@ -676,41 +918,59 @@ export default function RestaurantPage() {
                       }}
                     >
                       Submit report
-                    </button>
-                    <button type="button" className="btn btn--subtle btn--sm" onClick={() => setReportOpen(false)}>
+                    </Button>
+                    <Button variant="subtle" size="sm" onClick={() => setReportOpen(false)}>
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
-                <button type="button" className="btn btn--ghost btn--sm" onClick={() => setReportOpen(true)}>
+                <Button variant="ghost" size="sm" icon={Flag} onClick={() => setReportOpen(true)}>
                   Report incorrect information
-                </button>
+                </Button>
               )}
             </section>
 
           </div>
 
           <aside className="detail__aside">
+            {/*
+              Reference detail. This card is the single home for the full
+              address, the full weekly schedule, phone and dining options.
+              Neighbourhood and price-for-two were removed: both are already
+              stated in the decision bar above, and repeating them within one
+              viewport made the page feel padded rather than thorough.
+            */}
             <div className="info-card">
               <h3>Know before you go</h3>
               <ul className="info-card__list">
-                <li><span><MapPin size={12} aria-hidden="true" /> Neighbourhood</span><strong>{displayRestaurant.location || 'Dhaka'}</strong></li>
                 <li>
-                  <span>Address</span>
+                  <span><MapPin size={12} aria-hidden="true" /> Address</span>
                   <strong>{addressLines.join(', ') || 'To be verified'}</strong>
-                  {verifiedAddress && (
-                    <span
-                      className="verify-note"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 2, color: 'var(--success)', fontSize: '0.75rem', fontWeight: 600 }}
+                  <span className="info-card__prov">
+                    <Provenance
+                      level={addressProv}
+                      size="sm"
+                      title={
+                        verifiedAddress
+                          ? 'Confirmed against our verification records.'
+                          : hasUsableAddress
+                            ? 'Recorded from a permitted source but not independently confirmed.'
+                            : 'We do not have a usable street address for this venue yet.'
+                      }
                     >
-                      <Check size={12} aria-hidden="true" /> Address verified
-                    </span>
-                  )}
+                      {verifiedAddress ? 'Address verified' : hasUsableAddress ? 'Recorded address' : 'To be verified'}
+                    </Provenance>
+                  </span>
                 </li>
-                <li><span>Hours</span><strong>
-                  {hoursRows ? (
-                    hoursRows.length > 1 ? (
+                {/*
+                  Only rendered when there is an actual schedule to show. With
+                  no recorded hours the decision bar above already says so, and
+                  a second "Not recorded" row is noise, not transparency.
+                */}
+                {hoursRows && (
+                  <li><span>Hours</span><strong>
+                    {hoursRows.length > 1 ? (
                       <span className="hours-week">
                         {hoursRows.map((row) => (
                           <span key={row.day} className="hours-week__row">
@@ -719,16 +979,23 @@ export default function RestaurantPage() {
                           </span>
                         ))}
                       </span>
-                    ) : hoursRows[0].label
-                  ) : rawHours ? 'Hours being verified' : 'Not recorded'}
-                </strong></li>
+                    ) : hoursRows[0].label}
+                  </strong>
+                    {hoursFromScrape && (
+                      <span className="info-card__prov">
+                        <Provenance level="recorded" size="sm" title="Captured from Google's listing — confirm with the restaurant.">
+                          As recorded
+                        </Provenance>
+                      </span>
+                    )}
+                  </li>
+                )}
                 {businessStatus && businessStatus !== 'Operational' && (
                   <li><span>Status</span><strong>{businessStatus}</strong></li>
                 )}
                 {googleView?.phone && (
                   <li><span>Phone</span><strong>{googleView.phone}</strong></li>
                 )}
-                <li><span>Price for two</span><strong>{priceForTwoDisplay(restaurant).label}</strong></li>
                 <li>
                   <span>Dining</span>
                   <strong>{[!restaurant.vegUnknown && restaurant.isVeg && 'Veg', restaurant.hasOutdoorSeating && 'Outdoor seating', restaurant.hasDelivery && 'Delivery', restaurant.isFamilyFriendly && 'Family friendly'].filter(Boolean).join(' · ') || (restaurant.hasDelivery ? 'Dine-in & delivery' : 'Dine-in')}</strong>
@@ -739,48 +1006,35 @@ export default function RestaurantPage() {
               </p>
             </div>
 
-            <div className="detail-map" aria-label={`Map showing the location of ${restaurant.name}`}>
-              <iframe
-                src={googleMapsEmbedUrl(restaurant)}
-                title={`Map showing the location of ${restaurant.name}`}
-                loading="lazy"
-                allowFullScreen
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-              <div className="detail-map__bar">
-                <span className="detail-map__address">
-                  <MapPin size={13} aria-hidden="true" /> {addressLines[0] || `${displayRestaurant.name}, Dhaka`}
-                </span>
-                <div className="detail-map__actions">
-                  <a
-                    href={googleMapsPlaceUrl(restaurant)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn--ghost btn--sm"
-                  >
-                    Open in Google Maps
-                  </a>
-                  <button
-                    type="button"
-                    className="btn btn--primary btn--sm"
-                    onClick={askDirections}
-                    disabled={requestingOrigin && geo.status === 'locating'}
-                  >
-                    <Navigation size={13} aria-hidden="true" />
-                    {requestingOrigin && geo.status === 'locating' ? 'Getting your location…' : 'Directions'}
-                  </button>
-                </div>
-              </div>
-            </div>
+            {/*
+              The venue map. This was a Google Maps `?output=embed` iframe and
+              it rendered a blank box: that URL now 301s to `/maps/embed?…&pb=…`
+              and the redirect carries `X-Frame-Options: SAMEORIGIN`, which
+              Chrome enforces on every hop of a frame's navigation chain. It is
+              now the app's own map surface — the same one `/explore` draws —
+              so there is one map implementation in the product. Measurement in
+              `lib/maps.ts`.
+            */}
+            <RestaurantLocationMap
+              restaurant={restaurant}
+              addressLine={addressLines[0] || `${displayRestaurant.name}, Dhaka`}
+              onDirections={askDirections}
+              locating={requestingOrigin && geo.status === 'locating'}
+            />
           </aside>
         </div>
 
         <section className="detail__section detail__similar">
-          <div className="section-heading">
-            <div>
-              <span className="section-heading__eyebrow">You might also like</span>
-              <h2>Similar to {restaurant.name}</h2>
-            </div>
+          {/* One heading pattern for the whole page. This was the only body
+              section using `.section-heading` — a second vocabulary for the
+              same job, with its own eyebrow class and its own type sizes, which
+              is why the page read as four sections designed by four people. */}
+          <div className="detail__section-head">
+            <span className="detail__section-eyebrow">You might also like</span>
+            <h2>Similar to {restaurant.name}</h2>
+            <span className="detail__section-sub">
+              Matched on shared cuisine first, then budget, neighbourhood and meal times.
+            </span>
           </div>
           <div className="grid">
             {similar.map((r) => (

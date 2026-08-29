@@ -13,14 +13,14 @@
   box-shadow: var(--shadow-sm);
 }
 .auth-card__head { margin-bottom: var(--s5); }
-.auth-card__head h1 { margin-top: 2px; }
-.auth-card__head p { color: var(--ink-soft); margin-top: 4px; }
+.auth-card__head h1 { margin-top: var(--s0h); }
+.auth-card__head p { color: var(--ink-soft); margin-top: var(--s1); }
 .auth-card__tabs {
   display: flex;
-  gap: 4px;
+  gap: var(--s1);
   background: var(--surface-2);
   border-radius: var(--r-md);
-  padding: 4px;
+  padding: var(--s1);
   margin-bottom: var(--s5);
 }
 .auth-card__tab {
@@ -28,8 +28,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 9px 14px;
+  gap: var(--s1h);
+  padding: var(--s2h) var(--s3h);
   border: none;
   border-radius: var(--r-sm);
   background: transparent;
@@ -41,25 +41,20 @@
 }
 .auth-card__tab--active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
 .auth-card__form { display: flex; flex-direction: column; gap: var(--s3); }
-.field { display: flex; flex-direction: column; gap: 5px; }
-.field__label { font-size: var(--fs-sm); font-weight: 600; color: var(--ink-soft); }
-.field input, .field textarea, .field select, .admin-inline-form input {
-  padding: 10px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  font: inherit;
-  font-size: var(--fs-md);
-  color: var(--ink);
-}
-.field input:focus, .field textarea:focus, .field select:focus, .admin-inline-form input:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: 1px;
-  border-color: var(--primary);
-}
-.field textarea { resize: vertical; }
-.form-error { color: var(--error); font-size: var(--fs-sm); }
-.field__error { color: var(--error); font-size: var(--fs-sm); }
+/* The field system moved to primitives.css §6 in Phase 2c, beside the
+   `Field` component, and the two designs it had been resolving into were
+   unified there. This file held the public one — 10px radius, 14px type,
+   `--border-strong`, a 2px espresso `:focus` outline — and console.css held
+   a compound-selector version that beat it wherever `.admin`,
+   `.profile-body` or `.auth-card` sat above the field. Both are gone; the
+   values that survived are noted in §6's header.
+
+   `.form-error` and `.field__error` went with them, and stopped being
+   invisible on the way: both painted `var(--error)`, which this codebase
+   never defines, so the declaration was dropped and the text inherited
+   body ink. `.form-error` happened to be rescued by a later restatement in
+   console.css; `.field__error` was not, so every validation message in the
+   offers form rendered in ink rather than red. */
 
 .auth-card__demo {
   margin-top: var(--s5);
@@ -67,15 +62,15 @@
   padding-top: var(--s4);
 }
 .auth-card__demo-head {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: var(--s1h);
   font-size: var(--fs-sm); font-weight: 600; color: var(--ink-soft);
 }
-.auth-card__demo-head code { background: var(--surface-2); padding: 1px 6px; border-radius: 4px; }
-.auth-card__demo-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: var(--s3); }
+.auth-card__demo-head code { background: var(--surface-2); padding: var(--s0h) var(--s1h); border-radius: 4px; }
+.auth-card__demo-list { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); margin-top: var(--s3); }
 .demo-account {
-  display: flex; align-items: center; gap: 10px; text-align: left;
-  padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-sm);
-  background: var(--surface); cursor: pointer; transition: border-color 150ms ease, background 150ms ease;
+  display: flex; align-items: center; gap: var(--s2h); text-align: left;
+  padding: var(--s2h) var(--s3); border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--surface); cursor: pointer; transition: border-color var(--tr-settle), background var(--tr-settle);
 }
 .demo-account:hover { border-color: var(--primary); background: var(--surface-2); }
 .demo-account__icon {
@@ -88,8 +83,8 @@
 .auth-card__foot { margin-top: var(--s4); font-size: var(--fs-sm); color: var(--ink-soft); text-align: center; }
 
 /* Access denied / role guard ------------------------------------- */
-.access-denied { text-align: center; padding: 48px 0; }
-.access-denied h1 { margin: var(--s3) 0 4px; }
+.access-denied { text-align: center; padding: var(--s12) 0; }
+.access-denied h1 { margin: var(--s3) 0 var(--s1); }
 .access-denied p { color: var(--ink-soft); margin-bottom: var(--s4); }
 .access-denied svg { color: var(--primary); }
 
@@ -107,106 +102,118 @@
 }
 .profile-head__avatar img { width: 100%; height: 100%; object-fit: cover; }
 .profile-head__info { flex: 1; min-width: 200px; }
-.profile-head__info h1 { margin-top: 2px; }
-.profile-head__badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: var(--s2); }
-.badge-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: var(--fs-xs); font-weight: 600; color: var(--primary-strong);
-  background: var(--primary-soft); border-radius: 999px; padding: 3px 10px;
-}
-.badge-chip--muted { color: var(--ink-soft); background: var(--surface-2); }
-.profile-head__tokens {
-  display: flex; align-items: baseline; gap: 6px;
-  background: var(--primary); color: #fff; border-radius: var(--r-md);
-  padding: 10px 18px;
-}
-.profile-head__tokens strong { font-size: 1.3rem; }
-.profile-head__tokens span { font-size: var(--fs-xs); opacity: 0.9; }
+.profile-head__info h1 { margin-top: var(--s0h); }
+/* `.profile-head__badges`, `.badge-chip` and `.badge-chip--muted` were declared
+   here and used by nothing — no TSX references any of them. `.profile-head__badges`
+   is a live class again as of the head-band pass, and it is owned by console.css
+   §11 with the rest of the family, so the stale flex/margin declarations had to
+   go rather than sit upstream contributing a margin-top nobody asked for. The
+   `.profile-head__tokens` block that lived here (maroon fill, white ink, 1.3rem
+   numeral) and its `--button` hover (translateY + --primary-strong flood) were
+   the pre-plaque treatment; console.css re-declares every visible property of
+   both, and the two that leaked through — `border-radius` and `color: #fff` —
+   were painting a radius on a transparent box and a colour no child inherited. */
 
 .profile-body { display: flex; flex-direction: column; gap: var(--s4); margin-top: var(--s4); }
 .panel {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
   padding: var(--s5);
 }
-.panel__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s4); flex-wrap: wrap; }
-.panel__head h2 { font-size: var(--fs-h3); }
+/* `.panel__head` was declared here too, and every one of its six declarations
+   was already being overwritten by console.css §5 — which sets a baseline
+   alignment, a wider gap, a zeroed margin and the ruled bottom edge this copy
+   never had. Dead by duplication.
 
-.completion-pct { color: var(--primary-strong); font-size: 1.25rem; }
+   Its `h2` rule was the opposite: the only live line, and live in a way that
+   was invisible. `.panel__head h2 { font-size: var(--fs-h3) }` is a loose
+   descendant — (0,1,1) — so it beat console.css's `.panel__title` (0,1,0)
+   however much later that file loaded, across both consoles, the profile page
+   and the rewards wallet. The --fs-h4 console.css documents for a panel title
+   had therefore never applied to a single one. console.css now states --fs-h3
+   for a title in a head explicitly, so the size that ships is the size that
+   is written down, in one file. */
+
 .progress { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
-.progress__bar { height: 100%; background: var(--primary); border-radius: 999px; transition: width 300ms ease; }
-.completion-list { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px var(--s4); margin-top: var(--s4); }
-.completion-list li { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--ink-soft); }
-.completion-list li svg { color: var(--success); }
+/* Not an interaction: a fill decelerating toward a value, so --ease-out at
+   the overlay step rather than the §8b answer/settle pair. */
+.progress__bar { height: 100%; background: var(--primary); border-radius: 999px; transition: width var(--dur-slow) var(--ease-out); }
+.completion-list { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--s1h) var(--s4); margin-top: var(--s4); }
+.completion-list li { display: flex; align-items: center; gap: var(--s2); font-size: var(--fs-sm); color: var(--ink-soft); }
+/* Direct child only. As a loose descendant this reached into the row's button
+   and painted its chevron success-green — the mark that says "open the picker
+   for this field" is not a completion tick. console.css owns both states at
+   `> svg`; this is the same selector so the two files can't disagree. */
+.completion-list li > svg { color: var(--success); }
 .completion-list__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-strong); flex: none; }
 .completion-list__item--done { color: var(--ink); }
 
-.pref-block { margin-top: var(--s4); }
-.pref-block h3 { font-size: var(--fs-md); font-weight: 600; margin-bottom: var(--s2); color: var(--ink-soft); }
-.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip--toggle {
-  border: 1px solid var(--border-strong); background: var(--surface);
-  cursor: pointer; transition: all 150ms ease;
-}
-.chip--toggle:hover { border-color: var(--primary); color: var(--primary-strong); }
-.chip--on { background: var(--primary); border-color: var(--primary); color: #fff !important; }
-.activity-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-.activity-list li { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--ink-soft); }
+/* `.pref-block` was here — `margin-top` plus an `h3` rule that never had an
+   `h3` to paint. Both are gone with the markup: the preference rows are
+   `Disclosure`s now (`.pref-q`, console.css §11), and console.css was already
+   the single owner of everything about them that was alive. */
+.chip-row { display: flex; flex-wrap: wrap; gap: var(--s1h); }
+/* `.chip--toggle` / `.chip--on` were the "I visited / Not yet" pair in
+   WriteReview, and they were shipping white text on paper. `.chip--on`
+   set `background: var(--primary)` with `color: #fff !important`;
+   editorial.css declared `.chip { background: var(--surface) }` later at
+   the same specificity and took the background, while the `!important`
+   kept the white ink — 1.01:1, an invisible selected state. Both call
+   sites use the `Chip` primitive now, which is a toggle by contract and
+   cannot lose half of its own pressed state to another file. */
+.activity-list { list-style: none; display: flex; flex-direction: column; gap: var(--s2); }
+.activity-list li { display: flex; align-items: center; gap: var(--s2); font-size: var(--fs-sm); color: var(--ink-soft); }
 .activity-list svg { color: var(--primary); }
 .my-reviews { display: flex; flex-direction: column; gap: var(--s3); margin-top: var(--s3); }
 .my-review { border-top: 1px dashed var(--border); padding-top: var(--s3); }
-.my-review p { color: var(--ink-soft); font-size: var(--fs-sm); margin-top: 4px; }
+.my-review p { color: var(--ink-soft); font-size: var(--fs-sm); margin-top: var(--s1); }
 
-.tx-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-top: var(--s3); }
-.tx-list li { display: flex; justify-content: space-between; gap: var(--s3); font-size: var(--fs-sm); padding: 8px 10px; border-radius: var(--r-sm); }
+.tx-list { list-style: none; display: flex; flex-direction: column; gap: var(--s1h); margin-top: var(--s3); }
+.tx-list li { display: flex; justify-content: space-between; gap: var(--s3); font-size: var(--fs-sm); padding: var(--s2) var(--s2h); border-radius: var(--r-sm); }
 .tx-list__in { background: rgba(20, 110, 70, 0.08); color: var(--success); }
 .tx-list__out { background: var(--surface-2); color: var(--ink-soft); }
 
-.coupon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--s3); }
-.coupon-card {
-  border: 1px dashed var(--border-strong); border-radius: var(--r-md); padding: var(--s4);
-  display: flex; flex-direction: column; gap: 6px; background: var(--surface);
-}
-.coupon-card--used, .coupon-card--expired { opacity: 0.55; }
-.coupon-card__code {
-  font-family: ui-monospace, monospace; font-size: var(--fs-sm); font-weight: 700;
-  letter-spacing: 0.08em; color: var(--primary-strong); background: var(--primary-soft);
-  padding: 3px 10px; border-radius: 6px; align-self: flex-start;
-}
-.coupon-card__value { font-weight: 700; color: var(--primary-strong); }
-.coupon-card__status { font-size: var(--fs-sm); font-weight: 600; color: var(--ink-faint); text-transform: capitalize; }
+/* The coupon family was declared here as well and console.css §12 re-declares
+   every property of it, so all of this was dead except one line that was quietly
+   wrong: `.coupon-card__code { align-self: flex-start }` shrank the ticket stub to
+   its contents, and the stub is a space-between row — the code at one end and the
+   value at the other — which needs the full width of the card. `__value` moved to
+   console.css with the rest of the family; the duplicates are gone. */
 
-.referral-code {
-  font-family: ui-monospace, monospace; letter-spacing: 0.1em;
-  background: var(--surface-2); padding: 6px 12px; border-radius: var(--r-sm);
-}
-.invite-form { display: flex; gap: var(--s3); margin-top: var(--s3); flex-wrap: wrap; }
-.referral-list { display: flex; flex-direction: column; gap: 8px; margin-top: var(--s3); }
-.referral-item { display: flex; align-items: center; gap: var(--s3); font-size: var(--fs-sm); flex-wrap: wrap; }
-.referral-item__name { font-weight: 600; flex: 1; }
-.referral-item__status { font-size: var(--fs-xs); font-weight: 600; color: var(--ink-soft); }
-.referral-item__status--verified { color: var(--success); display: inline-flex; align-items: center; gap: 4px; }
-.referral-item__reward { color: var(--primary-strong); font-weight: 700; font-size: var(--fs-sm); }
+/* The referral family was declared here too and is gone for three separate
+   reasons, all worth recording because they are the same three reasons the
+   coupon duplicates above went.
 
-.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--s3); }
-.badge-tile {
-  border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s4);
-  display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
-}
-.badge-tile svg { color: var(--primary-strong); }
-.linklike { background: none; border: none; color: var(--primary-strong); text-decoration: underline; cursor: pointer; font: inherit; font-size: inherit; padding: 0; }
+   Dead by rename: `.referral-code` and the five `.referral-item*` rules match
+   no markup — the panel renders `.referral-list__name`, `.status-pill` and
+   `.earn-list__amount`, and the code is now the `CopyCode` primitive
+   (primitives.css §11). Dead by duplication: `.invite-form` here was a weaker
+   copy of console.css §14's, losing every shared property on source order.
+   And the one line that was still live — `.referral-list { gap: var(--s2) }`, which
+   console.css never re-declared — was working against its own list: those
+   rows carry `var(--s3)` of padding and a divider each, so the extra 8px read
+   as a gapped list of ruled rows rather than as one ruled list. The whole
+   family has one owner now, and it is console.css §12. */
+
+/* `.badge-grid` / `.badge-tile` used to be declared here as well, in a weaker
+   duplicate of console.css §11: same properties, smaller values, every one of
+   them losing on source order. The glyph rule that went with them addressed a
+   direct-child svg, and badge tiles no longer have one — the mark is a
+   `.badge-tile__mark` disc. console.css owns the whole family. */
+.linklike { background: none; border: none; color: var(--primary-strong); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 2px; cursor: pointer; font: inherit; font-size: inherit; padding: 0; transition: text-decoration-color var(--tr-settle); }
+/* It looked like a link and answered like a paragraph. The ink is already
+   near-black at rest, so there is nowhere to deepen to — the underline is the
+   moving part instead: soft at rest, full ink under the pointer. */
+.linklike:hover { text-decoration-color: currentColor; transition-duration: var(--tr-answer); }
+.linklike:focus-visible { outline: var(--focus-ring); outline-offset: 2px; border-radius: 3px; }
 
 /* Admin panels ----------------------------------------------------- */
 .admin__inner { max-width: 1100px; margin: 0 auto; }
 .admin__head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; padding: clamp(2rem, 5vw, 3.5rem) 0 var(--s4); }
-.admin__head h1 { margin-top: 2px; }
-.admin__tabs { display: flex; gap: 4px; flex-wrap: wrap; background: var(--surface-2); border-radius: var(--r-md); padding: 4px; }
-.admin__tab {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 14px; border: none; border-radius: var(--r-sm);
-  background: transparent; color: var(--ink-soft); font-weight: 600; font-size: var(--fs-md);
-  cursor: pointer; transition: all 150ms ease;
-}
-.admin__tab--active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.admin__head h1 { margin-top: var(--s0h); }
+/* `.admin__tabs` / `.admin__tab` / `.admin__tab--active` were declared here and
+   again in editorial.css §. Neither copy was ever used: no TSX emits any of the
+   three, and the console's tab strip is `.admin-shell__link` in console.css. Both
+   copies are gone. */
 .admin__content { padding: var(--s5) 0 clamp(3rem, 6vw, 5rem); }
 
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--s3); margin-bottom: var(--s4); }
@@ -215,41 +222,47 @@
   padding: var(--s4);
 }
 .stat-card__label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
-.stat-card__value { display: block; font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; margin: 4px 0 2px; }
+.stat-card__value { display: block; font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; margin: var(--s1) 0 var(--s0h); }
 .stat-card__sub { font-size: var(--fs-xs); color: var(--ink-faint); }
 
 .admin-columns { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); }
-.attention-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-.attention-list li { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); font-size: var(--fs-sm); padding-bottom: 8px; border-bottom: 1px dashed var(--border); }
+.attention-list { list-style: none; display: flex; flex-direction: column; gap: var(--s2); }
+.attention-list li { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); font-size: var(--fs-sm); padding-bottom: var(--s2); border-bottom: 1px dashed var(--border); }
 .attention-list li:last-child { border-bottom: none; }
 .quick-actions { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
 
-.admin-status {
-  display: inline-block; font-size: var(--fs-xs); font-weight: 600; text-transform: capitalize;
-  padding: 2px 10px; border-radius: 999px;
-}
-.admin-status--published, .admin-status--approved, .admin-status--verified { background: rgba(20, 110, 70, 0.1); color: var(--success); }
-.admin-status--draft { background: var(--surface-2); color: var(--ink-soft); }
-.admin-status--pending { background: rgba(200, 130, 20, 0.12); color: #a06a10; }
-.admin-status--rejected { background: rgba(190, 50, 40, 0.1); color: var(--error); }
-.admin-status--user, .admin-status--restaurant_admin, .admin-status--executive { background: var(--primary-soft); color: var(--primary-strong); }
+/* `.admin-status` and its five modifiers were the console's first state label:
+   a 999px capitalised pill. `.status-pill` (console.css §7) replaced it — a 6px
+   rectangle sharing `.kk-badge`'s geometry, so a state and a tag in one row line
+   up. The restaurant console had already moved; the executive console was the
+   only page in the product still on this, and it has now moved too, through
+   `statusPill()` in src/lib/statusPill.ts.
+
+   Two of these modifiers were worse than out of date. `--user`,
+   `--restaurant_admin` and `--executive` painted an *account role* in the state
+   palette, so the People table announced a restaurant owner as pending and a
+   diner as published — a confident mark stating something untrue about the row
+   it sat on. A role is a fact about a person, not a step in a process, so it is
+   a `Badge` now. And `--published` was being used for "single observation" in
+   the price table, which coloured the weakest evidence in the product with the
+   tone reserved for a favourable settlement. */
 
 .admin-form { display: flex; flex-direction: column; gap: var(--s3); margin-top: var(--s3); }
 .admin-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
 .admin-form__actions { display: flex; gap: var(--s2); flex-wrap: wrap; }
-.admin-banner {
-  display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm);
-  background: rgba(200, 130, 20, 0.1); color: #a06a10;
-  padding: 10px 14px; border-radius: var(--r-sm); margin-top: var(--s3);
-}
+/* `.admin-banner` went with it. Its only two call sites both wrote
+   `admin-banner admin-banner--error` — and `--error` was never defined in any
+   stylesheet, so a failed write was reported in the amber of a warning. Both
+   are `.console-banner console-banner--danger` now, which exists, is red, and
+   is the same banner the owner console already uses. */
 
 .upload-placeholder {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s1h);
   border: 1px dashed var(--border-strong); border-radius: var(--r-md);
-  padding: 40px; margin-top: var(--s3); color: var(--ink-faint); text-align: center;
+  padding: var(--s10); margin-top: var(--s3); color: var(--ink-faint); text-align: center;
 }
 
-.admin-inline-form { display: flex; gap: 8px; flex-wrap: wrap; margin: var(--s3) 0; }
+.admin-inline-form { display: flex; gap: var(--s2); flex-wrap: wrap; margin: var(--s3) 0; }
 .admin-inline-form input { flex: 1; min-width: 140px; }
 .admin-price-input { max-width: 110px; }
 
@@ -257,24 +270,24 @@
 .menu-cat-admin__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s2); }
 .menu-cat-admin__head h3 { font-size: var(--fs-h3); }
 .menu-cat-admin__list { list-style: none; display: flex; flex-direction: column; }
-.menu-dish-admin { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: 8px 0; border-top: 1px dashed var(--border); flex-wrap: wrap; }
+.menu-dish-admin { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s2) 0; border-top: 1px dashed var(--border); flex-wrap: wrap; }
 .menu-dish-admin:first-child { border-top: none; }
-.menu-dish-admin__main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.menu-dish-admin__actions { display: flex; gap: 4px; flex-wrap: wrap; }
-.menu-dish-admin .btn--sm { padding: 4px 8px; font-size: var(--fs-xs); }
+.menu-dish-admin__main { display: flex; align-items: center; gap: var(--s2h); flex-wrap: wrap; }
+.menu-dish-admin__actions { display: flex; gap: var(--s1); flex-wrap: wrap; }
+.menu-dish-admin .btn--sm { padding: var(--s1) var(--s2); font-size: var(--fs-xs); }
 
-.offer-admin-list { display: flex; flex-direction: column; gap: 8px; margin-top: var(--s3); }
+.offer-admin-list { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s3); }
 .offer-admin-row {
   display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
-  border: 1px solid var(--border); border-radius: var(--r-sm); padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--s2h) var(--s3h);
 }
 .offer-admin-row > div:first-child { flex: 1; display: flex; flex-direction: column; }
 .offer-admin-row--draft { border-style: dashed; }
 .offer-admin-row--detail { align-items: flex-start; }
 .offer-admin-row--detail > div:first-child { min-width: 0; }
 
-.settings-list { display: flex; flex-direction: column; gap: 8px; margin-top: var(--s3); }
-.settings-row { display: grid; grid-template-columns: 180px 1fr; gap: var(--s3); font-size: var(--fs-sm); padding-bottom: 8px; border-bottom: 1px dashed var(--border); }
+.settings-list { display: flex; flex-direction: column; gap: var(--s2); margin-top: var(--s3); }
+.settings-row { display: grid; grid-template-columns: 180px 1fr; gap: var(--s3); font-size: var(--fs-sm); padding-bottom: var(--s2); border-bottom: 1px dashed var(--border); }
 .settings-row dt { font-weight: 600; color: var(--ink-soft); }
 .settings-row dd { color: var(--ink); }
 
@@ -282,82 +295,161 @@
 .admin-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); min-width: 640px; }
 .admin-table th {
   text-align: left; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.05em;
-  color: var(--ink-faint); padding: 8px 12px; border-bottom: 1px solid var(--border-strong);
+  color: var(--ink-faint); padding: var(--s2) var(--s3); border-bottom: 1px solid var(--border-strong);
 }
-.admin-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.admin-table__link { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--ink); }
+.admin-table td { padding: var(--s2h) var(--s3); border-bottom: 1px solid var(--border); vertical-align: middle; }
+.admin-table__link { display: inline-flex; align-items: center; gap: var(--s1h); font-weight: 600; color: var(--ink); }
 .admin-table__link:hover { color: var(--primary-strong); text-decoration: underline; }
-.admin-table__actions { display: flex; gap: 6px; }
-.admin-table__actions .btn--sm { padding: 4px 10px; font-size: var(--fs-xs); }
+.admin-table__actions { display: flex; gap: var(--s1h); }
+.admin-table__actions .btn--sm { padding: var(--s1) var(--s2h); font-size: var(--fs-xs); }
 
 /* Menu on the public restaurant page ------------------------------- */
 .menu-category { margin-top: var(--s4); }
 .menu-category__name {
   font-family: var(--font-display); font-size: var(--fs-h3); font-weight: 600;
-  padding-bottom: 6px; border-bottom: 2px solid var(--primary-soft);
+  padding-bottom: var(--s1h); border-bottom: 2px solid var(--primary-soft);
 }
 .menu-category__list { list-style: none; display: flex; flex-direction: column; }
 .menu-dish {
   display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s4);
-  padding: 12px 0; border-bottom: 1px dashed var(--border);
+  padding: var(--s3) 0; border-bottom: 1px dashed var(--border);
 }
-.menu-dish__name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.menu-dish__desc { color: var(--ink-soft); font-size: var(--fs-sm); margin-top: 3px; }
+.menu-dish__name-row { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.menu-dish__desc { color: var(--ink-soft); font-size: var(--fs-sm); margin-top: var(--s1); }
 .menu-dish--unavailable { opacity: 0.55; }
 .menu-dish--unavailable .menu-dish__price strong { text-decoration: line-through; }
-.menu-dish__price { text-align: right; flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.menu-dish__price { text-align: right; flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: var(--s0h); }
 .menu-dish__price strong { font-size: var(--fs-h3); }
 .price-history-link {
-  display: inline-flex; align-items: center; gap: 5px; margin-top: 6px;
+  display: inline-flex; align-items: flex-start; gap: var(--s1h); margin-top: var(--s1h);
   background: none; border: none; padding: 0; cursor: pointer;
   color: var(--primary-strong); font-size: var(--fs-xs); font-weight: 600;
+  text-align: left;
 }
+/* The label wraps to two lines on narrow screens; centring the icon then
+   parks it in the gutter between them, so it aligns to the first line. */
+.price-history-link > svg { flex-shrink: 0; margin-top: var(--s1); }
 .price-history-link:hover { text-decoration: underline; }
 
-/* Price history modal ---------------------------------------------- */
-.price-modal__panel {
-  background: var(--surface); border-radius: var(--r-lg); max-width: 520px; width: 92%;
-  max-height: 85vh; overflow-y: auto; padding: var(--s5);
+/* Price intelligence modal ---------------------------------------- */
+/* The panel and its head are `Dialog`'s now (primitives.css §8). The range
+   switcher is `Dialog`'s toolbar slot and the caveat is its footer slot, so
+   neither scrolls away from the body it belongs to.
+
+   `.price-modal__current` stood here — a baseline flex row where the label,
+   the price and the delta all sat on one line at roughly one weight. It is
+   `.price-hero` below, and the rule is deleted rather than overridden
+   because it was a compound selector (`> span:first-child`) that no later
+   file could have beaten cleanly. `.price-change` STAYS: the executive
+   admin's price column still uses it. */
+.price-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s1) var(--s4);
+  padding: var(--s4) var(--s5);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--primary) 7%, transparent), transparent 62%),
+    var(--surface-2);
 }
-.price-modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); }
-.price-modal__head h2 { margin-top: 2px; }
-.price-modal__current {
-  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
-  background: var(--surface-2); border-radius: var(--r-md); padding: 14px 16px; margin-top: var(--s4);
+.price-hero__main { min-width: 0; }
+.price-hero__label {
+  display: block;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
 }
-.price-modal__current > span:first-child { font-size: var(--fs-sm); color: var(--ink-soft); }
-.price-modal__current strong { font-family: var(--font-display); font-size: 1.5rem; }
-.price-change { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); font-weight: 600; }
+.price-hero__figure {
+  display: block;
+  margin-top: var(--s1);
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 6vw, 2.4rem);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  font-variant-numeric: tabular-nums;
+}
+/* Spans both columns so the provenance line always sits under the figure,
+   never squeezed beside the pill. */
+.price-hero__provenance {
+  grid-column: 1 / -1;
+  font-size: var(--fs-xs);
+  color: var(--ink-faint);
+}
+.price-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  flex-wrap: wrap;
+  justify-self: end;
+  padding: var(--s1h) var(--s3);
+  border-radius: var(--r-full);
+  border: 1px solid currentColor;
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+.price-delta--up { color: var(--chili-700); background: var(--terracotta-soft); }
+.price-delta--down { color: var(--success); background: var(--primary-soft); }
+.price-delta--flat { color: var(--ink-soft); background: var(--paper-200); }
+/* The comparison is the small print inside the pill, not another number:
+   "+৳50 · 4%" is the fact, "vs previous recorded" is the footnote. */
+.price-delta__vs {
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  opacity: 0.8;
+}
+.price-modal__caveat {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  /* `Dialog`'s foot is `justify-content: flex-end` because it normally holds
+     actions. This is a disclaimer, and a disclaimer reads from the left. */
+  margin: 0 auto 0 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-faint);
+}
+.price-change { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--fs-sm); font-weight: 600; }
 .price-change--up { color: #b02a1a; }
 .price-change--down { color: var(--success); }
 .price-timeline { margin-top: var(--s4); }
+/* 26px is not a scale value and should not become one: it is measured against
+   `.price-timeline__dot` below (left 6px + an 11px dot + its 2px ring), which
+   is where the number has to stay if the dot ever moves. */
 .price-timeline__step { position: relative; padding: 0 0 var(--s4) 26px; }
 .price-timeline__dot {
   position: absolute; left: 6px; top: 4px; width: 11px; height: 11px; border-radius: 50%;
   background: var(--border-strong); border: 2px solid var(--surface);
 }
 .price-timeline__step--current .price-timeline__dot { background: var(--primary); }
-.price-timeline__row { display: flex; align-items: baseline; gap: 10px; }
+.price-timeline__row { display: flex; align-items: baseline; gap: var(--s2h); }
 .price-timeline__row strong { font-size: 1.05rem; }
 .price-timeline__row span { font-size: var(--fs-sm); color: var(--ink-faint); }
-.price-timeline__meta { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--ink-faint); margin-top: 2px; flex-wrap: wrap; }
+.price-timeline__meta { display: flex; align-items: center; gap: var(--s1h); font-size: var(--fs-xs); color: var(--ink-faint); margin-top: var(--s0h); flex-wrap: wrap; }
 .price-timeline__line { position: absolute; left: 11px; top: 16px; bottom: 0; width: 1px; background: var(--border-strong); }
 
 /* Write review ------------------------------------------------------ */
 .write-review {
   display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
   background: var(--surface-2); border-radius: var(--r-md);
-  padding: 12px 16px; margin-bottom: var(--s3);
+  padding: var(--s3) var(--s4); margin-bottom: var(--s3);
 }
 .write-review--locked p { font-size: var(--fs-sm); color: var(--ink-soft); }
 .write-review--done { border-left: 3px solid var(--success); }
 .write-review--form { display: flex; flex-direction: column; align-items: stretch; gap: var(--s3); }
-.write-review__row { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+/* `.write-review__row` stood here — a horizontal label-beside-control row for
+   the rating stars and the "Did you visit?" chips. Both are `Field group` now,
+   so all four questions in the form read down one axis instead of two of them
+   alternating, and the rule has no remaining call site. */
 .write-review__actions { display: flex; gap: var(--s2); }
-.rating-input { display: flex; align-items: center; gap: 4px; }
+.rating-input { display: flex; align-items: center; gap: var(--s1); }
 .rating-input__star {
-  background: none; border: none; padding: 2px; cursor: pointer; color: var(--border-strong);
-  transition: color 120ms ease, transform 120ms ease;
+  background: none; border: none; padding: var(--s0h); cursor: pointer; color: var(--border-strong);
+  transition: color var(--tr-settle), transform var(--tr-settle);
 }
 .rating-input__star--on { color: var(--accent); }
 .rating-input__star:hover { transform: scale(1.15); }
@@ -368,8 +460,7 @@
   .admin-columns { grid-template-columns: 1fr; }
   .admin-form__row { grid-template-columns: 1fr; }
   .auth-card__demo-list { grid-template-columns: 1fr; }
-  .settings-row { grid-template-columns: 1fr; gap: 2px; }
-  .price-modal__panel { width: 96%; }
+  .settings-row { grid-template-columns: 1fr; gap: var(--s0h); }
 }
 
 /* Rewards wallet (Phase 3.5) ------------------------------------- */
@@ -377,28 +468,25 @@
 .wallet__demo {
   display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
   background: var(--surface-2); border-radius: var(--r-sm);
-  padding: 10px 14px; margin-top: var(--s3);
+  padding: var(--s2h) var(--s3h); margin-top: var(--s3);
 }
 .wallet__demo p { flex: 1; min-width: 220px; }
-.reward-claimed { display: inline-flex; align-items: center; gap: 6px; margin-top: var(--s3); font-weight: 600; }
-.profile-head__tokens--button {
-  border: none; cursor: pointer; font: inherit;
-  transition: transform 150ms ease, background 150ms ease;
-}
-.profile-head__tokens--button:hover { transform: translateY(-1px); background: var(--primary-strong); }
+.reward-claimed { display: inline-flex; align-items: center; gap: var(--s1h); margin-top: var(--s3); font-weight: 600; }
+/* The `.profile-head__tokens--button` reset and hover that were here are now in
+   console.css §11 — see the note beside `.profile-head__info h1` above. */
 
 .reward-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--s3); }
 .reward-card {
   border: 1px solid var(--border); border-radius: var(--r-md); padding: var(--s4);
-  display: flex; flex-direction: column; gap: 8px; background: var(--surface);
+  display: flex; flex-direction: column; gap: var(--s2); background: var(--surface);
 }
 .reward-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
 .reward-card__tag {
   font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-  color: var(--primary-strong); background: var(--primary-soft); border-radius: 999px; padding: 2px 10px;
+  color: var(--primary-strong); background: var(--primary-soft); border-radius: 999px; padding: var(--s0h) var(--s2h);
 }
 .reward-card__state {
-  display: inline-flex; align-items: center; gap: 4px;
+  display: inline-flex; align-items: center; gap: var(--s1);
   font-size: var(--fs-xs); font-weight: 600; color: var(--ink-soft);
 }
 .reward-card__state--available { color: var(--success); }
@@ -406,7 +494,7 @@
 .reward-card__state--redeemed { color: var(--primary-strong); }
 .reward-card__title { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; }
 .reward-card__desc { color: var(--ink-soft); font-size: var(--fs-sm); }
-.reward-card__terms { display: flex; flex-direction: column; gap: 2px; margin: 0; font-size: var(--fs-xs); color: var(--ink-faint); }
+.reward-card__terms { display: flex; flex-direction: column; gap: var(--s0h); margin: 0; font-size: var(--fs-xs); color: var(--ink-faint); }
 .reward-card__terms div { display: flex; justify-content: space-between; gap: var(--s2); }
 .reward-card__terms dt { font-weight: 600; }
 .reward-card__terms dd { margin: 0; text-align: right; }
@@ -414,55 +502,44 @@
   display: flex; align-items: center; justify-content: space-between; gap: var(--s2);
   margin-top: auto; padding-top: var(--s3); border-top: 1px dashed var(--border); flex-wrap: wrap;
 }
-.reward-card__cost { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-sm); font-weight: 700; color: var(--primary-strong); }
+.reward-card__cost { display: inline-flex; align-items: center; gap: var(--s1); font-size: var(--fs-sm); font-weight: 700; color: var(--primary-strong); }
 .reward-card__need { font-size: var(--fs-sm); font-weight: 600; color: var(--ink-faint); }
-.reward-card__code {
-  font-family: ui-monospace, monospace; font-size: var(--fs-sm); font-weight: 700; letter-spacing: 0.08em;
-  color: var(--primary-strong); background: var(--primary-soft); padding: 3px 10px; border-radius: 6px;
-}
+/* `.reward-card__code` lived here and matched nothing: the redeemed card's code
+   was a `.t-num` span, and it is now the `CopyCode` primitive
+   (primitives.css §11), which is where a code's mono/tracking/ground is
+   decided for all three of the product's codes at once. */
 .reward-card--redeemed { border-color: #bfe3cf; background: rgba(20, 110, 70, 0.03); }
 .reward-card--insufficient { opacity: 0.85; }
 .reward-card--used, .reward-card--expired { opacity: 0.55; }
 
-.earn-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; }
+.earn-list { list-style: none; display: flex; flex-direction: column; gap: var(--s1h); margin: 0; padding: 0; }
 .earn-list li {
   display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap;
-  font-size: var(--fs-sm); padding: 8px 10px; border-radius: var(--r-sm); background: var(--surface-2);
+  font-size: var(--fs-sm); padding: var(--s2) var(--s2h); border-radius: var(--r-sm); background: var(--surface-2);
 }
 .earn-list__label { flex: 1; font-weight: 600; min-width: 180px; }
 .earn-list__value { font-weight: 700; color: var(--primary-strong); }
 .earn-list__note { font-size: var(--fs-xs); color: var(--ink-faint); }
 
-.modal-scrim {
-  position: fixed; inset: 0; z-index: 200; display: grid; place-items: center;
-  background: rgba(33, 29, 21, 0.45); padding: var(--s4);
-}
-.redeem-modal {
-  background: var(--surface); border-radius: var(--r-lg); max-width: 440px; width: 100%;
-  padding: var(--s5); box-shadow: var(--shadow-lg);
-}
-.redeem-modal__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s3); }
-.redeem-modal__head h3 { font-size: var(--fs-h3); }
-.redeem-modal__close {
-  background: none; border: none; font-size: 1.4rem; line-height: 1; color: var(--ink-soft);
-  cursor: pointer; padding: 2px 6px; border-radius: 6px;
-}
-.redeem-modal__close:hover { background: var(--surface-2); color: var(--ink); }
-.redeem-modal__actions { display: flex; gap: var(--s2); justify-content: flex-end; margin-top: var(--s5); }
+/* The redemption confirmation is `Dialog size="sm"` now (primitives.css §8),
+   so the scrim, the panel, its head, its close button and its action row have
+   all gone — the primitive owns every one of them. `.console-defs` and
+   `.reward-disclosure` still style the body, which is all this dialog ever
+   contributed of its own. */
 
 .toast {
   position: fixed; bottom: var(--s5); left: 50%; transform: translateX(-50%); z-index: 210;
   display: flex; align-items: center; gap: var(--s2);
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
-  box-shadow: var(--shadow-lg); padding: 12px 16px; max-width: min(480px, calc(100vw - var(--s8)));
+  box-shadow: var(--shadow-lg); padding: var(--s3) var(--s4); max-width: min(480px, calc(100vw - var(--s8)));
   font-size: var(--fs-sm);
 }
 .toast--ok { border-color: #bfe3cf; }
 .toast--ok svg { color: var(--success); flex: none; }
 .toast--err { border-color: #f0c9c4; }
-.toast--err svg { color: var(--error); flex: none; }
+.toast--err svg { color: var(--danger); flex: none; }
 .toast__close {
-  background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: 2px;
+  background: none; border: none; color: var(--ink-faint); cursor: pointer; padding: var(--s0h);
   border-radius: 4px; display: flex; flex: none;
 }
 .toast__close:hover { color: var(--ink); background: var(--surface-2); }
@@ -471,10 +548,10 @@
    Compact menu (menu phase) --------------------------------
    ============================================================ */
 .menu-search {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: var(--s2);
   border: 1px solid var(--border); border-radius: var(--r-sm);
-  padding: 8px 12px; margin-top: var(--s3); background: var(--surface);
-  transition: border-color 150ms ease, box-shadow 150ms ease;
+  padding: var(--s2) var(--s3); margin-top: var(--s3); background: var(--surface);
+  transition: border-color var(--tr-settle), box-shadow var(--tr-settle);
 }
 .menu-search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 .menu-search svg { color: var(--ink-faint); flex: none; }
@@ -490,18 +567,19 @@
 }
 
 .menu-rail {
-  display: flex; gap: 6px; margin-top: var(--s3); padding-bottom: 2px;
+  display: flex; gap: var(--s1h); margin-top: var(--s3); padding-bottom: var(--s0h);
   overflow-x: auto; scrollbar-width: thin;
   position: sticky; top: 64px; z-index: 5;
-  background: var(--surface); padding-top: 4px;
+  background: var(--surface); padding-top: var(--s1);
   border-bottom: 1px solid var(--border);
 }
 .menu-rail__item {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: var(--s1h);
   border: 1px solid var(--border); background: var(--surface);
   color: var(--ink-soft); font-size: var(--fs-sm); font-weight: 600;
-  padding: 7px 12px; border-radius: var(--r-full); cursor: pointer;
-  white-space: nowrap; transition: all 150ms ease;
+  padding: var(--s2) var(--s3); border-radius: var(--r-full); cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--tr-settle), border-color var(--tr-settle), color var(--tr-settle);
 }
 .menu-rail__item:hover { border-color: var(--primary); color: var(--ink); }
 .menu-rail__item--active {
@@ -510,7 +588,7 @@
 .menu-rail__item--active svg { color: inherit; }
 .menu-rail__count {
   font-size: 11px; font-weight: 700; opacity: 0.75;
-  background: rgba(0,0,0,0.06); border-radius: var(--r-full); padding: 0 6px;
+  background: rgba(0,0,0,0.06); border-radius: var(--r-full); padding: 0 var(--s1h);
 }
 .menu-rail__item--active .menu-rail__count { background: rgba(255,255,255,0.22); }
 
@@ -525,7 +603,7 @@
 }
 
 /* Compact dish rows: name, one-line description, price, history entry point. */
-.menu-dish { padding: 9px 0; }
+.menu-dish { padding: var(--s2h) 0; }
 .menu-dish__desc {
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden; max-width: 56ch; line-height: 1.45;
@@ -535,16 +613,18 @@
 }
 
 /* Price intelligence modal ----------------------------------- */
+/* No top margin: this is `Dialog`'s toolbar slot now, and the slot owns its
+   own inset (primitives.css §8). */
 .price-range {
-  display: flex; gap: 4px; margin-top: var(--s3);
-  background: var(--surface-2); border-radius: var(--r-sm); padding: 3px;
+  display: flex; gap: var(--s1);
+  background: var(--surface-2); border-radius: var(--r-full); padding: var(--s1);
   width: fit-content;
 }
 .price-range__btn {
   border: none; background: none; cursor: pointer;
   font: inherit; font-size: var(--fs-xs); font-weight: 700;
-  color: var(--ink-soft); padding: 5px 12px; border-radius: var(--r-sm);
-  transition: all 120ms ease;
+  color: var(--ink-soft); padding: var(--s1h) var(--s3); border-radius: var(--r-full);
+  transition: background var(--tr-settle), color var(--tr-settle), box-shadow var(--tr-settle);
 }
 .price-range__btn:hover:not(:disabled) { color: var(--ink); }
 .price-range__btn--active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
@@ -552,54 +632,127 @@
   cursor: not-allowed; opacity: 0.35; text-decoration: line-through;
 }
 
-.price-chart { margin-top: var(--s3); }
+.price-chart { margin-top: var(--s4); }
 .price-chart__svg {
   width: 100%; height: auto; display: block;
-  border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface);
+  border: 1px solid var(--border-soft);
+  /* --r-lg, not --r-sm: the chart is the feature of this dialog and a 10px
+     corner made it read as a screenshot pasted into a form. */
+  border-radius: var(--r-lg);
+  background:
+    linear-gradient(180deg, var(--surface) 0%, var(--paper-100) 100%);
 }
+/* Unlabelled rules, so the eye can judge a slope without the chart turning
+   into a spreadsheet. The baseline is the only one drawn solid. */
+.price-chart__grid line {
+  stroke: var(--border-soft);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+.price-chart__grid .price-chart__base {
+  stroke: var(--border);
+  stroke-dasharray: none;
+}
+/* `.price-chart__axis` was the ৳min / ৳max pair floating at the band edges.
+   Both numbers are now stated by the "Lowest / Average / Highest recorded"
+   cards immediately below the chart, so the labels were a third printing of
+   a figure the dialog already gives twice — and the lower one sat on top of
+   the first date tick. The rule went with the markup. */
+.price-chart__tick { font-size: 8.5px; fill: var(--ink-faint); }
+
+/* The entrance: the curve draws itself, the field fades up behind it, then
+   the observations land in order. `pathLength="1"` on the path is what lets
+   the dash animation be written in normalised units — no measuring the path
+   in JavaScript, and no magic number that breaks when the data changes. */
+@keyframes price-line-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+.price-chart__line {
+  stroke-dasharray: 1;
+  animation: price-line-draw var(--dur-slow) var(--ease-out) both;
+}
+.price-chart__area {
+  animation: kk-fade-in var(--dur-slow) var(--ease-out) 120ms both;
+}
+.price-chart__dot {
+  /* `fill-box`, or the scale runs from the SVG's origin and the dots fly in
+     from the top-left corner instead of growing where they belong. */
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: kk-fade-in var(--dur-med) var(--ease-out) both;
+  animation-delay: calc(220ms + var(--d) * 70ms);
+}
+/* The most recent observation is the one the current price is compared
+   against, so it is inked solid instead of hollow like the history. */
+.price-chart__dot--last { fill: var(--primary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .price-chart__line,
+  .price-chart__area,
+  .price-chart__dot {
+    animation: none;
+  }
+  .price-chart__line { stroke-dasharray: none; }
+}
+
 .price-chart__empty {
-  font-size: var(--fs-sm); color: var(--ink-soft); padding: var(--s3);
-  border: 1px dashed var(--border-strong); border-radius: var(--r-sm);
+  font-size: var(--fs-sm); color: var(--ink-soft); padding: var(--s4);
+  border: 1px dashed var(--border-strong); border-radius: var(--r-lg);
+  text-align: center;
 }
 
 .price-stats {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2);
-  margin-top: var(--s3);
+  margin-top: var(--s4);
 }
 .price-stat {
-  display: flex; flex-direction: column; gap: 2px;
-  background: var(--surface-2); border-radius: var(--r-sm); padding: 10px 12px;
+  display: flex; flex-direction: column; gap: var(--s1);
+  background: var(--surface-2); border: 1px solid var(--border-soft);
+  border-radius: var(--r-md); padding: var(--s3) var(--s3h);
 }
-.price-stat span { font-size: var(--fs-xs); color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
-.price-stat strong { font-family: var(--font-display); font-size: 1.1rem; }
+.price-stat span { font-size: var(--fs-2xs); color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+.price-stat strong {
+  font-family: var(--font-display); font-size: 1.25rem; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; line-height: 1.05;
+}
+/* The average is the one people act on, so it is the one that is raised and
+   inked. Not a green field: `.price-interpretation` directly below already
+   uses --primary-soft, and two adjacent green blocks read as one. */
+.price-stat--mid {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.price-stat--mid strong { color: var(--primary-strong); }
 
 .price-interpretation {
-  margin-top: var(--s3); padding: 10px 12px;
+  margin-top: var(--s4); padding: var(--s3) var(--s3h);
   background: var(--primary-soft); border-left: 3px solid var(--primary);
-  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
 }
 .price-interpretation__head {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: var(--s1h);
   font-weight: 700; font-size: var(--fs-sm); color: var(--ink);
 }
-.price-interpretation ul { margin: 6px 0 0; padding-left: 18px; }
-.price-interpretation li { font-size: var(--fs-sm); color: var(--ink-soft); margin-top: 3px; }
+/* Marker clearance, not scale spacing — this is the room a `<ul>`'s bullets
+   need, so it answers to the list style rather than to --sN. */
+.price-interpretation ul { margin: var(--s1h) 0 0; padding-left: 18px; }
+.price-interpretation li { font-size: var(--fs-sm); color: var(--ink-soft); margin-top: var(--s1); }
 
 /* Offer → dish price context ----------------------------------- */
-.offer-card__price { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.offer-card__price { margin-top: var(--s2h); padding-top: var(--s2h); border-top: 1px dashed var(--border); }
 .offer-card__price-note {
   display: block; font-size: var(--fs-xs); color: var(--ink-soft); font-weight: 600;
-  margin-bottom: 6px;
+  margin-bottom: var(--s1h);
 }
 .offer-card__price-note--muted {
-  font-weight: 500; color: var(--ink-faint); margin: 6px 0 0;
+  font-weight: 500; color: var(--ink-faint); margin: var(--s1h) 0 0;
 }
 .offer-card__price-links {
-  display: flex; flex-wrap: wrap; gap: 6px;
+  display: flex; flex-wrap: wrap; gap: var(--s1h);
 }
 .offer-card__price-links .price-history-link {
   margin: 0; background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--r-full); padding: 4px 10px; font-weight: 600;
+  border-radius: var(--r-full); padding: var(--s1) var(--s2h); font-weight: 600;
 }
 .offer-card__price-links .price-history-link:hover {
   border-color: var(--primary); text-decoration: none; background: var(--primary-soft);
@@ -617,7 +770,7 @@
 .why-khabo__block {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-md); padding: var(--s4);
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
 }
 .why-khabo__block:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
 .why-khabo__icon {
@@ -626,7 +779,7 @@
   background: var(--primary-soft); color: var(--primary-strong);
   margin-bottom: var(--s2);
 }
-.why-khabo__block h3 { font-size: 1.02rem; margin-bottom: 4px; }
+.why-khabo__block h3 { font-size: 1.02rem; margin-bottom: var(--s1); }
 .why-khabo__block p { font-size: var(--fs-sm); color: var(--ink-soft); line-height: 1.5; }
 
 /* Menu responsive ----------------------------------------------- */
@@ -637,6 +790,12 @@
   .why-khabo__grid { grid-template-columns: 1fr; }
   .price-chart__svg { min-width: 260px; }
   .price-chart { overflow-x: auto; }
+  /* One column: at this width the delta pill and the figure were fighting
+     for the same row. This override lives HERE and not in editorial.css —
+     that file loads earlier, so its media query would have lost to
+     `.price-hero`'s unconditional two-column rule above. */
+  .price-hero { grid-template-columns: minmax(0, 1fr); }
+  .price-delta { justify-self: start; }
 }
 
 /* ============================================================
@@ -649,53 +808,41 @@
 .builder-field__trigger--active .builder-field__label {
   color: var(--primary-strong);
 }
-.builder-field__trigger--active::after {
-  content: '';
-  position: absolute; left: 10px; top: 8px;
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--accent);
-}
+/* The 6px gold dot that used to sit at `left: 10px; top: 8px` is gone. The
+   chosen state is the icon well lighting up now (index.css, re-lit for the
+   console in hero-scene.css section 5) — the same information at the size of
+   the field's own mark instead of at the size of a full stop, and it no longer
+   occupies the corner the well now stands in. */
 .builder-field__trigger--active {
   border-color: var(--primary-soft);
 }
 
+/* Phase 2d: the toggle and the panel box are `Disclosure`'s `inline`
+   variant now (primitives.css §7). The pill's geometry deliberately
+   changed: it was `7px 14px` of padding on no minimum, which measured
+   37.05px tall — the only disclosure trigger in the product under the
+   44px floor. It is a 36px box with a 44px `::after` reach instead, the
+   same arithmetic §3's chip uses, and it works here for the same reason:
+   the row's gap is `--s2` = 8px, and 36 + 8 = 44.
+   What is left below is the row's own margin, the closed-state chip
+   summary, and the panel's entrance — none of which a primitive should
+   know about. */
 .builder__advanced-row {
-  display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap;
   margin-top: var(--s2);
 }
-.builder__advanced-toggle {
-  display: inline-flex; align-items: center; gap: 7px;
-  background: none; border: 1px solid var(--border-strong);
-  border-radius: var(--r-full); padding: 7px 14px;
-  font: inherit; font-size: var(--fs-sm); font-weight: 700;
-  color: var(--ink-soft); cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
-}
-.builder__advanced-toggle:hover { border-color: var(--primary); color: var(--ink); background: var(--primary-soft); }
-.builder__advanced-toggle--open {
-  border-color: var(--primary); color: var(--primary-strong); background: var(--primary-soft);
-}
-.builder__advanced-chevron {
-  transition: transform var(--dur-fast) var(--ease);
-}
-.builder__advanced-toggle--open .builder__advanced-chevron { transform: rotate(180deg); }
 .builder__advanced-summary {
-  display: flex; flex-wrap: wrap; gap: 6px;
+  display: flex; flex-wrap: wrap; gap: var(--s1h);
 }
 
-.chip--active {
-  background: var(--primary-soft); border-color: var(--primary-soft); color: var(--primary-strong);
-}
+/* The soft `.chip--active` that used to sit here — primary-soft fill, matching
+   border, primary-strong ink — never painted anything. primitives.css §5 owns
+   the active chip (solid `--primary`, white ink, `--shadow-primary`), loads
+   last, and both are (0,1,0), so the file order decided it. Removed rather
+   than left to look like a second opinion. */
 
 .builder__advanced {
-  margin-top: var(--s3); padding: var(--s4);
-  border: 1px solid var(--border); border-radius: var(--r-md);
-  background: var(--surface);
-  animation: builder-expand 180ms var(--ease);
-}
-@keyframes builder-expand {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  animation: kk-rise 180ms var(--ease);
+  --kk-rise-from: -4px;
 }
 .builder__fields--advanced {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -709,14 +856,14 @@
   font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.06em; color: var(--ink-faint);
 }
-.builder__more-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.builder__more-chips { display: flex; flex-wrap: wrap; gap: var(--s1h); }
 .chip-chip {
-  display: inline-flex; align-items: center; gap: 5px;
+  display: inline-flex; align-items: center; gap: var(--s1h);
   background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--r-full); padding: 6px 12px;
+  border-radius: var(--r-full); padding: var(--s1h) var(--s3);
   font: inherit; font-size: var(--fs-sm); font-weight: 600;
   color: var(--ink-soft); cursor: pointer;
-  transition: all 150ms ease;
+  transition: background var(--tr-settle), border-color var(--tr-settle), color var(--tr-settle);
 }
 .chip-chip:hover { border-color: var(--primary); color: var(--ink); }
 .chip-chip--active {
@@ -725,7 +872,7 @@
 
 .builder__geo-hint {
   display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap;
-  margin-top: var(--s3); padding: 8px 12px;
+  margin-top: var(--s3); padding: var(--s2) var(--s3);
   background: var(--surface-2); border-radius: var(--r-sm);
   font-size: var(--fs-sm); color: var(--ink-soft);
 }
@@ -736,43 +883,32 @@
 }
 @media (max-width: 640px) {
   .builder__fields { grid-template-columns: 1fr 1fr; }
-  .builder__advanced-row { flex-direction: column; align-items: flex-start; }
+  .builder__advanced-row .kk-disc__head { flex-direction: column; align-items: flex-start; }
 }
 
 /* ============================================================
    Profile food preferences — compact, selection-driven ------
    ============================================================ */
-.pref-row {
-  display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
-}
-.pref-chips {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 28px;
-}
+/* `.pref-row`, `.pref-chips` and `.pref-row__meta` were the pre-`PreferencePicker`
+   layout — a label, an inline chip strip and a hint under it. No TSX emits any
+   of the three; the picker replaced them with `.pref-picker__*`. `.pref-row__empty`
+   below is the one survivor of the family and is live at seven call sites in
+   ProfilePage, so it stays and keeps the family prefix. */
 .pref-row__empty { font-size: var(--fs-sm); color: var(--ink-faint); }
-.pref-row__meta {
-  display: block; font-size: var(--fs-xs); color: var(--ink-faint);
-  margin-top: 6px;
-}
 
-.chip--remove {
-  display: inline-flex; align-items: center; gap: 2px;
-  background: var(--primary-soft); border-color: var(--primary-soft);
-  color: var(--primary-strong); padding-right: 4px;
-}
-.chip--remove button {
-  display: inline-flex; align-items: center; justify-content: center;
-  background: none; border: none; cursor: pointer; padding: 2px;
-  color: inherit; border-radius: 50%;
-}
-.chip--remove button:hover { background: rgba(0,0,0,0.08); }
-.chip--remove button:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+/* `.chip--remove` moved to primitives.css §5, beside the legacy `.chip` base it
+   has to beat. Its paint had been dead from here: `.chip` (0,1,0) in
+   primitives.css loads after `.chip--remove` (0,1,0) in this file, so the soft
+   maroon background, the matching border and the `--primary-strong` ink all
+   lost to the plain chip's `--surface` / `--border` / `--ink-soft`. Nothing to
+   override — the rule simply belongs in the later file. */
 
 .pref-select {
   display: flex; align-items: center; gap: var(--s2);
   background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--r-sm); padding: 8px 12px;
+  border-radius: var(--r-sm); padding: var(--s2) var(--s3);
   font: inherit; cursor: pointer; color: var(--ink);
-  transition: border-color 150ms ease, background 150ms ease;
+  transition: border-color var(--tr-settle), background var(--tr-settle);
 }
 .pref-select:hover { border-color: var(--primary); background: var(--surface-3); }
 .pref-select:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
@@ -784,21 +920,12 @@
 .pref-select svg { color: var(--ink-faint); margin-left: auto; }
 
 /* Preference picker modal -------------------------------------- */
-.pref-picker__panel {
-  background: var(--surface); border-radius: var(--r-lg);
-  max-width: 420px; width: 92%; max-height: 80vh;
-  display: flex; flex-direction: column; overflow: hidden;
-}
-.pref-picker__head {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: var(--s3); padding: var(--s4) var(--s4) var(--s2);
-}
-.pref-picker__head h2 { font-size: 1.15rem; }
+/* The panel, its head and its foot are `Dialog`'s now (primitives.css §8).
+   What is left here is only what is particular to a picker. */
 .pref-picker__search {
-  display: flex; align-items: center; gap: 8px;
-  margin: 0 var(--s4) var(--s2);
+  display: flex; align-items: center; gap: var(--s2);
   border: 1px solid var(--border); border-radius: var(--r-sm);
-  padding: 8px 12px;
+  padding: var(--s2) var(--s3);
 }
 .pref-picker__search:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 .pref-picker__search svg { color: var(--ink-faint); flex: none; }
@@ -806,20 +933,21 @@
   flex: 1; border: none; outline: none; background: none; font: inherit;
   font-size: var(--fs-sm); color: var(--ink);
 }
-.pref-picker__list {
-  flex: 1; overflow-y: auto; padding: 0 var(--s3) var(--s2);
-}
+/* The option rows carry their own 10px inset and a hover ground that should
+   bleed slightly wider than the text, so this body is narrower than the
+   dialog's default gutter rather than the rows being pushed in. */
+.pref-picker__body { padding-left: var(--s3); padding-right: var(--s3); }
 .pref-picker__group {
   display: block; font-size: var(--fs-xs); font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.06em;
-  color: var(--ink-faint); padding: var(--s2) var(--s2) 2px;
+  color: var(--ink-faint); padding: var(--s2) var(--s2) var(--s0h);
 }
 .pref-picker__option {
-  width: 100%; display: flex; align-items: center; gap: 10px;
+  width: 100%; display: flex; align-items: center; gap: var(--s2h);
   background: none; border: none; cursor: pointer;
   font: inherit; font-size: var(--fs-sm); font-weight: 600;
-  color: var(--ink); text-align: left; padding: 8px 10px; border-radius: var(--r-sm);
-  transition: background 120ms ease;
+  color: var(--ink); text-align: left; padding: var(--s2) var(--s2h); border-radius: var(--r-sm);
+  transition: background var(--tr-settle);
 }
 .pref-picker__option:hover { background: var(--surface-2); }
 .pref-picker__option--on { color: var(--primary-strong); }
@@ -833,18 +961,33 @@
 .pref-picker__empty {
   padding: var(--s3); font-size: var(--fs-sm); color: var(--ink-soft); text-align: center;
 }
-.pref-picker__foot {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
-  border-top: 1px solid var(--border); padding: var(--s3) var(--s4);
-}
 .pref-picker__count {
   font-size: var(--fs-sm); font-weight: 700; color: var(--ink-soft);
-  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  display: flex; align-items: baseline; gap: var(--s2); flex-wrap: wrap;
 }
 .pref-picker__limit { font-size: var(--fs-xs); font-weight: 500; color: var(--ink-faint); }
 .pref-picker__actions { display: flex; gap: var(--s2); margin-left: auto; }
 
-@media (max-width: 720px) {
-  .pref-picker__panel { width: 96%; }
-  .pref-row { flex-direction: column; align-items: flex-start; gap: var(--s2); }
+/* ============================================================
+   THE ENTER — see design-system.css §8b
+   ============================================================
+   Every rule above declares its LEAVE (`var(--tr-settle)`). This is the
+   other half of the pair: the answer, grouped here rather than repeated
+   across the individual state rules, so the two halves stay legible and
+   the whole file retunes from one place.
+   ------------------------------------------------------------ */
+.chip-chip:hover,
+.demo-account:hover,
+.menu-rail__item:hover,
+.menu-search:focus-within,
+.pref-picker__option:focus-visible,
+.pref-picker__option:hover,
+.pref-select:focus-visible,
+.pref-select:hover,
+.price-range__btn:hover:not(:disabled),
+.rating-input__star:hover {
+  transition-duration: var(--tr-answer);
+}
+.why-khabo__block:hover {
+  transition-duration: var(--tr-answer-heavy);
 }

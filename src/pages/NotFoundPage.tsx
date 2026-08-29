@@ -10,8 +10,8 @@ export default function NotFoundPage() {
         <EmptyState
           icon={<MapPin size={36} />}
           title="404 — lost in the city"
-          message="This page doesn't exist. Even the best food explorers get lost sometimes."
-          actionLabel="Back to the kitchen (home)"
+          message="No page lives at this address. Everything else is where you left it."
+          actionLabel="Back to the front page"
           actionTo="/"
         />
       </div>

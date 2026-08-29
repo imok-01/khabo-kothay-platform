@@ -1,0 +1,517 @@
+/* ============================================================
+   MORPH SLIDER — the restaurant photo stage
+   ============================================================
+   Loaded last, after primitives.css, from src/main.tsx. Two
+   reasons it is a flat file here rather than an `import` inside
+   MorphSlider.tsx, which is how React Bits ships it:
+
+   1. This product's stylesheet order is declared in one place
+      and load-bearing (see the ordering note in main.tsx). A
+      component-level CSS import puts a twelfth sheet into the
+      cascade at whatever position the bundler's module graph
+      happens to give it, which is exactly the kind of ordering
+      nothing in tsc, lint or the build can see.
+   2. Nothing above matches these selectors, so this file is the
+      sole owner of both namespaces and needs to restate no
+      earlier media query.
+
+   Section 1 is the component's own paint, kept on the upstream
+   class names so the component stays swappable. Section 2 is the
+   restaurant detail page's frame around it. The two glass chips
+   in section 2 deliberately reuse `.detail__gallery-source` and
+   `.detail__gallery-count` from index.css + polish.css: the
+   photo-source label and the counter are unchanged in meaning,
+   so they should be unchanged in appearance.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. THE COMPONENT
+   ------------------------------------------------------------
+   Retuned from the published CSS in three places, all of them to
+   stop it reading as a different app: the glass is this product's
+   one recipe rather than a fourth blur value, the easing is the
+   shared token, and the type is the UI face.
+   ------------------------------------------------------------ */
+.morph-slider {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  /* Warm ink, matching the shader's clear colour and its placeholder
+     tile. The upstream #0c0c0e is a cool near-black, which against
+     warm paper reads as a hole in the page. */
+  background: #1c1710;
+  user-select: none;
+  touch-action: pan-y;
+}
+
+/* The poster sits under the canvas and is the only thing on screen until the
+   first photo has decoded — or for good, if WebGL is unavailable. It is also
+   the whole of the prerendered markup, since effects never run server-side. */
+.morph-slider-poster {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.morph-slider-poster .img-wrap,
+.morph-slider-poster .img-fallback,
+.morph-slider-poster img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.morph-slider-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  cursor: grab;
+  outline: none;
+  /* Held back until the first texture is up, so the reader crossfades from
+     the poster into the live stage instead of watching a dark rectangle
+     wait for a download. */
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+
+.morph-slider.is-ready .morph-slider-stage { opacity: 1; }
+
+.morph-slider-stage:active { cursor: grabbing; }
+
+.morph-slider-stage:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--saffron-400);
+}
+
+.morph-slider-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.morph-slider-caption {
+  position: absolute;
+  left: var(--s5);
+  bottom: var(--s5);
+  z-index: 2;
+  max-width: 70%;
+  pointer-events: none;
+  display: grid;
+}
+
+.morph-slider-caption-text {
+  grid-area: 1 / 1;
+  justify-self: start;
+  display: inline-block;
+  padding: var(--s2) var(--s3h);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-md);
+  font-weight: var(--weight-semi);
+  letter-spacing: 0.01em;
+  color: var(--paper-100);
+  background: var(--glass-ink);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  opacity: 0;
+  transform: translateY(12px);
+  filter: blur(6px);
+  transition:
+    opacity var(--ms-swap) var(--ease-out),
+    transform var(--ms-swap) var(--ease-out),
+    filter var(--ms-swap) var(--ease-out);
+}
+
+.morph-slider-caption-text.is-active {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+.morph-slider-controls {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 var(--s4);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* The one glass recipe, on the surface it is explicitly licensed for: controls
+   floating on photography. Upstream's own blur(10px) over a 0.28 white fill is
+   a fourth blur value and a cool tint, both of which read as another product. */
+.morph-slider-btn {
+  pointer-events: auto;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgba(253, 249, 241, 0.22);
+  border-radius: var(--r-full);
+  color: var(--paper-100);
+  background: var(--glass-ink);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  cursor: pointer;
+  /* §8b: the leave is the slow half of the pair and lives on the base rule. */
+  transition:
+    background-color var(--tr-settle),
+    border-color var(--tr-settle),
+    transform var(--tr-settle),
+    box-shadow var(--tr-settle);
+}
+
+.morph-slider-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.morph-slider-btn:hover {
+  transition-duration: var(--tr-answer-heavy);
+  border-color: rgba(253, 249, 241, 0.4);
+  background: rgba(20, 16, 11, 0.68);
+  transform: scale(1.06);
+}
+
+.morph-slider-btn:active {
+  transform: scale(0.96);
+}
+
+.morph-slider-btn:focus-visible {
+  transition-duration: var(--tr-answer);
+  outline: 2px solid var(--saffron-400);
+  outline-offset: 2px;
+}
+
+.morph-slider-indicators {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--s4);
+  z-index: 3;
+  display: flex;
+  gap: var(--s2);
+  justify-content: center;
+  align-items: center;
+}
+
+/* The dot is 8px of ink but a 24px pointer target: the box is not the target,
+   which is the same rule the primitive layer follows for every small control. */
+.morph-slider-dot {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: none;
+  cursor: pointer;
+}
+
+.morph-slider-dot::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: rgba(253, 249, 241, 0.42);
+  box-shadow: 0 1px 3px rgba(28, 23, 16, 0.45);
+  transform: translate(-50%, -50%);
+  transition:
+    width var(--tr-settle),
+    background-color var(--tr-settle);
+}
+
+.morph-slider-dot:hover::after {
+  transition-duration: var(--tr-answer);
+  background: rgba(253, 249, 241, 0.72);
+}
+
+.morph-slider-dot.is-active::after {
+  /* A stretched capsule rather than a bigger circle, so the active dot reads as
+     position along a strip instead of one more dot that happens to be brighter. */
+  width: 22px;
+  background: var(--saffron-400);
+  transition-duration: var(--ms-dot);
+}
+
+.morph-slider-dot:focus-visible {
+  outline: 2px solid var(--saffron-400);
+  outline-offset: 0;
+}
+
+@media (max-width: 420px) {
+  .morph-slider-caption {
+    left: var(--s3);
+    bottom: var(--s3);
+    max-width: calc(100% - var(--s6));
+  }
+
+  .morph-slider-caption-text {
+    font-size: var(--fs-sm);
+  }
+
+  .morph-slider-controls {
+    padding: 0 var(--s2);
+  }
+
+  .morph-slider-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .morph-slider-btn svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+
+/* The canvas half of reduced motion is handled in the shader (uReduce collapses
+   the displacement and zeroes the drift) and in the component (autoplay is off).
+   What is left here is the DOM around it: no crossfade-in, no blur-up caption,
+   no scaling controls. The deck still morphs between photos on demand, because
+   answering a press with nothing at all is worse than answering it plainly. */
+@media (prefers-reduced-motion: reduce) {
+  .morph-slider-stage {
+    transition: none;
+  }
+
+  .morph-slider-caption-text {
+    transform: none;
+    filter: none;
+    transition: opacity var(--dur-fast) linear;
+  }
+
+  .morph-slider-caption-text.is-active {
+    filter: none;
+  }
+
+  .morph-slider-btn:hover,
+  .morph-slider-btn:active {
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------
+   2. THE RESTAURANT PHOTO SECTION
+   ------------------------------------------------------------
+   The frame the deck sits in on /restaurant/:slug. A new namespace
+   rather than overrides on `.detail__gallery*`, because those rules
+   are spread across index.css, editorial.css and polish.css and the
+   markup underneath them has changed shape: a two-up grid of
+   `<img>` became one canvas plus a rail. The old family is left
+   standing (same call as `.explore__toolbar*`) and only the two
+   glass chips are reused by name.
+   ------------------------------------------------------------ */
+.photo-morph {
+  display: grid;
+  gap: var(--s3);
+  margin: 0 0 var(--s6);
+}
+
+/* Owns the radius, the shadow and the chips' containing block. `overflow: hidden`
+   here is what rounds the canvas, so the component is handed `radius={0}`
+   instead of its 16px default: two rounded boxes nested inside each other cut at
+   whichever curve is larger, which at the mobile breakpoint below would leave
+   the corners following one number and the shadow another. */
+.photo-morph__stage {
+  position: relative;
+  height: clamp(300px, 44vw, 560px);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background: var(--espresso-900);
+  box-shadow:
+    0 2px 6px rgba(28, 23, 16, 0.06),
+    0 26px 60px rgba(28, 23, 16, 0.12);
+}
+
+.photo-morph__stage .morph-slider {
+  height: 100%;
+}
+/* Expand affordance. Top-right is the only free corner: the source chip holds
+   top-left, the counter bottom-right, the drag hint bottom-left. */
+.photo-morph__expand {
+  position: absolute;
+  top: var(--s3);
+  right: var(--s3);
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 0.3rem 0.7rem;
+  border: 1px solid rgba(247, 240, 228, 0.16);
+  border-radius: var(--r-full);
+  color: var(--paper-100);
+  background: var(--glass-ink);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background-color var(--tr-settle),
+    border-color var(--tr-settle),
+    color var(--tr-settle);
+}
+
+.photo-morph__expand svg {
+  width: 13px;
+  height: 13px;
+}
+
+.photo-morph__expand:hover {
+  transition-duration: var(--tr-answer-heavy);
+  border-color: rgba(247, 240, 228, 0.34);
+  background: rgba(20, 16, 11, 0.7);
+  color: var(--saffron-200);
+}
+
+.photo-morph__expand:focus-visible {
+  transition-duration: var(--tr-answer);
+  outline: 2px solid var(--saffron-400);
+  outline-offset: 2px;
+}
+
+/* The one-time hint. React unmounts it after the reader's first drag, tap or
+   arrow key, so it never becomes furniture; the delay is here so it does not
+   race the poster-to-canvas crossfade and arrive before there is a photo. */
+.photo-morph__hint {
+  position: absolute;
+  left: var(--s3);
+  bottom: var(--s3);
+  z-index: 4;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--r-full);
+  color: rgba(253, 249, 241, 0.82);
+  background: rgba(20, 16, 11, 0.42);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  animation: kk-rise var(--dur-slow) var(--ease-out) 900ms both;
+  --kk-rise-from: 6px;
+}
+
+/* The rail is the reason the component grew `jumpTo`: nineteen photos cannot be
+   reached one dot at a time, and a thumbnail says which photo it is going to. */
+.photo-morph__rail {
+  /* Positioned so that a thumb's `offsetLeft` is measured against the scroll
+     container: ImageGallery centres the selected thumb by setting scrollLeft,
+     because `scrollIntoView` would drag the whole page vertically to reach it. */
+  position: relative;
+  display: flex;
+  gap: var(--s2);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  padding: var(--s0h) 0 var(--s1);
+  /* The ring below is drawn inside the thumb, so no room is needed for it, but
+     a focus outline sits outside and would otherwise be clipped by the scroll. */
+  scroll-padding: 0 var(--s1);
+}
+
+.photo-morph__rail::-webkit-scrollbar {
+  display: none;
+}
+
+.photo-morph__thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 84px;
+  height: 62px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface-2);
+  scroll-snap-align: center;
+  cursor: pointer;
+  opacity: 0.62;
+  transition:
+    opacity var(--tr-settle),
+    transform var(--tr-settle);
+}
+
+.photo-morph__thumb .img-wrap,
+.photo-morph__thumb .img-fallback,
+.photo-morph__thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-morph__thumb:hover {
+  transition-duration: var(--tr-answer-heavy);
+  opacity: 0.85;
+  transform: translateY(-2px);
+}
+
+.photo-morph__thumb:focus-visible {
+  outline: 2px solid var(--saffron-400);
+  outline-offset: 2px;
+}
+
+/* The ring is a pseudo-element rather than a border or an outline: a border
+   would resize the thumb by 2px on selection and shove the rail along, and an
+   outline is what focus already uses. Same treatment as the old thumbs, so the
+   selected state means the same thing it did before. */
+.photo-morph__thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 0 var(--saffron-400);
+  transition: box-shadow var(--tr-settle);
+}
+
+.photo-morph__thumb[aria-current='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+.photo-morph__thumb[aria-current='true']::after {
+  box-shadow: inset 0 0 0 2px var(--saffron-400);
+  transition-duration: var(--tr-answer-heavy);
+}
+
+@media (max-width: 640px) {
+  .photo-morph__stage {
+    /* Full-bleed corners would fight the page's own gutter, so only the radius
+       comes down — the same step `.card` takes at this breakpoint. */
+    border-radius: var(--r-card);
+    height: clamp(240px, 62vw, 340px);
+  }
+
+  .photo-morph__thumb {
+    width: 68px;
+    height: 52px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-morph__hint {
+    animation: none;
+  }
+
+  .photo-morph__thumb:hover {
+    transform: none;
+  }
+}

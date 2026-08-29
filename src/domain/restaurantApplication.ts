@@ -1,4 +1,5 @@
 import type { ApplicationStatus } from '../integrations/supabase/database.types';
+import { statusPill } from '../lib/statusPill';
 
 export type { ApplicationStatus };
 
@@ -17,16 +18,23 @@ export function applicationStatusLabel(status: ApplicationStatus): string {
   }
 }
 
-/** Tailwind-ish status badge class used by the admin + applicant views. */
+/**
+ * The console's state-mark class for an application.
+ *
+ * Was `admin-status--*` — the retired 999px pill, and it mapped CONTACTED to
+ * `--published`, i.e. an application someone had merely phoned looked settled.
+ * Now it goes through the one state mark the console uses, and CONTACTED is
+ * `info`: something happened, and it was neither a yes nor a no.
+ */
 export function applicationStatusClass(status: ApplicationStatus): string {
   switch (status) {
     case 'PENDING':
-      return 'admin-status--pending';
+      return statusPill('pending');
     case 'APPROVED':
-      return 'admin-status--approved';
+      return statusPill('approved');
     case 'REJECTED':
-      return 'admin-status--rejected';
+      return statusPill('rejected');
     case 'CONTACTED':
-      return 'admin-status--published';
+      return statusPill('contacted');
   }
 }

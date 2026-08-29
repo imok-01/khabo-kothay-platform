@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Store, PenLine, BookOpen, ArrowRight, Check, Send, CheckCircle2 } from 'lucide-react';
+import { Store, PenLine, BookOpen, ArrowRight, ArrowLeft, Send, CheckCircle2 } from 'lucide-react';
 import { usePageTitle } from '../lib/usePageTitle';
 import { useAuth } from '../context/AuthContext';
 import { roleViewOf } from '../domain/auth';
+import { Button, Field } from '../components/ui';
 
 interface PartnerHeroProps {
   eyebrow: string;
@@ -21,16 +22,38 @@ function PartnerHero({ eyebrow, title, lede }: PartnerHeroProps) {
   );
 }
 
-function ContactCta({ label, to = '/contact' }: { label: string; to?: string }) {
+/**
+ * The block at the foot of a partner page that turns reading into doing.
+ *
+ * It used to hard-code "Talk to the Khabo Kothay team / Send us your details
+ * through the contact page" while one of its two callers pointed the button at
+ * the sign-in step for an application — so the heading described a conversation
+ * that was not on offer and named a contact page the button did not open. The
+ * words come from the call site now, because the call site is the only place
+ * that knows where the button goes.
+ */
+function ContactCta({
+  title,
+  body,
+  label,
+  to = '/contact',
+}: {
+  title: string;
+  body: string;
+  label: string;
+  to?: string;
+}) {
   return (
     <div className="partner-cta">
       <div>
-        <h2>Talk to the Khabo Kothay team</h2>
-        <p>Send us your details through the contact page and we’ll review and respond.</p>
+        <h2>{title}</h2>
+        <p>{body}</p>
       </div>
-      <Link to={to} className="btn btn--primary">
-        {label} <ArrowRight size={15} aria-hidden="true" />
-      </Link>
+      {/* `iconAfter` owns the trailing arrow now. This markup wrote
+          `className="btn__after"` by hand — the travel contract copied out of
+          the stylesheet at four call sites, which is exactly the kind of
+          decision the primitive exists to hold once. */}
+      <Button variant="primary" to={to} iconAfter={ArrowRight}>{label}</Button>
     </div>
   );
 }
@@ -148,12 +171,17 @@ export const PartnerListPage = () => {
               <h2>You already manage a restaurant on Khabo Kothay</h2>
               <p>Use your restaurant dashboard to update your listing.</p>
             </div>
-            <Link to="/manage?tab=profile" className="btn btn--primary">
-              Go to your restaurant dashboard <ArrowRight size={15} aria-hidden="true" />
-            </Link>
+            <Button variant="primary" to="/manage?tab=profile" iconAfter={ArrowRight}>
+              Go to your restaurant dashboard
+            </Button>
           </div>
         ) : (
-          <ContactCta label="Start your application" to="/login?intent=partner" />
+          <ContactCta
+            title="Ready to be found?"
+            body="Sign in with your phone, then tell us about the place. An editor reads every application."
+            label="Start your application"
+            to="/login?intent=partner"
+          />
         )}
       </div>
     </main>
@@ -204,12 +232,17 @@ export const PartnerUpdatePage = () => {
                 live only after executive review.
               </p>
             </div>
-            <Link to="/manage?tab=profile" className="btn btn--primary">
-              Go to your restaurant dashboard <ArrowRight size={15} aria-hidden="true" />
-            </Link>
+            <Button variant="primary" to="/manage?tab=profile" iconAfter={ArrowRight}>
+              Go to your restaurant dashboard
+            </Button>
           </div>
         ) : (
-          <ContactCta label="Submit correction request" to="/partners/enquiry?type=update" />
+          <ContactCta
+            title="Tell us what to fix"
+            body="Send the correction and what it should say. We check it — with the restaurant where we can — before the public page changes."
+            label="Submit correction request"
+            to="/partners/enquiry?type=update"
+          />
         )}
       </div>
     </main>
@@ -254,10 +287,12 @@ export const PartnerHowPage = () => {
               Use the <Link to="/partners/update-information">update information</Link> page to send a
               correction request. We review every request and keep the source of any change visible.
             </p>
-            <ul className="info-list" style={{ marginTop: 'var(--s3)' }}>
-              <li><Check size={14} style={{ color: 'var(--success)', verticalAlign: '-2px', marginRight: 6 }} aria-hidden="true" /> Timely corrections improve trust for everyone.</li>
-              <li><Check size={14} style={{ color: 'var(--success)', verticalAlign: '-2px', marginRight: 6 }} aria-hidden="true" /> Nothing changes without review.</li>
-            </ul>
+            {/* A two-item list of reassurances stood here — each line marked with
+                both `.info-list`'s ring bullet *and* an inline-styled green
+                check, and each line restating what the paragraph above it had
+                just said ("nothing changes without review", for the third time
+                on this page family). Repetition is what makes a promise stop
+                sounding like one. */}
           </section>
         </div>
         <div className="partner-cta">
@@ -265,9 +300,9 @@ export const PartnerHowPage = () => {
             <h2>Need to update your restaurant information?</h2>
             <p>Send a correction request and we’ll review it before updating the public listing.</p>
           </div>
-          <Link to="/partners/update-information" className="btn btn--primary">
-            Update information <ArrowRight size={15} aria-hidden="true" />
-          </Link>
+          <Button variant="primary" to="/partners/update-information" iconAfter={ArrowRight}>
+            Update information
+          </Button>
         </div>
       </div>
     </main>
@@ -314,48 +349,53 @@ export const PartnerEnquiryPage = () => {
           <div className="info-body">
             <section className="info-card">
               <span className="info-card__icon" aria-hidden="true"><CheckCircle2 size={18} /></span>
-              <h2>Thanks — your {isUpdate ? 'correction request' : 'restaurant details'} are ready</h2>
+              <h2>Nothing was sent — and we would rather say so</h2>
+              {/* The old wording was "your details are ready" over "submissions
+                  are kept on your device until the account system is live".
+                  Neither is true: this handler sets a flag and nothing else, so
+                  there is no draft on the device and nothing queued anywhere.
+                  A page built on labelled provenance cannot afford to invent a
+                  save, least of all to a restaurant owner who then waits. */}
               <p>
-                This enquiry flow is prepared for the Khabo Kothay team and will be connected to
-                our account system as part of the database integration. Nothing is sent anywhere yet.
+                This form is a placeholder while the partner enquiry route is wired to our account
+                system, so what you typed has not been stored or sent. If your {isUpdate ? 'correction' : 'restaurant'} is
+                urgent, the fastest path today is an owner account — sign in with your phone and apply
+                from there, and a person will read it.
               </p>
-              <Link to={isUpdate ? '/partners/update-information' : '/partners/list-your-restaurant'} className="btn btn--ghost" style={{ marginTop: 'var(--s3)' }}>
+              {/* A leading arrow, because this one goes back. */}
+              <Button variant="ghost" to={isUpdate ? '/partners/update-information' : '/partners/list-your-restaurant'} icon={ArrowLeft}>
                 Back to the process page
-              </Link>
+              </Button>
             </section>
           </div>
         ) : (
           <form className="auth-card" onSubmit={onSubmit}>
-            <div className="auth-card__head" style={{ paddingBottom: 'var(--s4)' }}>
+            <div className="auth-card__head auth-card__head--form">
               <h2>Enquiry details</h2>
               <p>
                 {isUpdate
-                  ? 'Include the restaurant name and what changed so we can route it correctly.'
-                  : 'Include as much as you can — we’ll verify before publishing anything.'}
+                  ? 'Include the restaurant name and what changed, so we know where to look.'
+                  : 'Include as much as you can — nothing is published until it is checked.'}
               </p>
             </div>
-            <label className="field">
-              <span className="field__label">Your name</span>
+            <Field label="Your name">
               <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" placeholder="e.g. Priya Sen" />
-            </label>
-            <label className="field">
-              <span className="field__label">Phone or email</span>
+            </Field>
+            <Field label="Phone or email" hint="Whichever you would rather we replied to.">
               <input value={contact} onChange={(e) => setContact(e.target.value)} required autoComplete="email" placeholder="you@example.com" />
-            </label>
-            <label className="field">
-              <span className="field__label">Restaurant</span>
-              <input value={restaurantName} onChange={(e) => setRestaurantName(e.target.value)} required placeholder="Your restaurant name" />
-            </label>
-            <label className="field">
-              <span className="field__label">{isUpdate ? 'What changed?' : 'Tell us about your restaurant'}</span>
+            </Field>
+            <Field label="Which restaurant">
+              <input value={restaurantName} onChange={(e) => setRestaurantName(e.target.value)} required placeholder="As it appears on the door" />
+            </Field>
+            <Field label={isUpdate ? 'What changed?' : 'Tell us about the place'}>
               <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} required placeholder={isUpdate ? 'e.g. Opening hours changed to 11am–11pm from this week.' : 'e.g. Cuisines, signature dishes, price range, opening hours.'} />
-            </label>
-            <button type="submit" className="btn btn--primary btn--block">
-              <Send size={15} aria-hidden="true" /> {isUpdate ? 'Submit correction request' : 'Submit restaurant details'}
-            </button>
-            <p className="auth-card__demo-note" style={{ marginTop: 'var(--s3)' }}>
-              Demo placeholder — this form isn’t connected to a backend yet. Submissions are kept on
-              your device until the account system is live.
+            </Field>
+            <Button type="submit" variant="primary" block icon={Send}>
+              {isUpdate ? 'Submit correction request' : 'Submit restaurant details'}
+            </Button>
+            <p className="auth-card__demo-note">
+              Placeholder form — not yet connected to a backend. Nothing you type here is stored or
+              sent, and the next screen says so too.
             </p>
           </form>
         )}

@@ -1,0 +1,1478 @@
+/* ==========================================================================
+   HERO SCENE — the homepage front door, rebuilt as a place
+   ==========================================================================
+
+   Loaded last, after console.css. Nothing above this file matches a
+   `hero-scene` or `hero-plinth` selector, so there is no ordering fight here
+   and no media query to re-state: this file is the hero's only owner.
+
+   Why a new namespace instead of overriding `hero-c`: the old hero's 141 rules
+   are spread across phase-c.css, refine.css and polish.css, and its search
+   console is light-surfaced in all three. Re-lighting that from three files at
+   once, at equal specificity, in a project with no `@layer`, is how ordering
+   bugs are made. `hero-c` rules remain in those files, now unmatched.
+
+   THE TWO THINGS THIS FILE MUST NOT BREAK
+   ---------------------------------------
+   1. `DiscoveryBuilder`'s menus. Above 768px `.builder__popover` is
+      `position: absolute` inside `.builder-field` and opens *downward past the
+      hero's lower edge* — so nothing in the hero may clip it. At and below
+      768px the same element is `position: fixed`, a bottom sheet anchored above
+      the consumer nav at `z-index: 61`. A `fixed` element's containing block is
+      the viewport unless an ancestor has `transform`, `filter`,
+      `backdrop-filter`, `perspective`, `contain` or `will-change` — so the
+      console may carry none of those at mobile widths. Section 5 explains how
+      the brief's frosted glass is delivered anyway.
+   2. Every link and control that used to live in the hero. The shortcuts and
+      the four catalogue numbers moved down one step to `.hero-plinth`; they are
+      the same markup with the same real data, not a redesign of the data.
+
+   THE SEAM, WHICH IS THE WHOLE BRIEF
+   ----------------------------------
+   Two photographs have to stop being photographs. Each is dissolved by a
+   different mechanism, because each arrives differently.
+
+   The restaurant is RGBA with a real alpha channel, so its silhouette is
+   already cut; what gives a cut-out away is the hard outline, and section 2
+   fades its two visible edges back into the dark.
+
+   The lantern is RGBA too — 681x837, sampled: 67% fully transparent, and its
+   alpha was binary (0 or 255, nothing between) until it was feathered by 0.7px
+   on the way to webp, which is what stops every edge being a stair. It is
+   composited *normally*, not screened. Screening it would lift the ironwork to
+   just above the ground colour and the lantern would lose its body; a lamp seen
+   from below at night is a dark silhouette with one lit panel, and that is what
+   the asset already is. So the iron stays dark and only section 3's light is
+   additive. The one hard edge this leaves — the layer's own top, where the
+   lantern's roof runs up behind the fixed header — is dissolved by a mask on
+   the layer that fades to nothing exactly where the lit glass begins.
+
+   THE LIGHT, WHICH IS THE REST OF IT
+   ----------------------------------
+   Nothing in section 3 is a circle with a visible edge. Three rules make the
+   falloff read as air rather than as a shape:
+     - every radial stop runs out at `transparent 100%`, never at 60-70%, so
+       there is no radius at which the gradient stops and a ring appears;
+     - the directional light is a blurred `conic-gradient` wedge aimed down and
+       right from the glass, which is what a bounded lantern actually throws;
+     - the bloom at the source is blurred by `filter`, not by gradient stops, so
+       its edge is a real convolution and cannot band.
+   The dark side is lit too, in the sense that it is deliberately unlit: a
+   directional shadow pass above the artwork lets the far corner fall away, so
+   the brightness gradient across the frame belongs to one light source.
+
+   Sections
+     1. THE ROOM        ground, vignette, grain
+     2. THE RESTAURANT  the illustration, masked into the dark
+     3. THE LAMP        the light source and what it throws
+     4. THE TYPE        eyebrow, headline, one sentence
+     5. THE CONSOLE     the discovery search as dark frosted glass
+     6. THE PLINTH      shortcuts and the catalogue ledger
+     7. RESPONSIVE      1180 / 1024 / 900 / 760 / 560
+     8. MOTION          one slow rise, gated
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. THE ROOM
+   -------------------------------------------------------------------------- */
+
+/* The hero opens at the top of the document, under the fixed header, the same
+   arrangement refine.css:63 makes for `hero-c`. */
+.app__body:has(.hero-scene) { padding-top: 0; }
+
+.hero-scene {
+  position: relative;
+  /* Above `.hero-plinth`, so a menu that opens downward out of the console
+     paints over the strip below instead of under it. `isolation` keeps the two
+     screen-blended layers below blending against this hero and nothing else. */
+  z-index: 2;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  min-height: var(--stage-min);
+  /* The top inset is load-bearing, not taste: it opens a clear band between the
+     header and the eyebrow for the lantern head to hang in, and the lantern is
+     sized to fill it (see the lamp variables below). The cap is 11rem because
+     that is as much band as can be spent while still landing the builder's
+     primary action above a 900px fold at 1440 — measured, with the console's
+     own spacing already tightened as far as it reads well. Spending it is the
+     point: the band is what lets the lamp be oversized. */
+  padding: var(--stage-top) var(--gutter) var(--stage-bottom);
+  /* Not a flat panel and not black: a warm-black room with light coming from
+     the upper left, where the lamp is, and a slow ember behind the building on
+     the right. Three layers, no hard stops, so nothing reads as a rectangle.
+
+     Painted at the stage's height rather than the box's (see THE STAGE below),
+     over a flat ground of the linear layer's own last stop — so a hero that
+     grows taller than its stage continues in the one colour the composition
+     already ends on instead of restretching every gradient. */
+  background-color: #0a0704;
+  background-image:
+    radial-gradient(80% 65% at 8% 18%, rgba(126, 74, 20, 0.34) 0%, transparent 62%),
+    radial-gradient(95% 80% at 76% 68%, rgba(74, 38, 12, 0.42) 0%, transparent 66%),
+    linear-gradient(166deg, #191309 0%, #120d07 48%, #0a0704 100%);
+  background-repeat: no-repeat;
+  background-size: 100% var(--stage-box);
+  color: var(--on-ink);
+  /* No clip here — see the header note. Every art layer clips itself. */
+  overflow: visible;
+
+  /* ----- THE STAGE ------------------------------------------------------- *
+     The scene is not the box. The five art layers below used to be `inset: 0`
+     of `.hero-scene`, and the artwork inside them is anchored to the *bottom*
+     of that box — so anything that made the box taller moved the building down
+     with it. Opening the builder's Advanced panel grew the hero by 238px at
+     1405 and carried the restaurant 242px down the frame, which is not a
+     composition that survives its own controls.
+
+     So the media gets its own height, and it is the composition's height rather
+     than the content's:
+
+       --stage-top      the band the lantern hangs in (nav + inset)
+       --stage-bottom   the pavement's own margin
+       --stage-body     the copy plus the console with Advanced *closed*
+       --stage-min      the viewport floor the hero opens to
+       --stage-h        the taller of the two, i.e. what the scene needs
+       --stage-box      that height, clamped to the box it is painted in
+
+     `--stage-box`'s `min(..., 100%)` is what makes this safe in both
+     directions. It resolves against the same padding box everywhere it is used
+     (`height` and `top` on the absolute layers, `background-size` here), so:
+     when the hero is at its natural closed height the clamp picks `100%` and
+     the scene is painted exactly as it was before this variable existed; when
+     the hero grows past it, the stage wins and nothing in the scene moves. An
+     over-estimate of `--stage-body` therefore costs nothing, and an
+     under-estimate is invisible — the floor ramp is anchored to the stage's
+     bottom edge and its gradient is solid `#0a0704` there, which is the ground
+     colour the box below it is filled with, so the seam has no contrast to
+     show. That is why these are measured-but-generous values and not a
+     six-decimal fit. */
+  --stage-top: calc(var(--nav-h) + clamp(3rem, 12.22vw, 11rem));
+  --stage-bottom: clamp(2.5rem, 5vw, 4rem);
+  /* The one invariant this whole section rests on:
+
+         --stage-body  <=  the closed `.hero-scene__inner` at EVERY width in
+                           the band.
+
+     Under is the free direction (see above). Over is the failure: `--stage-h`
+     climbs past the closed box, `min(..., 100%)` picks `100%`, and the stage is
+     re-coupled to a box that Advanced grows — which is the original bug back
+     again. That is not hypothetical. A constant 37.25rem was measured against
+     1405 and 1024 alone and held there; it was 24px over at 901, 18 at 960 and
+     10 at 1024 once the search footer got shorter, and the artwork drifted 10px
+     on every toggle at 1024x768.
+
+     A constant cannot hold this band, because the closed composition is not a
+     constant: the headline is set in `vw`, so the copy block grows with the
+     frame. Measured, closed, `.hero-scene__inner`:
+
+         901  572     1024  586     1201  616     1600  640
+         960  578     1100  597     1440  640     1920  640
+
+     — a 68px spread, and it plateaus at 1440 where the title clamp caps. So the
+     estimate tracks the same axis the type does and caps where the type caps,
+     which leaves 14-24px of clearance at every width in between rather than the
+     0.3px a single number left at 900. That clearance is the margin a future
+     copy edit gets to spend before any of this needs re-measuring, and spending
+     it costs nothing but a stage that ends a line of type above the box it is
+     painted in — on the ground colour that box is filled with. */
+  --stage-body: min(calc(12vw + 28rem), 38.5rem);
+  --stage-min: min(92vh, 900px);
+  --stage-h: max(var(--stage-min), calc(var(--stage-top) + var(--stage-body) + var(--stage-bottom)));
+  --stage-box: min(var(--stage-h), 100%);
+  /* The floor ramp's own height, as a share of the stage rather than of the
+     box, so a growing hero cannot push the ramp further up into the artwork. */
+  --stage-ramp: clamp(5rem, calc(0.15 * var(--stage-box)), 12rem);
+
+  /* ----- THE LAMP, AS THREE NUMBERS -------------------------------------- *
+     Every other value in section 3 is derived from these, so a breakpoint that
+     re-places the lantern edits these and nothing else — the glow, the wedge,
+     the pool and the header veil all follow. The multipliers below are measured
+     off the asset, not estimated: in the 681x837 lantern the lit glass occupies
+     rows 25.1%-54.5% (optical centre 37%) and columns 52.4%-87.5% (centre
+     70.5%), and the image is 0.8136 as wide as it is tall.
+
+       --lamp-h           the lantern's rendered height
+       --lamp-glass-top   how far below the hero's top edge the lit glass starts
+       --lamp-bleed       how far left the asset hangs, as a factor of its height
+                          (-0.163 leaves the wall plate off-frame and lets the
+                          bracket arm enter at the left edge, which is the point:
+                          the lantern is bolted to a wall the frame does not
+                          show, so it belongs to the street rather than to the
+                          page)
+
+     The one hard constraint is vertical, not horizontal. The lantern hangs in
+     the band between the header's content and the eyebrow, and it is sized to
+     fill that band: `--lamp-glass-top + 0.294 x --lamp-h` (the glass's bottom
+     edge) has to land above `padding-top`. Keeping the whole glass *above* the
+     copy is what lets the headline start at the container's own left edge, and
+     that in turn is what keeps its second line clear of the restaurant's lit
+     signage — an indented column wide enough to hold the line at this size
+     could not clear both the lantern and the sign at 1440. So the lamp owns the
+     top-left, the copy owns the left, and they never compete for the same
+     pixels. Its bracket still crosses down behind the eyebrow and the lede,
+     which is depth rather than collision: the ironwork is dark, and both of
+     those sit on their own smoked ground.
+
+     Both anchors resolve to a length, not a percentage, because that band is
+     bounded by the header (a pixel height) and by the top inset (a vw clamp) —
+     neither is a fraction of the hero, so neither is `%`.
+
+     `--lamp-h`'s 40.9vw and `padding-top`'s 12.22vw are deliberately locked to
+     each other: the glass's bottom clears the eyebrow by ~12px at every width
+     in this range, and both caps engage at exactly 1440 so the clearance stops
+     moving above it rather than closing. Re-tune one and the other has to
+     follow — that is what every block in section 7 is doing. At 1440 this puts
+     a 482x592 lantern in a 1425-wide frame, which is the "slightly oversized"
+     the brief asks for: a third of the width, entering from off-frame. */
+  --lamp-h: clamp(23rem, 40.9vw, 37rem);
+  --lamp-glass-top: 3.9rem;
+  --lamp-bleed: -0.163;
+  /* The light's origin: the glass's optical centre. x = (bleed + 0.5736) x h,
+     where 0.5736 = 0.705 x 0.8136; y = glass-top + (0.37 - 0.251) x h. */
+  --lamp-x: calc((var(--lamp-bleed) + 0.5736) * var(--lamp-h));
+  --lamp-y: calc(var(--lamp-glass-top) + 0.119 * var(--lamp-h));
+}
+
+/* Every art layer is the stage, not the box: pinned to the hero's top edge and
+   exactly `--stage-box` tall. One rule, because the whole point is that they
+   share a single frame — a layer that measured itself differently would slide
+   against the others the moment the console grew. Ordering note: this comes
+   *before* the five rules below, and none of them restates `position` or a
+   geometry longhand, so there is nothing here to lose a specificity tie to. */
+.hero-scene__sky,
+.hero-scene__grain,
+.hero-scene__art,
+.hero-scene__lamp,
+.hero-scene__glow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: auto;
+  left: 0;
+  height: var(--stage-box);
+}
+
+/* The room's air: a high vignette that turns a gradient into a ceiling, and
+   warm haze pooling at street level. */
+.hero-scene__sky {
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(118% 82% at 50% -14%, transparent 40%, rgba(0, 0, 0, 0.52) 100%),
+    linear-gradient(to top, rgba(46, 25, 8, 0.42) 0%, transparent 46%);
+}
+
+/* Fine warm grain over the scene but under the type. Three overlapping
+   gradients on a dark ground band on cheap panels; grain is what stops it.
+
+   The 0.55 that used to sit on `opacity` is folded into the ink instead
+   (0.05 x 0.55). `opacity` would have dimmed the shadow pass below by the same
+   factor, and worse, made this layer a stacking context. */
+.hero-scene__grain {
+  z-index: 5;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(247, 240, 228, 0.0275) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+
+/* THE SHADOW PASS. One light source means one lit side, and the far corner has
+   to fall away or the lamp is decoration rather than illumination. This is the
+   only dark layer that sits *above* the artwork — the vignette on `__sky` is
+   below it and so cannot touch the building at all, which is why the building
+   used to read as evenly lit from nowhere.
+
+   Kept deliberately weak and pushed into the corners: the artwork is the hero's
+   subject, and the job here is to bend its brightness towards the lamp, not to
+   hide it. Paints above the grain and below the copy at 6. */
+.hero-scene__grain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(101deg, transparent 40%, rgba(6, 4, 2, 0.16) 74%, rgba(6, 4, 2, 0.34) 100%),
+    radial-gradient(74% 62% at 104% 108%, rgba(4, 3, 1, 0.4) 0%, transparent 100%),
+    radial-gradient(58% 44% at -6% 112%, rgba(4, 3, 1, 0.32) 0%, transparent 100%);
+}
+
+/* The floor of the scene. The artwork is anchored to the bottom of the *stage*
+   and clipped by it, so without this there is a ruled horizontal line across the
+   frame where the pavement stops — the one edge the mask in section 2 cannot
+   feather, because it is the container's edge and not the image's. The ramp ends
+   on #0a0704, which is the hero background's last stop, the ground colour under
+   it and the plinth's first, so the pavement dissolves into the strip below
+   instead of ending at it — and, since the ramp now lands on the stage's bottom
+   rather than the box's, that same continuity is what makes the band between a
+   grown box and its stage impossible to see. Generated content is the last
+   child, so it paints over the grain at the same z-index and stays under the
+   copy at 6. */
+.hero-scene::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--stage-box) - var(--stage-ramp));
+  bottom: auto;
+  height: var(--stage-ramp);
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    #0a0704 0%,
+    rgba(10, 7, 4, 0.88) 26%,
+    rgba(10, 7, 4, 0.5) 58%,
+    transparent 100%
+  );
+}
+
+/* --------------------------------------------------------------------------
+   2. THE RESTAURANT
+   -------------------------------------------------------------------------- */
+
+.hero-scene__art {
+  z-index: 2;
+  /* The clip lives here rather than on `.hero-scene`, so the artwork can bleed
+     off the right and the bottom while the console's menus stay free. */
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hero-scene__art picture { display: contents; }
+
+.hero-scene__art img {
+  position: absolute;
+  right: clamp(-5rem, -1.5vw, 0rem);
+  bottom: -2%;
+  width: clamp(28rem, 53%, 62rem);
+  height: auto;
+  /* The asset's alpha channel has already cut the building out, so there is no
+     rectangle to hide. But a cut-out's hard outline is a tell of its own, and
+     this one's visible edges are its top and its left — everything else bleeds
+     out of frame. Both fade to nothing, which reads as the street continuing
+     into the dark rather than as a picture stopping. A short bottom ramp hands
+     the pavement to the strip below.
+
+     `intersect` multiplies the ramps instead of adding them, so the top-left
+     corner is the product of two fades, not the lighter of the two. */
+  mask-image:
+    linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.2) 7%, rgba(0, 0, 0, 0.7) 19%, #000 33%),
+    linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.28) 8%, #000 25%),
+    linear-gradient(to top, transparent 0%, rgba(0, 0, 0, 0.5) 4%, #000 12%);
+  mask-composite: intersect;
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.2) 7%, rgba(0, 0, 0, 0.7) 19%, #000 33%),
+    linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.28) 8%, #000 25%),
+    linear-gradient(to top, transparent 0%, rgba(0, 0, 0, 0.5) 4%, #000 12%);
+  -webkit-mask-composite: source-in;
+}
+
+/* --------------------------------------------------------------------------
+   3. THE LAMP
+   -------------------------------------------------------------------------- */
+
+.hero-scene__lamp {
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+  /* The lantern's arm and roof run up and to the left out of frame. Left and
+     bottom are cropped by the viewport, which is what happens to real objects
+     at the edge of a frame and reads as nothing at all. The *top* is different:
+     a roof cut off in a ruled horizontal line at y=0 would be visible right
+     under the wordmark, so it is dissolved instead.
+
+     This veil used to run the full height of the header band
+     (`--lamp-glass-top - 0.6rem` = 52.8px) on the reasoning that the header was
+     a band and the lantern should not be seen inside it. That inverted the
+     brief: the header is an overlay on the hero now (refine.css §1 — the ground
+     dissolves rather than ending at the bar's edge), and erasing 52.8px of
+     lantern to make room for it *is* "the hanging light being cut off". The
+     lantern's roof is the top of the hero's most important object.
+
+     So the veil is only as tall as the thing it exists to hide: the crop line
+     itself, at y=0, which needs about 20px of ramp to stop reading as a rule.
+     A constant is the honest value now — the crop is at 0 whatever
+     `--lamp-glass-top` says — but the old derivation is kept as a `min()`
+     ceiling so that a breakpoint which brings the glass up cannot let the veil
+     reach it and dim the lantern with its own crop. */
+  --lamp-veil: min(1.35rem, var(--lamp-glass-top) - 0.6rem);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgba(0, 0, 0, 0.45) calc(var(--lamp-veil) * 0.42),
+    #000 var(--lamp-veil)
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgba(0, 0, 0, 0.45) calc(var(--lamp-veil) * 0.42),
+    #000 var(--lamp-veil)
+  );
+}
+
+.hero-scene__lamp img {
+  position: absolute;
+  /* Arithmetic, all of it, off the numbers in section 1. `top` is not where the
+     picture goes, it is where the *glass* goes minus the 25.1% of the asset
+     above the glass; `left` is the bleed. Nothing here is a value that was
+     nudged until it looked right, which is why the six breakpoints in section 7
+     each need two numbers rather than four. */
+  height: var(--lamp-h);
+  width: auto;
+  top: calc(var(--lamp-glass-top) - 0.251 * var(--lamp-h));
+  left: calc(var(--lamp-bleed) * var(--lamp-h));
+}
+
+/* ----- WHAT THE LANTERN DOES TO THE AIR ---------------------------------- *
+   Screened, so this layer can only ever add light. Four fields, and the thing
+   they have in common is that every radial runs out at `transparent 100%`
+   instead of stopping at 60-70% — a gradient that ends early ends *somewhere*,
+   and that somewhere is the ring the brief is asking to be rid of. Ending at
+   the element's edge means the falloff has no radius of its own. */
+.hero-scene__glow {
+  z-index: 4;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background:
+    /* 1. The lit air on the glass. Taller than it is wide, because a lantern is
+          a box: its own frame bounds the light left and right, and what escapes
+          goes up through the vent and down onto the street. */
+    radial-gradient(32% 44% at var(--lamp-x) var(--lamp-y),
+      rgba(255, 206, 130, 0.3) 0%, rgba(255, 176, 92, 0.15) 24%,
+      rgba(214, 134, 52, 0.055) 54%, transparent 100%),
+    /* 2. The room the light fills. One very large, very weak field so the whole
+          hero sits inside the lamp's reach without any part of it being lit. */
+    radial-gradient(124% 132% at var(--lamp-x) var(--lamp-y),
+      rgba(196, 122, 44, 0.155) 0%, rgba(150, 88, 30, 0.06) 40%, transparent 100%),
+    /* 3. The building's near face taking it. Angled across the frame rather than
+          centred on the lamp, so the illustration is lit from the left instead
+          of glowing on its own. */
+    linear-gradient(96deg, transparent 30%, rgba(255, 172, 84, 0.055) 54%, transparent 78%),
+    /* 4. The pool on the pavement, offset down-street from the lamp — light
+          leaving a lantern at head height lands ahead of it, not beneath it. */
+    radial-gradient(46% 15% at calc(var(--lamp-x) + 7%) 100%,
+      rgba(255, 178, 92, 0.125) 0%, rgba(220, 140, 60, 0.05) 46%, transparent 100%);
+}
+
+/* The volumetric wedge: the shape of the light itself, hanging in the haze.
+   A `conic-gradient` from the glass is the honest primitive here — a lantern
+   throws a bounded fan, not a sphere — and 78deg to 150deg aims it from just
+   below horizontal down across the copy and the console. The radial mask is the
+   distance falloff, the blur is what turns three angular stops into air. */
+.hero-scene__glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: conic-gradient(
+    from 78deg at var(--lamp-x) var(--lamp-y),
+    transparent 0deg,
+    rgba(255, 190, 110, 0.1) 16deg,
+    rgba(255, 178, 92, 0.135) 34deg,
+    rgba(255, 174, 88, 0.05) 56deg,
+    transparent 72deg
+  );
+  mask-image: radial-gradient(64% 76% at var(--lamp-x) var(--lamp-y), #000 0%, transparent 100%);
+  -webkit-mask-image: radial-gradient(64% 76% at var(--lamp-x) var(--lamp-y), #000 0%, transparent 100%);
+  filter: blur(34px);
+}
+
+/* The bloom. The only round thing in the scene, and it is round because bloom
+   is round — it is the glass overexposing the air a few inches from itself, not
+   a glow effect thrown across the page. Small, weak, and softened by `filter`
+   rather than by stops: a real convolution has no edge to find.
+
+   Sized as a fraction of the lantern rather than in rem, because bloom is
+   proportional to the aperture that makes it: a 160px lantern on a phone would
+   otherwise wear a 240px halo and read as a light leak. 0.44 x height is the
+   glass's own width plus a little air. */
+.hero-scene__glow::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--lamp-x) - 0.22 * var(--lamp-h));
+  top: calc(var(--lamp-y) - 0.198 * var(--lamp-h));
+  width: calc(0.44 * var(--lamp-h));
+  height: calc(0.396 * var(--lamp-h));
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 202, 126, 0.3) 0%,
+    rgba(255, 172, 86, 0.12) 52%,
+    transparent 100%
+  );
+  filter: blur(30px);
+}
+
+/* --------------------------------------------------------------------------
+   4. THE TYPE
+   -------------------------------------------------------------------------- */
+
+.hero-scene__inner {
+  position: relative;
+  z-index: 6;
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+}
+
+.hero-scene__copy {
+  /* 44rem, and the number that matters is what it does to the headline: the
+     copy was written to break "Find where / your evening belongs.", and this
+     column holds that in two lines with the italic's 557px of ink ending at
+     x 669 at 1440.
+
+     There is no left indent. The lantern is placed above this column rather
+     than beside it (section 1), and that is what makes the difference the brief
+     was asking for: the type now ends 186px short of the first bright pixel in
+     the restaurant — the artwork's own left edge is at 691, its lit signage at
+     855 — where an indented column wide enough to hold the same line ran the
+     tail of "belongs." straight across the sign. Anything that widens this
+     column or the display size has to be re-checked against 855, because the
+     artwork's left-edge mask has run out by then and there is no dark left to
+     read gradient type against. */
+  max-width: 44rem;
+}
+
+.hero-scene__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1h) var(--s3h) var(--s1h) var(--s2h);
+  border-radius: var(--r-full);
+  border: 1px solid var(--on-ink-line-strong);
+  /* Smoked, not filmed. The usual `--on-ink-surface` light film is invisible
+     against the lantern glass, which is exactly what this pill sits under; a
+     dark base with the light hairline reads on both the night ground and the
+     lit glass. */
+  background: rgba(16, 11, 6, 0.62);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--on-ink);
+}
+.hero-scene__pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--on-ink-primary);
+  box-shadow: 0 0 0 3px rgba(242, 179, 80, 0.2);
+}
+
+.hero-scene__title {
+  margin: clamp(0.9rem, 1.5vw, 1.2rem) 0 clamp(0.75rem, 1.2vw, 1rem);
+  font-family: var(--font-display);
+  /* Sized so the headline holds the break it was written with: "Find where" on
+     one line, "your evening belongs." on the next, and nothing on a third. The
+     italic line is the constraint — measured, it is 557px of ink at this size
+     inside a 704px column, so the cap could rise, but not far: at 4.2rem the
+     two lines already stand 139px tall and a third would push the console
+     under the fold. Measure it with a Range over the text, not with the `em`'s
+     own box — the `em` is `display: block` below, so its rect is the column's
+     width no matter what the type does. */
+  font-size: clamp(2.6rem, 4.85vw, 4.2rem);
+  font-weight: var(--weight-bold);
+  line-height: 0.95;
+  letter-spacing: -0.036em;
+  color: var(--on-ink);
+  text-wrap: balance;
+  /* A wide soft shadow, not an outline. The type sits over a lit street, and
+     this is what keeps it legible where the glow is brightest without putting a
+     visible edge around a serif. */
+  text-shadow: 0 2px 34px rgba(0, 0, 0, 0.62);
+}
+.hero-scene__title em {
+  display: block;
+  font-style: italic;
+  font-weight: var(--weight-medium);
+  background: linear-gradient(97deg, #ffd89c 0%, #f0a833 46%, #dd6f14 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /* `background-clip: text` is a paint area, not a text effect: ink that falls
+     outside the element's own box simply is not painted, and an italic serif
+     overhangs on both sides. Grow the box, take the growth back with margin. */
+  padding: 0.04em 0.12em 0.13em 0.02em;
+  margin: 0 0 -0.13em -0.02em;
+  text-shadow: 0 1px 20px rgba(0, 0, 0, 0.5);
+}
+
+.hero-scene__lede {
+  max-width: 43ch;
+  margin: 0 0 clamp(1.2rem, 2vw, 1.55rem);
+  font-size: var(--fs-lead);
+  line-height: 1.62;
+  color: var(--on-ink-soft);
+  text-shadow: 0 1px 18px rgba(0, 0, 0, 0.55);
+}
+
+/* --------------------------------------------------------------------------
+   5. THE CONSOLE — the discovery search, as dark frosted glass
+   --------------------------------------------------------------------------
+   Same component, same props, same behaviour: `DiscoveryBuilder` is untouched
+   apart from one inline colour that became a class. Everything below is
+   surface. Every selector is scoped to `.hero-scene__console`, so if the
+   builder is ever mounted on a paper ground again it arrives unmodified.
+
+   WHAT MAKES A PANEL READ AS A CARD, AND WHAT WAS DONE ABOUT IT
+   A card announces itself with four things, and this console had all four: an
+   even hairline all the way round, a full-width rule across its head, a drop
+   shadow, and a fill opaque enough to be a colour rather than a depth. None of
+   those survive contact with a lit scene, because none of them acknowledge
+   where the light is. So:
+
+     - the ring is gone, replaced by a 1px lit bevel on the top and left and a
+       1px shadow on the bottom and right — two `inset` shadows at zero blur,
+       clipped by the box's own radius for free. Glass in a scene lit from the
+       upper left looks exactly like that, and the eye reads it as a bevel
+       rather than as a border;
+     - the head rule and the label divider both fade out before the right edge,
+       so they read as the light catching an edge instead of as chrome ruled
+       across a component;
+     - the fill drops from 0.60/0.74 to 0.40/0.58. The 22px blur behind it is
+       what keeps the type readable — the backdrop is already near-black, so
+       transparency costs contrast far more slowly here than it would on a
+       bright page;
+     - the lamp lands on it. A large weak warm field anchored off the panel's
+       top-left corner, running out at `transparent 100%` like everything in
+       section 3, which is the corner nearest the lantern.
+   -------------------------------------------------------------------------- */
+
+.hero-scene__console {
+  position: relative;
+  border-radius: var(--r-xl);
+  /* No `border`. See the bevel in `box-shadow` below — an even ring is the
+     single strongest card signal and the one thing a lit surface never has. */
+  background:
+    /* The light catching the top edge. Dies at 78% rather than crossing the
+       whole head, because an edge highlight is a reflection and reflections are
+       local to the angle that makes them. */
+    linear-gradient(94deg, rgba(255, 216, 154, 0.8) 0%, rgba(242, 179, 80, 0.42) 32%,
+      transparent 78%) top left / 100% 2px no-repeat,
+    /* The lantern on the panel's near corner. Anchored outside the box so the
+       brightest part of the field is off-panel and only its falloff is on it —
+       that is what stops it reading as a highlight painted in the corner. */
+    radial-gradient(126% 168% at -9% -20%, rgba(255, 186, 104, 0.14) 0%,
+      rgba(255, 168, 88, 0.05) 38%, transparent 100%),
+    linear-gradient(168deg, rgba(52, 38, 24, 0.4) 0%, rgba(14, 10, 6, 0.58) 100%);
+  box-shadow:
+    /* One shadow, wide and weak. On a near-black ground a heavy one does not
+       read as depth, it reads as a card cut out and dropped on top. */
+    0 40px 104px rgba(0, 0, 0, 0.5),
+    inset 1px 1px 0 rgba(255, 228, 182, 0.15),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.3);
+  color: var(--on-ink);
+  overflow: visible;
+}
+
+.hero-scene__console-label {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s5) var(--s3);
+  /* A divider as a fading background line, not a `border-bottom`: same reason
+     as the head rule. It has to reach far enough to separate the label from
+     the fields and no further. */
+  background: linear-gradient(90deg, rgba(247, 240, 228, 0.15) 0%,
+    rgba(247, 240, 228, 0.06) 48%, transparent 86%) bottom left / 100% 1px no-repeat;
+  font-size: 0.625rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--on-ink-soft);
+}
+.hero-scene__console-label svg { color: var(--on-ink-accent); }
+
+/* The builder brought its own card with it — a light surface, a border, a
+   shadow and a centring max-width. Inside the console it is only a layout. The
+   padding steps down from the builder's own s5 to s4, and the summary's stacked
+   16+16 separation to 10+12: four small subtractions, taken because they are
+   what buys the primary action its place above a 900px fold at 1440. Nothing
+   here changes what the builder does or what it renders. */
+.hero-scene__console .builder {
+  max-width: none;
+  margin: 0;
+  padding: var(--s4);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.hero-scene__console .builder__summary {
+  margin-top: var(--s2h);
+  padding-top: var(--s3);
+}
+
+/* THE BLUR, AND WHY IT STOPS AT 769px.
+   `backdrop-filter` makes its element a containing block for `position: fixed`
+   descendants. At and below 768px `.builder__popover` *is* fixed — a bottom
+   sheet anchored to the viewport above the consumer nav — so a blur anywhere on
+   this console would re-anchor that sheet to the console box and strand it. It
+   is also on a pseudo-element rather than on the console itself, so the frosted
+   pane sits behind the console's own translucent fill instead of being applied
+   to the fill; `isolation` is what lets a negative z-index stay inside the
+   console rather than falling behind the scene's art layers.
+   Below 769px section 7 pays for the missing blur with an opaquer fill.
+
+   The recipe itself is no longer local. It was `blur(22px) saturate(135%)` —
+   the heaviest blur and the weakest saturation in the product, on the same
+   material as the header. Phase 3 item 6 pointed it at `--glass-blur`
+   (`saturate(170%) blur(16px)`), which is the one intentional visual change
+   in that item: the scene reads very slightly sharper through the pane and a
+   little warmer, because 135% over warm paper was the value drifting toward
+   grey that the token's own comment warns about. Everything structural above
+   is untouched — still a pseudo-element, still isolated, still ≥769px. */
+@media (min-width: 769px) {
+  .hero-scene__console { isolation: isolate; }
+  .hero-scene__console::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    pointer-events: none;
+  }
+}
+
+/* THE COMPOSITION — two questions, then three refinements.
+   Five fields in an auto-fit grid of 150px minimums resolve to four columns in
+   the console's 672px, which leaves Vibe alone on a second row. An orphan reads
+   as an accident of the grid rather than as a decision, and it also flattens
+   the hierarchy: every field looked equally important because every field was
+   the same size. Six columns says what the hierarchy is. Where and Cuisine are
+   the two questions nearly everyone answers, and they take half the rail each;
+   Budget, When and Vibe refine that answer, and take a third each. Same five
+   controls, same order, same markup — only the measure changes.
+
+   Unconditional and specific, so it beats the four earlier `.builder__fields`
+   media queries in index.css, phase3.css and editorial.css wherever they would
+   apply. That is why the console restates its own narrow steps in section 7
+   rather than inheriting theirs. */
+.hero-scene__console .builder__fields:not(.builder__fields--advanced) {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--s3);
+}
+.hero-scene__console .builder__fields:not(.builder__fields--advanced) > :nth-child(-n + 2) {
+  grid-column: span 3;
+}
+.hero-scene__console .builder__fields:not(.builder__fields--advanced) > :nth-child(n + 3) {
+  grid-column: span 2;
+}
+
+/* Six advanced fields divide by three, so they need no spans — only a column
+   count of their own, the rule above having taken the auto-fit away. */
+.hero-scene__console .builder__fields--advanced {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s3);
+}
+
+/* The five fields. Glass on glass: a barely-there fill, a warm hairline, and
+   gold — the ink ground's action colour — for anything chosen or open. Each one
+   carries the same 1px lit top edge as the console, which is what keeps five
+   inset wells from reading as five little cards on a big one. */
+.hero-scene__console .builder-field__trigger {
+  min-height: 60px;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid rgba(247, 240, 228, 0.16);
+  border-radius: 14px;
+  background: rgba(247, 240, 228, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 228, 182, 0.07);
+  color: var(--on-ink);
+}
+.hero-scene__console .builder-field__trigger:hover {
+  background: rgba(247, 240, 228, 0.1);
+  border-color: rgba(242, 179, 80, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 228, 182, 0.1);
+}
+.hero-scene__console .builder-field__trigger--active {
+  background: rgba(242, 179, 80, 0.11);
+  border-color: rgba(242, 179, 80, 0.5);
+}
+.hero-scene__console .builder-field__trigger[aria-expanded='true'] {
+  border-color: rgba(242, 179, 80, 0.72);
+  background: rgba(242, 179, 80, 0.13);
+}
+.hero-scene__console .builder-field__label { color: var(--on-ink-faint); }
+.hero-scene__console .builder-field__value { color: var(--on-ink); }
+.hero-scene__console .builder-field__chevron { color: var(--on-ink-faint); }
+
+/* The icon well, unlit and lit.
+   Unlit it is a pane of the same glass as the field, one step darker so the
+   glyph has something to sit on; the mark itself keeps the console's gold,
+   which is where the label's inline icon used to carry it.
+
+   Lit is the console's one piece of theatre, and it is earned: a field only
+   lights once a diner has answered it, so the rail fills left to right as the
+   search is built and the console is visibly further along than it was. Warm
+   gold on the near-black ground, with the glyph in the scene's own ink so the
+   tile reads as a lamp rather than as a coloured square. */
+.hero-scene__console .builder-field__well {
+  background: rgba(247, 240, 228, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(247, 240, 228, 0.09);
+  color: var(--on-ink-accent);
+}
+.hero-scene__console .builder-field__trigger:hover .builder-field__well {
+  background: rgba(247, 240, 228, 0.12);
+}
+.hero-scene__console .builder-field__trigger--active .builder-field__well {
+  background: linear-gradient(160deg, rgba(255, 205, 132, 0.96) 0%, rgba(233, 160, 56, 0.96) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 226, 178, 0.5), 0 3px 12px rgba(226, 150, 44, 0.28);
+  color: #2a1c08;
+}
+
+/* The menus. Opaque on purpose — a list of 23 cuisines read through a blur is
+   a style choice paid for by the person trying to read it. It was 0.97, and the
+   3% was not free: the "Find restaurants" CTA is a near-white #f7f0e4 button
+   sitting directly behind the Cuisine menu at 1421x954, and 3% of cream over
+   this ground lifts it about 7 levels — a soft pale ghost of the button, two
+   rows tall, across the middle of the list. Nothing about the panel wanted to
+   be translucent; the last 3% was only ever leaking. */
+.hero-scene__console .builder__popover {
+  border: 1px solid rgba(255, 220, 165, 0.16);
+  background: #15100a;
+  box-shadow: 0 32px 74px rgba(0, 0, 0, 0.72);
+  color: var(--on-ink);
+  scrollbar-color: rgba(247, 240, 228, 0.28) transparent;
+}
+.hero-scene__console .builder__option { color: var(--on-ink-soft); }
+.hero-scene__console .builder__option:hover,
+.hero-scene__console .builder__option:focus-visible {
+  background: rgba(247, 240, 228, 0.09);
+  color: var(--on-ink);
+}
+.hero-scene__console .builder__option--selected {
+  background: rgba(242, 179, 80, 0.16);
+  color: var(--on-ink);
+}
+/* The tick takes the console's gold rather than the light theme's accent,
+   which is a maroon-side ink and goes muddy on this ground. */
+.hero-scene__console .builder__option-check { color: var(--on-ink-accent); }
+.hero-scene__console .builder__option-count { color: var(--on-ink-faint); }
+.hero-scene__console .builder__option--selected .builder__option-count {
+  color: var(--on-ink-accent);
+}
+.hero-scene__console .builder__option + .builder__option {
+  box-shadow: 0 -1px 0 rgba(247, 240, 228, 0.07);
+}
+
+/* Advanced: a quiet secondary control, and the panel it opens.
+   These are three-class selectors on purpose. `Disclosure`'s `inline`
+   variant styles the pill at (0,2,0) from primitives.css, which loads
+   last, so a two-class rule here could not reach it. That is the right
+   outcome rather than a workaround: everything below is glass — a
+   translucent border, a hairline over dark, a panel at 24% black — and
+   it belongs to this console rather than to the primitive. The rest of
+   the pill (its 36px box, its 44px reach, its focus ring, its chevron)
+   comes from §7 unchanged. */
+.hero-scene__console .kk-disc--inline .kk-disc__trigger {
+  border-color: var(--on-ink-line-strong);
+  background: transparent;
+  color: var(--on-ink-soft);
+}
+.hero-scene__console .kk-disc--inline .kk-disc__trigger:hover {
+  border-color: rgba(242, 179, 80, 0.5);
+  background: rgba(247, 240, 228, 0.07);
+  color: var(--on-ink);
+}
+.hero-scene__console .kk-disc--inline .kk-disc__trigger[aria-expanded='true'] {
+  border-color: rgba(242, 179, 80, 0.6);
+  background: rgba(242, 179, 80, 0.13);
+  color: var(--on-ink);
+}
+.hero-scene__console .kk-disc--inline .kk-disc__panel {
+  border: 1px solid rgba(247, 240, 228, 0.11);
+  border-radius: var(--r-md);
+  background: rgba(0, 0, 0, 0.24);
+}
+.hero-scene__console .builder__more { border-top-color: rgba(247, 240, 228, 0.13); }
+.hero-scene__console .builder__more-label { color: var(--on-ink-faint); }
+.hero-scene__console .builder__geo-hint {
+  background: rgba(242, 179, 80, 0.1);
+  color: var(--on-ink-soft);
+}
+
+/* Both chip families. `.chip` reports a chosen term, `.chip-chip` is a toggle. */
+.hero-scene__console .chip {
+  border-color: var(--on-ink-line-strong);
+  background: rgba(247, 240, 228, 0.07);
+  color: var(--on-ink);
+}
+.hero-scene__console .chip--active {
+  border-color: rgba(242, 179, 80, 0.45);
+  background: rgba(242, 179, 80, 0.16);
+  color: var(--on-ink);
+  box-shadow: none;
+}
+.hero-scene__console .chip-chip {
+  border-color: var(--on-ink-line-strong);
+  background: rgba(247, 240, 228, 0.05);
+  color: var(--on-ink-soft);
+}
+.hero-scene__console .chip-chip:hover {
+  border-color: rgba(242, 179, 80, 0.45);
+  color: var(--on-ink);
+}
+.hero-scene__console .chip-chip--active {
+  border-color: rgba(242, 179, 80, 0.55);
+  background: rgba(242, 179, 80, 0.16);
+  color: var(--on-ink);
+}
+
+/* The closing row: what you picked, how many that leaves, and the one action. */
+.hero-scene__console .builder__summary {
+  border-top: 1px solid rgba(247, 240, 228, 0.13);
+}
+.hero-scene__console .builder__summary-terms { color: var(--on-ink-soft); }
+.hero-scene__console .builder__empty { color: var(--on-ink-faint); }
+.hero-scene__console .builder__count { color: var(--on-ink-accent); }
+/* refine.css puts `--ink` on the figure directly, and an inherited colour never
+   beats a direct one — so the figure has to be re-lit here by name or the
+   catalogue number is espresso on near-black. */
+.hero-scene__console .builder__count-figure { color: var(--on-ink-accent); }
+.hero-scene__console .builder__count-note { color: var(--on-ink-faint); }
+/* Zero is not an achievement. The figure keeps its size, because the number is
+   still the answer, but it stops being the gold thing on the row — the sentence
+   beside it is doing the useful work at that point. */
+.hero-scene__console .builder__count--empty .builder__count-figure { color: var(--on-ink-soft); }
+.hero-scene__console .builder__reset { color: var(--on-ink-faint); }
+.hero-scene__console .builder__reset:hover {
+  background: rgba(247, 240, 228, 0.08);
+  color: var(--on-ink);
+}
+/* A chosen term, and the removal it offers. Hover warms to the console's gold
+   rather than to a red: nothing is being deleted, a choice is being taken back. */
+.hero-scene__console .chip--dismiss:hover {
+  border-color: rgba(242, 179, 80, 0.55);
+  background: rgba(242, 179, 80, 0.16);
+  color: var(--on-ink);
+}
+/* On ink, ink cannot be the action colour — design-system.css says so where the
+   token is declared: paper becomes the button surface there. So the one
+   commitment in this hero is a paper button, not the espresso one the builder
+   ships with, which would sink into the glass. */
+.hero-scene__console .builder__cta {
+  background: var(--on-ink);
+  border-color: transparent;
+  color: var(--canvas-ink);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  /* The two light layers below are pseudo-elements clipped to the button's own
+     radius, and they have to paint above its background and below its label.
+     `isolation` is what makes that possible: inside a stacking context a
+     negative-z child paints after the background and before in-flow content,
+     so a bare text node stays on top without being wrapped in a span. */
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+/* IDLE — the lantern lands on it.
+   The console is a lit surface (§5) and this is the one paper object on it, so
+   the resting state is not an effect added to a button: it is the same warm
+   field the scene already casts, drifting slowly across the one thing you are
+   meant to press. It is a soft radial wash rather than a band, because a band
+   travelling on a loop is a shimmer and reads as a loading state.
+   9s, and the drift is what carries it — an opacity ramp on its own would be a
+   pulse, which is the cheap version of this and is explicitly not wanted.
+   No fill mode: under `prefers-reduced-motion` the blanket in editorial.css §19
+   collapses the duration, and what remains is the static wash below — still a
+   lit button, just no longer a moving one. */
+.hero-scene__console .builder__cta::before {
+  content: '';
+  position: absolute;
+  inset: -60% -20%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 196, 118, 0.42), rgba(255, 196, 118, 0) 100%);
+  opacity: 0.34;
+  transform: translate3d(-20%, 0, 0) scale(0.92);
+  animation: kk-cta-gleam 9s var(--ease-in-out) infinite;
+  pointer-events: none;
+}
+@keyframes kk-cta-gleam {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translate3d(-20%, 0, 0) scale(0.92);
+  }
+  50% {
+    opacity: 0.55;
+    transform: translate3d(20%, 0, 0) scale(1.06);
+  }
+}
+/* HOVER — one pass of warm light, and the gold edge it implies.
+   design-system.css §5 records `kk-sheen` being deleted for raking a white band
+   across the search field on every pass: a flourish that control had not
+   earned. This is the opposite case — the single commit action of the product,
+   pressed once per visit — and the band is warm rather than white, because on
+   hover the paper goes to #fff and a white sweep on white is nothing at all.
+   Travel only; the button's own 1px lift and the arrow's 3px travel already
+   come from primitives.css and are untouched. */
+.hero-scene__console .builder__cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(100deg,
+    transparent 30%,
+    rgba(255, 190, 110, 0.5) 47%,
+    rgba(255, 255, 255, 0.9) 52%,
+    transparent 70%);
+  opacity: 0;
+  transform: translate3d(-120%, 0, 0);
+  pointer-events: none;
+}
+.hero-scene__console .builder__cta:hover {
+  background: #fff;
+  border-color: transparent;
+  color: var(--canvas-ink);
+  box-shadow:
+    0 0 0 1px rgba(255, 214, 150, 0.55),
+    0 14px 38px rgba(0, 0, 0, 0.5),
+    0 6px 26px rgba(242, 179, 80, 0.2);
+}
+/* Keyboard parity, the same way `.btn__after` has it: focus is an address, and
+   an addressed control answers however it was reached. */
+.hero-scene__console .builder__cta:hover::after,
+.hero-scene__console .builder__cta:focus-visible::after {
+  animation: kk-cta-sweep var(--dur-slow) var(--ease-out);
+}
+@keyframes kk-cta-sweep {
+  from { opacity: 0; transform: translate3d(-120%, 0, 0); }
+  40%  { opacity: 1; }
+  to   { opacity: 0; transform: translate3d(120%, 0, 0); }
+}
+/* The gleam leans in and slows while the pointer is on it — the light is
+   already there, it just gathers. */
+.hero-scene__console .builder__cta:hover::before {
+  opacity: 0.5;
+  animation-duration: 13s;
+}
+/* PRESS — paper compresses, and the light collects under the thumb.
+   90ms, `--dur-instant`: this fires on pointerdown and the handler navigates,
+   so it has to be an answer rather than a sequence. Nothing here delays the
+   click; `goExplore` runs exactly when it ran before. Works on touch, where
+   there is no hover state to have carried the invitation — which is what the
+   idle wash is for. */
+.hero-scene__console .builder__cta:active {
+  transform: translateY(0) scale(0.985);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 2px 5px rgba(28, 23, 16, 0.16);
+  transition-duration: var(--dur-instant);
+}
+.hero-scene__console .builder__cta:active::before {
+  opacity: 0.8;
+  transform: translate3d(0, 0, 0) scale(1.16);
+  animation: none;
+  transition: opacity var(--dur-instant) var(--ease-out), transform var(--dur-instant) var(--ease-out);
+}
+.hero-scene__console .builder__geo-hint .btn--ghost {
+  border-color: var(--on-ink-line-strong);
+  color: var(--on-ink);
+}
+
+/* --------------------------------------------------------------------------
+   6. THE PLINTH — the hero's ground floor
+   --------------------------------------------------------------------------
+   The shortcuts and the four catalogue numbers, one step below the scene. They
+   used to sit inside the hero; the scene wants only the headline, the sentence
+   and the search, so they moved rather than went away. The ground continues the
+   scene's darkest tone at the top and lands on the page's paper at the bottom,
+   so the hero has no lower edge to see.
+
+   Deliberately `z-index: 1`, under the hero: a field menu that opens downward
+   out of the console has to paint over this strip, not under it.
+   -------------------------------------------------------------------------- */
+
+.hero-plinth {
+  position: relative;
+  z-index: 1;
+  padding: clamp(1.5rem, 3vw, 2.25rem) var(--gutter) clamp(2rem, 4vw, 3rem);
+  background: linear-gradient(to bottom, #0a0704 0%, #0e0a06 46%, #150f08 100%);
+  color: var(--on-ink);
+}
+
+.hero-plinth__inner {
+  max-width: var(--container);
+  margin: 0 auto;
+}
+
+/* QuickShortcuts keeps its own markup — this only re-lights it for the dark
+   ground it now sits on, the same treatment refine.css gave it inside `hero-c`.
+   Every href is unchanged. */
+.hero-plinth .quick-strip {
+  justify-content: flex-start;
+  gap: var(--s2);
+  margin: 0;
+  /* editorial.css:641 gives the strip a paper hairline (`--border`), which on
+     the night ground drew a bright line straight across the seam the scene's
+     bottom ramp exists to hide. The plinth has one rule already — the ledger's
+     — and one is enough. Neither `flex-wrap` nor `overflow-x` is named here, so
+     editorial.css's ≤640 horizontal scroller still owns the strip on phones. */
+  border-top: 0;
+  padding-top: 0;
+}
+.hero-plinth .quick-chip {
+  padding: var(--s2) var(--s3h);
+  border: 1px solid var(--on-ink-line-strong);
+  border-radius: var(--r-full);
+  background: var(--on-ink-surface);
+  color: var(--on-ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  box-shadow: none;
+}
+.hero-plinth .quick-chip svg { color: var(--on-ink-accent); }
+.hero-plinth .quick-chip:hover {
+  background: var(--on-ink-surface-2);
+  border-color: rgba(242, 179, 80, 0.55);
+  color: var(--on-ink);
+  box-shadow: none;
+}
+.hero-plinth .quick-chip--primary {
+  background: var(--on-ink);
+  border-color: transparent;
+  color: var(--canvas-ink);
+  box-shadow: 0 6px 20px rgba(8, 6, 4, 0.5);
+}
+.hero-plinth .quick-chip--primary svg { color: var(--saffron-700); }
+.hero-plinth .quick-chip--primary:hover {
+  background: #fff;
+  color: var(--canvas-ink);
+  border-color: transparent;
+}
+
+/* The catalogue, on a gold-tipped rule — the same mark the band eyebrows use,
+   at the scale of a hero. Four real numbers, none of them decoration. */
+.hero-plinth__ledger {
+  position: relative;
+  margin: clamp(1.75rem, 3.4vw, 2.75rem) 0 0;
+  padding-top: var(--s6);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s5) 0;
+  border-top: 1px solid var(--on-ink-line);
+}
+.hero-plinth__ledger::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 88px;
+  height: 2px;
+  background: var(--grad-gold);
+}
+.hero-plinth__stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.hero-plinth__stat + .hero-plinth__stat {
+  padding-left: clamp(1rem, 3vw, 2.5rem);
+  border-left: 1px solid var(--on-ink-line);
+}
+.hero-plinth__ledger dt {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3.1vw, 2.75rem);
+  font-weight: var(--weight-bold);
+  line-height: 0.94;
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--on-ink);
+}
+.hero-plinth__ledger dd {
+  margin: 0;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--on-ink-faint);
+}
+
+/* --------------------------------------------------------------------------
+   7. RESPONSIVE
+   --------------------------------------------------------------------------
+   The scene is a composition, so it re-composes rather than re-stacks: the
+   artwork stays on the right and the lamp stays at the left edge at every
+   width. What changes is how much of each is in frame, and — below 1024 —
+   whether the type is standing in front of the building or beside it. From
+   there a scrim appears over the artwork, because a headline crossing a lit
+   facade needs one and a headline beside it does not.
+
+   Every block below re-places the lantern with two values, `--lamp-h` and
+   `--lamp-glass-top`, and nothing else: the light's origin, the wedge, the
+   bloom, the pool and the header veil are all derived from them in sections 1
+   and 3. The bleed never changes, because the bracket has to enter from
+   off-frame at every width or the lamp stops being architecture.
+
+   The invariant each pair is solved for is the same one:
+
+     --lamp-glass-top + 0.294 x --lamp-h  <=  padding-top - a few px
+
+   0.294 is the asset's glass-bottom row (54.5%) minus its glass-top row
+   (25.1%). Satisfying it keeps the lit glass entirely above the eyebrow, which
+   is what lets the copy start at the gutter. The right-hand side moves with
+   `padding-top`, so it is restated in a comment wherever `padding-top` changes.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1180px) {
+  .hero-scene__copy { max-width: 39rem; }
+  .hero-scene__art img { width: clamp(26rem, 50%, 40rem); }
+}
+
+@media (max-width: 1024px) {
+  .hero-scene {
+    --stage-min: min(94vh, 840px);
+    /* padding-top is still nav + 12.22vw here — 197 at 1024, 182 at 901. The
+       lantern is smaller in absolute terms than at 1180 and larger relative to
+       the frame, which is the right trade: the copy is narrower here, so the
+       lamp is a bigger share of what is left. 42.5vw x 0.294 + 3.6rem clears by
+       12 at both ends of the range. */
+    --lamp-h: clamp(20rem, 42.5vw, 28rem);
+    --lamp-glass-top: 3.6rem;
+  }
+  /* No indent to remove any more — section 4 has none. The column just narrows,
+     and from here down it is standing in front of the building rather than
+     beside it. */
+  .hero-scene__copy { max-width: 34rem; }
+  .hero-scene__art img {
+    width: min(72%, 34rem);
+    right: -6%;
+  }
+  /* The type is in front of the building from here down. A wash over the
+     artwork — inside the art layer, so it dims the building and not the lamp
+     that is painted above it — buys the contrast back. Generated content is the
+     art layer's last child, so it paints over the image without a z-index. */
+  .hero-scene__art::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      rgba(8, 5, 3, 0.82) 0%,
+      rgba(8, 5, 3, 0.6) 34%,
+      rgba(8, 5, 3, 0.22) 62%,
+      transparent 82%
+    );
+  }
+}
+
+@media (max-width: 900px) {
+  .hero-scene {
+    --stage-min: min(96vh, 800px);
+    /* The top inset changes here, so the invariant has to be re-solved: the
+       right-hand side is now nav + 11vw, which is 171 at 900 and 156 at 761.
+       41vw x 0.294 + 3.2rem = 160 at 900 and 143 at 761 — and 11vw is a
+       steeper ramp than the lantern's 41vw x 0.294, so the clearance widens as
+       the frame narrows rather than closing. */
+    --stage-top: calc(var(--nav-h) + clamp(2.25rem, 11vw, 6.25rem));
+    /* The console has gone to two columns of refinements by here, so the
+       composition is taller than the desktop estimate at the same width would
+       be, and the vw ramp above no longer describes it — hence a constant for
+       the band. Measured closed: 619 at 761, 606 at 830, 608 at 900. The dip in
+       the middle is the field rail rewrapping, and it is why this is 37 and not
+       the 38 that sat 1.6px over it. */
+    --stage-body: 37rem;
+    --lamp-h: clamp(17rem, 41vw, 24rem);
+    --lamp-glass-top: 3.2rem;
+  }
+  .hero-scene__title { font-size: clamp(2.6rem, 7.4vw, 3.9rem); }
+  .hero-scene__art img { width: min(84%, 32rem); right: -12%; }
+}
+
+@media (max-width: 768px) {
+  /* Protects index.css:2942 `.builder { padding: var(--s3) }`. Section 5's
+     unconditional padding is later in the load order and would otherwise keep
+     the desktop inset on a phone, where it costs a whole field of width. */
+  .hero-scene__console .builder { padding: var(--s3); }
+  .hero-scene__console-label { padding: var(--s3) var(--s4) var(--s2); }
+  /* The blur stops here — see section 5. An opaquer fill does the same job of
+     separating the console from the street behind it, and the bottom sheet
+     keeps its viewport.
+
+     The two decorative layers of section 5's stack are gone at this width, and
+     that is the whole point rather than a saving. Both of them are readings of
+     where the light is: the 2px gold rule across the head is the lantern
+     catching the panel's top edge, and the radial field anchored at -9%/-20% is
+     the lantern's spill onto the corner nearest it. On a phone the lantern is
+     not there — the mobile artwork is top-anchored and has faded out well above
+     the console — so what is left is a bright warm streak across the top of a
+     card with no light source for it, which is exactly the "strange gradient"
+     that made the component read as generated rather than designed. A surface
+     with no light on it should look like a surface: one flat warm ink, and the
+     lit bevel already in `box-shadow` (top and left, 1px, no blur) to give the
+     edge. `background` is one property, so the fill cannot be replaced without
+     restating what stays — here, nothing does. */
+  .hero-scene__console {
+    background: linear-gradient(178deg, rgba(34, 25, 16, 0.94) 0%, rgba(14, 10, 6, 0.96) 100%);
+    border-radius: var(--r-lg);
+  }
+  /* The label's divider fades out at 86% on the wide console because it is
+     lifting away from a lit corner. Without that corner it is just a rule that
+     stops short of the edge, so it runs the measure instead — the same line,
+     reading as a divider rather than as a highlight. */
+  .hero-scene__console-label {
+    background: linear-gradient(90deg, rgba(247, 240, 228, 0.13) 0%,
+      rgba(247, 240, 228, 0.1) 100%) bottom left / 100% 1px no-repeat;
+  }
+}
+
+/* THE TABLET MEASURE. Section 5's rail is still the right shape at 768 — two
+   questions over three refinements — but its desktop chrome is not. A narrow
+   third is 165px there, and 30px of that is the well, 16px the chevron, 30px the
+   inset and 16px the two gaps: 73px left for the value, where "Any mood" needs
+   74. So the field arrives at tablet already clipping its own placeholder.
+   Trimming the inset and stepping the value down one notch buys the room without
+   touching the composition.
+
+   The advanced six go to two columns rather than three, and less negotiably:
+   "Any specialty" and "Any distance" are half again as long as anything on the
+   primary rail, and unlike the money ladder they have no shorter form to fall
+   back on. Placed after the 768 block and before the 640 one so the narrow steps
+   still have the last word. */
+@media (max-width: 900px) {
+  .hero-scene__console .builder-field__trigger {
+    padding-left: var(--s3);
+    padding-right: var(--s3);
+  }
+  .hero-scene__console .builder-field__value { font-size: 0.95rem; }
+  .hero-scene__console .builder__fields--advanced { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Section 5's six-column rail is a laptop measure. At 375 the console's inner
+   width is about 311px, where a two-column span is 95px — narrower than
+   "৳500–1,000" and narrower than the 30px well plus a legible value. Two
+   columns instead, and Vibe takes the full width rather than sitting alone in
+   half of one: a field given the whole row reads as deliberate, an orphan in a
+   grid of two does not. The advanced six drop to two for the same reason.
+
+   These restate what index.css and phase3.css already say at these widths. They
+   have to: section 5's rule is unconditional and more specific, so it would
+   otherwise hold the six-column rail all the way down. */
+@media (max-width: 640px) {
+  .hero-scene__console .builder__fields:not(.builder__fields--advanced) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s2);
+  }
+  .hero-scene__console .builder__fields:not(.builder__fields--advanced) > :nth-child(-n + 2),
+  .hero-scene__console .builder__fields:not(.builder__fields--advanced) > :nth-child(n + 3) {
+    grid-column: auto;
+  }
+  .hero-scene__console .builder__fields:not(.builder__fields--advanced) > :nth-child(5) {
+    grid-column: span 2;
+  }
+  .hero-scene__console .builder__fields--advanced {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s2);
+  }
+  /* One more step down for the same reason as the tablet block: a half column of
+     311px is 150px, which leaves 72px for the value once the well, the chevron,
+     the inset and the gaps have taken theirs. "Any specialty" fits that at 14px
+     and not at 15.2. */
+  .hero-scene__console .builder-field__trigger {
+    padding-left: var(--s2);
+    padding-right: var(--s2);
+  }
+  .hero-scene__console .builder-field__value { font-size: 0.875rem; }
+}
+
+@media (max-width: 760px) {
+  .hero-scene {
+    --stage-min: 0px;
+    --stage-bottom: clamp(2.25rem, 6vw, 3rem);
+    /* Measured closed: 646 at 760, 637 at 700, 692 at 640, 697 at 560, 673 at
+       375, 706 at 356 — one column of fields and a stacked footer make the phone
+       composition the tallest of the set, and the six-column rail at 700 the
+       shortest. 38rem clears the shortest of them by 29px, which is the binding
+       one: the stage has to stay under the closed box at *every* width in the
+       band or the artwork moves when Advanced opens. The extra slack at 375
+       costs nothing — the artwork is top-anchored below and has faded out long
+       before it reaches the console, so the only thing the stage's bottom edge
+       still places on a phone is the floor ramp, which is continuous with the
+       ground under it by construction. */
+    --stage-body: 38rem;
+    /* nav + 11vw is 156 at 760 and 134 at 561. 43vw x 0.294 + 3rem = 144 at
+       760 and 119 at 561. The lantern keeps shrinking a little faster than the
+       band does, which is deliberate: on a narrow frame the fixture matters
+       less than the light it throws over the type. */
+    --lamp-h: clamp(14rem, 43vw, 22rem);
+    --lamp-glass-top: 3rem;
+  }
+  .hero-scene__copy { max-width: none; }
+  .hero-scene__lede { max-width: 40ch; }
+  /* The building moves to the top of the frame and dissolves before it reaches
+     the console: on a phone the type and the search occupy the whole width, so
+     the artwork is the sky above them rather than the wall beside them. The
+     mask is re-declared rather than adjusted — it is one property, and a
+     partial override would leave the desktop bottom ramp fighting this one. */
+  .hero-scene__art img {
+    width: min(132%, 31rem);
+    right: -24%;
+    top: -3%;
+    bottom: auto;
+    mask-image:
+      linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.34) 9%, #000 30%),
+      linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.62) 52%, transparent 88%);
+    mask-composite: intersect;
+    -webkit-mask-image:
+      linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.34) 9%, #000 30%),
+      linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.62) 52%, transparent 88%);
+    -webkit-mask-composite: source-in;
+  }
+  .hero-scene__art::after {
+    background: linear-gradient(
+      to bottom,
+      rgba(8, 5, 3, 0.4) 0%,
+      rgba(8, 5, 3, 0.62) 44%,
+      rgba(8, 5, 3, 0.3) 76%,
+      transparent 100%
+    );
+  }
+}
+
+@media (max-width: 560px) {
+  .hero-scene {
+    /* --nav-h drops to 62 here, so the band loses 10px at the same time the
+       frame narrows: nav + 11vw is 124 at 560, 103 at 375, and 98 at 320 where
+       the 2.25rem floor takes over. 43vw x 0.294 + 2.6rem is 113, 89 and 82 —
+       the floor is what carries the last of those. */
+    --lamp-h: clamp(8.5rem, 43vw, 15.5rem);
+    --lamp-glass-top: 2.6rem;
+  }
+  .hero-scene__title { font-size: clamp(2.1rem, 9.9vw, 3.1rem); }
+  .hero-scene__art img { width: min(146%, 27rem); right: -30%; }
+  /* Four numbers across a phone give each one 78px and break "neighbourhoods"
+     over three lines. Two by two, with the rule only between the pair. */
+  .hero-plinth__ledger { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hero-plinth__stat + .hero-plinth__stat { padding-left: 0; border-left: 0; }
+  .hero-plinth__stat:nth-child(even) {
+    padding-left: var(--s5);
+    border-left: 1px solid var(--on-ink-line);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   8. MOTION
+   --------------------------------------------------------------------------
+   One slow rise down the column, the same easing and stagger polish.css uses
+   for the rest of the page. Gated on `no-preference`, so the static hero above
+   is the whole design and this is an addition to it — and the console is faded
+   but never transformed, because a transform on it would make it a containing
+   block for the builder's mobile bottom sheet.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-scene__eyebrow,
+  .hero-scene__title,
+  .hero-scene__lede,
+  .hero-plinth__ledger {
+    animation: kk-rise 760ms var(--ease-out) both;
+  }
+  .hero-scene__title { animation-delay: 80ms; }
+  .hero-scene__lede { animation-delay: 150ms; }
+  .hero-scene__console { animation: kk-fade-in 1000ms var(--ease-out) 200ms both; }
+  .hero-plinth__ledger { animation-delay: 280ms; }
+  /* The lamp and its light arrive last and slowest — the scene coming up, not
+     an element sliding in. Opacity only: a transform on a screen-blended layer
+     re-rasterises the blend every frame for no visual gain. */
+  .hero-scene__lamp,
+  .hero-scene__glow {
+    animation: kk-fade-in 1600ms var(--ease-out) 120ms both;
+  }
+}

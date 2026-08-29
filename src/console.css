@@ -1,0 +1,3944 @@
+/* ==========================================================================
+   console.css — the signed-in design layer
+   --------------------------------------------------------------------------
+   Loaded LAST, after polish.css. Same ordering rule as refine.css and
+   polish.css: an unconditional rule here beats an earlier file's media query
+   at equal specificity, so anything responsive that an earlier file declared
+   and this file re-declares has to re-state that media query. The ones that
+   matter are recorded inline and collected again in section 15.
+
+   Why an eighth file at all: the four authenticated surfaces (KK admin,
+   restaurant admin, profile + rewards, auth) were styled by phase3.css and a
+   partial pass in editorial.css. phase-c.css, refine.css and polish.css — the
+   three newest layers, the ones that carry the current editorial language —
+   contain zero rules for any of them. That gap is the whole reason the
+   signed-in product reads as a stock admin panel while the public product
+   reads as a magazine. This file closes it.
+
+   Scope safety: .panel, .stat-card, .stat-grid, .admin-*, .auth-card*,
+   .profile-*, .wallet-*, .reward-*, .coupon-*, .access-denied appear only on
+   authenticated surfaces, so they are restyled globally. Shared primitives
+   (.btn, .chip, .field, table) are only ever touched through a console
+   ancestor.
+
+   Design contract inherited from design-system.css and unchanged here:
+     espresso ink = ACTION      (--primary)
+     gold/saffron = EMPHASIS    (type only, never a surface)
+     emerald      = VERIFICATION ONLY (--success, --prov-verified*)
+   Status colour in a console is the one place emerald is allowed to mean
+   "approved", because approval *is* the verification act. Nothing else here
+   invents a colour meaning.
+
+   Sections
+     1.  Console shell — rail, brand, grouped nav, identity foot
+     2.  Console shell — main column, mobile topbar and drawer
+     3.  Page furniture — heads, sections, toolbars
+     4.  Ledger figures (replaces boxed stat cards)
+     5.  Panels as ruled editorial sections
+     6.  Records — rows and tables
+     7.  Status pills and provenance marks
+     8.  Row actions
+     9.  Forms and fields inside a console
+     10. Empty states
+     11. Profile
+     12. Rewards
+     13. Auth — split stage
+     14. Owner console — preview, photography, menu groups
+     15. Responsive
+   ========================================================================== */
+
+/* ==========================================================================
+   1. CONSOLE SHELL — rail
+   ========================================================================== */
+
+/* Full-screen routes (both consoles + auth) render without the consumer
+   header, bottom nav, footer and compare tray — see isFullScreenRoute() in
+   App.tsx. index.css reserves --nav-h on .app__body for the fixed header and
+   editorial.css ≤768 reserves --bottom-nav-h on .app for the mobile bar; with
+   that chrome gone both reserves become dead space, so they are released here.
+   Restated inside the ≤768 block in section 14 for the same ordering reason
+   everything else in this file is. */
+.app--console { padding-bottom: 0; }
+.app--console .app__body { padding-top: 0; }
+
+.admin-shell {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+  /* The consumer navbar is suppressed on console routes (App.tsx), so the
+     shell owns the full height and the rail can be sticky to the viewport. */
+}
+
+.admin-shell__side {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+  padding: var(--s6) var(--s4) var(--s5);
+  background: var(--surface);
+  /* A hairline, not a panel. A shadowed sidebar is the single strongest
+     "Bootstrap admin" tell. */
+  border-right: 1px solid var(--border-soft);
+  z-index: 30;
+}
+
+.admin-shell__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: 0 var(--s2) var(--s5);
+  border-bottom: 1px solid var(--border-soft);
+  text-decoration: none;
+  color: inherit;
+}
+
+.admin-shell__logo {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: var(--r-md);
+  /* Flat, per the button decision: a 38px square is too small to show a
+     gradient as anything but an uneven wash. */
+  background: var(--primary-strong);
+  color: var(--ink-on-primary);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+  box-shadow: var(--shadow-xs);
+}
+
+.admin-shell__brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s0h);
+  min-width: 0;
+}
+
+.admin-shell__brand-text strong {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: var(--weight-semi);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  line-height: 1.15;
+}
+
+.admin-shell__brand-text span {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-semi);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* --- nav --------------------------------------------------------------- */
+
+.admin-shell__nav {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Keep the scrollbar off the hairline border. */
+  padding-right: var(--s0h);
+  scrollbar-width: thin;
+}
+
+/* One group. Items inside sit 2px apart; groups sit 20px apart, which is the
+   distance that lets a heading belong to what follows it rather than float
+   between two lists. */
+.admin-shell__nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s0h);
+}
+
+.admin-shell__nav-section + .admin-shell__nav-section { margin-top: var(--s5); }
+
+.admin-shell__nav-group {
+  display: block;
+  padding: 0 var(--s3) var(--s2);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.admin-shell__link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 40px;
+  padding: var(--s2) var(--s3);
+  border: 0;
+  /* 10px, not the 14px a button gets. A nav row is 209px wide and 40px tall; at
+     14px the corners start to describe an oval instead of a rectangle. */
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-medium);
+  line-height: 1.3;
+  color: var(--ink-soft);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  width: 100%;
+  transition: background var(--tr-settle), color var(--tr-settle), transform var(--tr-settle);
+}
+
+.admin-shell__link > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  /* --ink-faint here left the icon fainter than the label it sits beside, so a
+     row read as a word with a smudge in front of it. */
+  color: var(--ink-soft);
+  transition: color var(--tr-settle);
+}
+
+.admin-shell__link-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-shell__link:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.admin-shell__link:hover > svg { color: var(--ink); }
+
+/* The press. Without one, a rail item answers a click only by changing which
+   row is filled — which is the *result*, arriving a frame later. The warm tint
+   under the finger is the acknowledgement, and it is the same family as the
+   fill the row is about to take, so the press reads as the beginning of the
+   selection rather than a separate colour event. */
+.admin-shell__link:active {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  transform: scale(0.99);
+}
+
+.admin-shell__link:active > svg { color: var(--primary); }
+
+.admin-shell__link:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* Active state: ONE device — a tinted pill with a defined edge.
+   It was three at once (a fill, a left rule, and a weight change) and the fill
+   was `--primary-faint`, which resolves to rgb(252,247,236) against a
+   rgb(255,253,249) surface: three units apart, invisible in daylight. So the
+   row that was meant to look chosen looked like nothing, while a row merely
+   under the cursor got a fill you could actually see. */
+.admin-shell__link--active,
+.admin-shell__link[aria-current='page'] {
+  background: var(--primary-soft);
+  box-shadow: inset 0 0 0 1px var(--primary-line);
+  color: var(--primary-strong);
+  font-weight: var(--weight-semi);
+}
+
+.admin-shell__link--active > svg,
+.admin-shell__link[aria-current='page'] > svg { color: var(--primary); }
+
+/* A count beside a nav item. Only ever rendered from a real number. */
+.admin-shell__link-badge {
+  flex: none;
+  min-width: 20px;
+  padding: var(--s0h) var(--s1h);
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  text-align: center;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-shell__link-badge--attention {
+  background: var(--accent-faint);
+  color: var(--accent-strong);
+}
+
+.admin-shell__link--active .admin-shell__link-badge {
+  background: var(--surface);
+  color: var(--primary-strong);
+}
+
+/* --- rail foot: identity + the way back -------------------------------- */
+
+.admin-shell__foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border-soft);
+}
+
+.admin-shell__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-width: 0;
+  padding: 0 var(--s2);
+}
+
+.admin-shell__avatar {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: var(--r-full);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: var(--weight-bold);
+  overflow: hidden;
+}
+
+.admin-shell__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-shell__identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s0h);
+  min-width: 0;
+}
+
+.admin-shell__identity-text strong {
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-shell__identity-text span {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-semi);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* The rail foot used to end in `.admin-shell__logout` — a full-width bordered
+   button — with `.admin-shell__back`, a 12px `--ink-faint` link, tucked above it.
+   Both are gone. The loudest control in either console was the one nobody comes
+   here to press, and the way back into the product it belongs to was the
+   quietest thing on the screen. Signing out lives in the public navbar's account
+   menu (Navbar.tsx) and on the profile page, which is where people look for it.
+   This is the foot's one control now, and it carries the button weight the
+   logout used to take. */
+.admin-shell__exit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  width: 100%;
+  padding: var(--s2h) var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  /* `--ink`, not the old link's `--ink-faint`: this is a destination, and a
+     destination written in the faintest ink on the page reads as a footnote. */
+  color: var(--ink);
+  text-decoration: none;
+  text-align: center;
+  transition: border-color var(--tr-settle), background var(--tr-settle), transform var(--tr-settle);
+}
+
+.admin-shell__exit svg { flex: none; }
+
+/* Warm on hover rather than grey: the destination is Khabo Kothay, so the
+   hover is the brand's own paper and gold hairline. No colour change with it —
+   `--primary-strong` and `--ink` both resolve to rgb(28,23,16), so darkening the
+   text on hover would be a declaration that paints nothing. The lift is 1px:
+   enough to answer the pointer, small enough not to read as a bounce. */
+.admin-shell__exit:hover {
+  border-color: var(--accent-line);
+  background: var(--primary-soft);
+  transform: translateY(-1px);
+}
+
+.admin-shell__exit:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* ==========================================================================
+   2. CONSOLE SHELL — main column, mobile topbar and drawer
+   ========================================================================== */
+
+.admin-shell__content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* The mobile bar. Hidden at pointer widths — the rail is permanent there. */
+.admin-shell__topbar {
+  display: none;
+  position: sticky;
+  top: 0;
+  z-index: 25;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--gutter);
+  /* Glass, and now actually glass. This is §4's first permitted surface — a
+     header that sits over scrolling content — and it has carried a
+     `backdrop-filter` since it was written, but over `background: var(--surface)`,
+     which is `#fffdf9`: fully opaque. `backdrop-filter` filters what is behind
+     the element and *then* paints the element's own background on top, so an
+     opaque fill hides the entire result. The console's mobile bar has been
+     paying for a compositor pass and a containing-block promotion to show
+     nothing since it shipped.
+     Phase 3 item 6 made it real rather than deleting it, using the exact pair
+     `.nav.nav--scrolled` uses (polish.css section 2), so the console's header
+     and the consumer header are the same material: `--glass-paper` is the same
+     paper at 0.86, and the token is `--glass-blur` now that `--header-blur` is
+     retired. Containing-block behaviour is unchanged — the declaration was
+     always here — and there is no `position: fixed` descendant regardless
+     (ConsoleShell.tsx:191 holds a button and a title). */
+  background: var(--glass-paper);
+  border-bottom: 1px solid var(--border-soft);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.admin-shell__menu-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background var(--tr-settle), border-color var(--tr-settle), color var(--tr-settle);
+}
+
+/* Had a focus ring and no hover — the one control that opens the console rail
+   on a phone gave a pointer nothing back. */
+.admin-shell__menu-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  transition-duration: var(--tr-answer);
+}
+.admin-shell__menu-btn:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+
+.admin-shell__topbar-title {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: var(--weight-semi);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-shell__scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--scrim-soft);
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.admin-shell__close {
+  display: none;
+  position: absolute;
+  top: var(--s4);
+  right: var(--s4);
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background var(--tr-settle), border-color var(--tr-settle), color var(--tr-settle);
+}
+
+/* Neither hover nor focus ring, on a dismiss control. A close button that
+   does not darken under the pointer reads as decoration. */
+.admin-shell__close:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+  color: var(--ink);
+  transition-duration: var(--tr-answer);
+}
+.admin-shell__close:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+/* ==========================================================================
+   3. PAGE FURNITURE — heads, sections, toolbars
+   ========================================================================== */
+
+/* .admin is the page wrapper used by both consoles. Inside the shell it is a
+   plain block; standalone (restaurant admin before it gets a shell) it keeps
+   its own background. */
+.admin {
+  background: var(--bg);
+}
+
+.admin__inner {
+  width: 100%;
+  max-width: var(--container-wide);
+  margin: 0 auto;
+  padding: var(--s8) var(--s8) var(--s16);
+}
+
+.admin-shell__content .admin__inner { padding-top: var(--s7); }
+
+/* The old head was a plain h1 stack. Give it the editorial three-part
+   structure the public pages use: eyebrow, display title, one line of
+   orientation — then actions on the same optical line. */
+.admin__head,
+.console-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s6);
+  flex-wrap: wrap;
+  padding: 0 0 var(--s5);
+  margin-bottom: var(--s7);
+  border-bottom: 1px solid var(--border-soft);
+  background: transparent;
+}
+
+.console-head__text { min-width: 0; max-width: 62ch; }
+
+.admin__head .section-heading__eyebrow,
+.console-head__eyebrow {
+  display: block;
+  margin-bottom: var(--s2);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.admin__head h1,
+.console-head__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 1.35rem + 1.1vw, 2.3rem);
+  font-weight: var(--weight-semi);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.022em;
+  color: var(--ink);
+}
+
+.admin__head h1 + p,
+.console-head__sub {
+  margin: var(--s2) 0 0;
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+
+.console-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+/* A run of small facts under a head — "207 restaurants · 12 pending". */
+.console-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-top: var(--s3);
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-semi);
+  color: var(--ink-faint);
+}
+
+.console-meta > * + *::before {
+  content: '·';
+  margin-right: var(--s2);
+  color: var(--border-strong);
+}
+
+/* Section rhythm inside a console page. */
+.console-section { margin-bottom: var(--s10); }
+.console-section:last-child { margin-bottom: 0; }
+
+.console-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  margin-bottom: var(--s4);
+}
+
+.console-section__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--weight-semi);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.console-section__hint {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--ink-faint);
+}
+
+/* A toolbar row: search + filters + count. Wraps, never scrolls sideways. */
+.console-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: var(--s5);
+}
+
+.console-toolbar__grow { flex: 1 1 220px; min-width: 0; }
+
+.console-toolbar__count {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-semi);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Two-column console layout. phase3.css collapses .admin-columns at ≤720;
+   re-stated in section 14 because this file loads later. */
+.admin-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: var(--s6);
+  align-items: start;
+}
+
+.admin-columns--even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* ==========================================================================
+   4. LEDGER FIGURES — replaces boxed stat cards
+   --------------------------------------------------------------------------
+   The brief's first "avoid" is excessive cards. Four boxed metrics in a row
+   is the archetype. The public hero already solved this with a hairline
+   ledger, so the console uses the same device: figures separated by rules,
+   not by borders and shadows. .stat-grid / .stat-card keep their names so no
+   component has to be rewritten to get the new treatment.
+   ========================================================================== */
+
+.stat-grid,
+.ledger {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  gap: 0;
+  margin: 0 0 var(--s8);
+  padding: var(--s5) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+
+.stat-card,
+.ledger__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1h);
+  padding: var(--s1) var(--s5);
+  border: 0;
+  border-left: 1px solid var(--border-soft);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  min-width: 0;
+}
+
+.stat-grid > *:first-child,
+.ledger > *:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.stat-card__label,
+.ledger__label {
+  order: 1;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.stat-card__value,
+.ledger__value {
+  order: 2;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 1.3rem + 0.9vw, 2.15rem);
+  font-weight: var(--weight-semi);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-card__value small,
+.ledger__value small {
+  font-size: 0.5em;
+  font-weight: var(--weight-semi);
+  letter-spacing: 0;
+  color: var(--ink-faint);
+  margin-left: var(--s0h);
+}
+
+.stat-card__hint,
+.stat-card p,
+.ledger__note {
+  order: 3;
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+
+/* An emphasis figure — used for a pending count that needs attention. Gold
+   is type-only here, per the token contract. */
+.stat-card--attention .stat-card__value,
+.ledger__item--attention .ledger__value { color: var(--accent-strong); }
+
+.ledger__item--verified .ledger__value { color: var(--success); }
+
+/* A figure that has no data yet. Never a zero pretending to be a measure. */
+.ledger__value--empty,
+.stat-card__value--empty {
+  color: var(--ink-faint);
+  font-size: var(--fs-lead);
+  letter-spacing: -0.01em;
+}
+
+/* Provenance footnote under a ledger. The honesty line the dashboards
+   already carry — make it look intentional instead of orphaned. */
+.console-footnote {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  margin: calc(var(--s8) * -1 + var(--s3)) 0 var(--s8);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.console-footnote > svg { flex: none; margin-top: var(--s0h); width: 14px; height: 14px; }
+
+/* ==========================================================================
+   5. PANELS AS RULED EDITORIAL SECTIONS
+   ========================================================================== */
+
+.panel {
+  padding: var(--s6);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  /* No default shadow. Elevation is reserved for things that actually float
+     (modals, popovers) — a page of floating boxes is the SaaS look. */
+  box-shadow: none;
+}
+
+.panel + .panel { margin-top: var(--s5); }
+
+.panel--flush { padding: 0; overflow: hidden; }
+.panel--quiet { background: var(--surface-2); border-color: transparent; }
+.panel--plain { border: 0; background: transparent; padding: 0; }
+
+.panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  margin: 0 0 var(--s4);
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.panel--flush .panel__head { padding: var(--s5) var(--s6) var(--s3); margin-bottom: 0; }
+
+.panel__title,
+.panel > h2,
+.panel > h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--weight-semi);
+  line-height: var(--lh-snug);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.panel__head .panel__title { flex: 1 1 auto; min-width: 0; }
+
+/* A title standing in a panel HEAD is a section heading and is one step up
+   from a title standing in the panel body.
+
+   This rule is also a correction, and the correction is the reason it is
+   written out rather than folded into the block above. phase3.css carried
+   `.panel__head h2 { font-size: var(--fs-h3) }` — a loose descendant, so
+   (0,1,1) — which silently beat `.panel__title` (0,1,0) no matter that this
+   file loads later. Every panel title in the product has therefore been
+   shipping at --fs-h3, and the --fs-h4 declared above has never once
+   applied to one in a head. Measured live: 24.8px, in both consoles and on
+   the profile and rewards pages. So this states the size that actually
+   ships, in the file that owns panels, and phase3.css's copy is deleted.
+   Net visual change: none. The contradiction between two files: gone.
+
+   Only `.panel__title` is listed. phase3.css's selector was `h2`, which was
+   load-bearing for exactly seven bare `<h2>`s in the executive console —
+   all seven now carry the class, so there is nothing left for an element
+   selector to catch, and adding one would only invite the next bare
+   heading to inherit a size it never asked for. */
+.panel__head .panel__title { font-size: var(--fs-h3); }
+
+/* A second-level heading inside a panel body — "Open flags" under the
+   reviews list, "Recent decisions" under the offer queue. These were four
+   bare `<h3 style={{ marginTop: 'var(--s5)' }}>` in the executive console:
+   a display-type heading the same weight as the panel's own title, so a
+   subsection announced itself as loudly as the panel containing it.
+   A subhead is a label for the run beneath it, so it is set as one.
+
+   Written with the `.panel >` prefix deliberately. `.panel > h3` above is
+   (0,1,1) and would beat a bare single class however far down this file it
+   sat — the same trap that kept `.panel__title`'s size from ever applying. */
+.panel > .panel__subhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin: var(--s7) 0 var(--s2);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--border-soft);
+  font-family: var(--font-body);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.panel__hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-medium);
+  color: var(--ink-faint);
+}
+
+/* A hint sometimes carries a small leading icon. */
+.panel__hint > svg { vertical-align: -2px; margin-right: var(--s1); }
+
+.panel__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.panel__body { min-width: 0; }
+.panel--flush .panel__body { padding: 0 var(--s6) var(--s6); }
+
+.panel__foot {
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border-soft);
+  font-size: var(--fs-xs);
+  color: var(--ink-faint);
+}
+
+/* A pulled quotation inside a panel — the latest community review on the
+   overview. Was `.t-sm` plus an inline colour, which is the same paint as a
+   caption, so the one piece of a diner's own voice on the page read as
+   metadata about the page. */
+.panel__quote {
+  margin: 0;
+  padding-left: var(--s4);
+  border-left: 2px solid var(--primary-line);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-style: italic;
+  line-height: var(--lh-body);
+  color: var(--ink);
+}
+
+/* --- Two quiet text roles, declared once ------------------------------- */
+/* These replace the console's most-repeated inline style. The executive page
+   alone carried twenty-five variations on
+   `className="t-sm" style={{ color: 'var(--ink-soft)' }}`, which is a
+   decision about secondary text being re-made at every call site — and made
+   inconsistently: the same kind of line appeared at --fs-sm/--ink-soft in
+   one panel and --fs-xs/--ink-faint in the next.
+   `__sub` is the second line under a label; `__note` is a standalone
+   remark after a run of content. */
+.console-sub {
+  display: block;
+  margin-top: var(--s0h);
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-medium);
+  line-height: var(--lh-body);
+  color: var(--ink-faint);
+}
+
+.console-note {
+  margin: var(--s3) 0 0;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-body);
+  color: var(--ink-faint);
+}
+
+.console-note > svg { vertical-align: -2px; margin-right: var(--s1); width: 12px; height: 12px; }
+
+/* An explanatory paragraph directly under a panel head, before the content
+   it explains — one step up from a footnote because it is read first. */
+.console-lede {
+  margin: 0 0 var(--s4);
+  max-width: 76ch;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+}
+
+/* An inset run of label/value pairs — restaurant summary, contact block. */
+.console-defs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--s4) var(--s6);
+  margin: 0;
+}
+
+.console-defs > div { min-width: 0; }
+
+.console-defs dt {
+  margin: 0 0 var(--s1);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.console-defs dd {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-medium);
+  line-height: 1.45;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.console-defs dd:empty::after,
+.console-defs dd[data-empty='true']::after {
+  content: 'Not set';
+  font-weight: var(--weight-body);
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+/* ==========================================================================
+   6. RECORDS — rows and tables
+   --------------------------------------------------------------------------
+   Two presentations of the same idea. .records is the row list used wherever
+   an entity has a name, some meta and some actions; .admin-table stays a real
+   <table> where columns genuinely compare, but loses the zebra-striped grid
+   look for ruled rows.
+   ========================================================================== */
+
+.records {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-soft);
+}
+
+.records--bare { border-top: 0; }
+
+.record {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s4) var(--s2);
+  border-bottom: 1px solid var(--border-soft);
+  min-width: 0;
+  transition: background var(--tr-settle);
+}
+
+.record:hover { background: var(--primary-faint); }
+
+.record--stack { align-items: flex-start; }
+
+.record__thumb {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  object-fit: cover;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: var(--ink-faint);
+}
+
+.record__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.record__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--s1); }
+
+.record__title {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  font-weight: var(--weight-semi);
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+}
+
+.record__title a { color: inherit; text-decoration: none; }
+.record__title a:hover { color: var(--primary-strong); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+
+.record__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  font-size: var(--fs-xs);
+  color: var(--ink-faint);
+  min-width: 0;
+}
+
+.record__meta > * + *::before {
+  content: '·';
+  margin-right: var(--s2);
+  color: var(--border-strong);
+}
+
+.record__meta strong { font-weight: var(--weight-semi); color: var(--ink-soft); }
+
+/* A record row that carries a body of prose — a written review, a note. Sits
+   inside .record__main, below the title and meta. */
+.record__body {
+  margin: var(--s0h) 0 0;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+}
+
+.record__figure {
+  flex: none;
+  text-align: right;
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  font-weight: var(--weight-semi);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.record__figure small {
+  display: block;
+  font-family: var(--font-body);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.record__side { flex: none; display: flex; align-items: center; gap: var(--s3); }
+
+/* --- table ------------------------------------------------------------- */
+
+.admin-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--r-lg);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  background: transparent;
+}
+
+.admin-table th {
+  padding: 0 var(--s3) var(--s3);
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--ink-faint);
+}
+
+.admin-table td {
+  padding: var(--s4) var(--s3);
+  border-bottom: 1px solid var(--border-soft);
+  border-top: 0;
+  vertical-align: middle;
+  color: var(--ink-soft);
+}
+
+.admin-table td strong { font-weight: var(--weight-semi); color: var(--ink); }
+
+.admin-table tbody tr { transition: background var(--tr-settle); }
+.admin-table tbody tr:hover { background: var(--primary-faint); }
+.admin-table tbody tr:last-child td { border-bottom: 0; }
+
+.admin-table td:first-child,
+.admin-table th:first-child { padding-left: var(--s2); }
+
+.admin-table td:last-child,
+.admin-table th:last-child { padding-right: var(--s2); }
+
+.admin-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* The identity cell is a link over a quiet subtitle. phase3.css makes the link
+   an inline-flex, and the subtitle is a plain sibling span, so the two ran into
+   each other mid-line ("Woodhouse Grill Gulshan ↗Continental"). Stack them.
+   Protects the first column of every console table at every width. */
+.admin-table td:first-child { line-height: 1.35; }
+.admin-table td:first-child > .admin-table__link { display: flex; }
+.admin-table__link + .t-xs,
+.admin-table__link + span { display: block; margin-top: var(--s1); }
+
+/* A cell holding a timestamp or a provenance note rather than a fact about
+   the row's subject. Replaces `<td className="t-sm" style={{ color: … }}>`. */
+.admin-table__quiet { font-size: var(--fs-xs); color: var(--ink-faint); }
+
+/* The expandable draft-diff row keeps its inset treatment. */
+.admin-draft-row td { background: var(--surface-2); border-top: 0; }
+
+/* A decision pair closing a diff panel stands off the content it decides on.
+   Was `style={{ marginTop: 'var(--s3)' }}`, written at three call sites.
+   `flex-wrap` because `.admin-table__actions` was sized for a table cell's one
+   or two icon buttons; an application carries three labelled ones, and
+   "Approve & activate owner" alone measures 172px, so at Dhaka phone widths the
+   row has to break rather than overflow the card. */
+.admin-draft-detail > .admin-table__actions,
+.application-card > .admin-table__actions {
+  margin-top: var(--s4);
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+/* ==========================================================================
+   7. STATUS PILLS AND PROVENANCE MARKS
+   --------------------------------------------------------------------------
+   One vocabulary for every workflow state across both consoles, so a KK
+   reviewer and an owner read the same colour the same way.
+     neutral   draft, unpublished, at rest
+     pending   awaiting a human — saffron, the emphasis token
+     ok        approved / verified / published — emerald, verification only
+     danger    rejected / blocked
+     info      informational, no action implied
+
+   Phase 3 changed the shape and nothing else. `.status-pill` was 999px, and
+   design-system.css §2 assigns 999px to "chips, filters, toggles" — the things
+   you press. A workflow state is a fact about a record; primitives.css §4
+   already settled that facts are 6px rectangles, and it settled it because the
+   pill shape on an unpressable label is what made KK's marks and KK's controls
+   indistinguishable until the cursor moved. Seventy-four of these render across
+   two consoles, the rewards wallet and the profile, and every one of them was
+   quoting the radius table while disobeying it.
+
+   The class stays rather than becoming `Badge` at all seventy-four sites,
+   because it carries a register `Badge` does not: micro-caps is how a *state*
+   reads as opposed to how a *tag* reads — "IN REVIEW" is where a thing sits in
+   a process, "Dinner" is what a thing is. That distinction is worth keeping
+   visible, it is declared exactly once here, and §4's own migration policy says
+   a coherent bespoke mark moves only when a phase has reason to touch it. What
+   it now shares with `.kk-badge` is the whole geometry — same 6px corner, same
+   24px minimum, same 8px flanks — so a state and a tag in one row line up
+   instead of missing each other by a pixel and a half.
+   ========================================================================== */
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-height: 24px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  font-family: var(--font-body);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+
+.status-pill > svg { width: 12px; height: 12px; flex: none; }
+
+.status-pill--pending {
+  background: var(--accent-faint);
+  border-color: var(--accent-line);
+  color: var(--accent-strong);
+}
+
+.status-pill--ok {
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 24%, transparent);
+  color: var(--success);
+}
+
+.status-pill--danger {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 24%, transparent);
+  color: var(--danger);
+}
+
+.status-pill--info {
+  background: var(--primary-faint);
+  border-color: var(--primary-line);
+  color: var(--primary-strong);
+}
+
+.status-pill--dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* A softer inline state label for dense rows where a pill is too loud. */
+.status-text {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-semi);
+  color: var(--ink-faint);
+}
+
+.status-text--pending { color: var(--accent-strong); }
+.status-text--ok { color: var(--success); }
+.status-text--danger { color: var(--danger); }
+
+/* Banner for a workflow state that governs the whole page (draft pending
+   review, edits blocked by RLS). Replaces ad-hoc inline-styled divs. */
+.console-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+  margin-bottom: var(--s5);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--ink-faint);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+}
+
+.console-banner > svg { flex: none; margin-top: var(--s0h); width: 16px; height: 16px; }
+.console-banner strong { display: block; margin-bottom: var(--s0h); font-weight: var(--weight-semi); color: var(--ink); }
+.console-banner p { margin: 0; }
+.console-banner__body { min-width: 0; flex: 1; }
+
+.console-banner--pending {
+  border-color: var(--accent-line);
+  border-left-color: var(--accent);
+  background: var(--accent-faint);
+  color: var(--espresso-600);
+}
+
+.console-banner--ok {
+  border-color: color-mix(in srgb, var(--success) 22%, transparent);
+  border-left-color: var(--success);
+  background: var(--success-soft);
+}
+
+.console-banner--danger {
+  border-color: color-mix(in srgb, var(--danger) 22%, transparent);
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.console-banner__actions { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); }
+
+/* ==========================================================================
+   8. ROW ACTIONS
+   --------------------------------------------------------------------------
+   The menu editor renders seven ghost buttons per dish. That is the
+   spreadsheet feeling the brief names. Actions become icon-only, quiet until
+   the row is hovered or focused, with the destructive one separated.
+   ========================================================================== */
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s0h);
+  flex: none;
+}
+
+.row-actions__group {
+  display: flex;
+  align-items: center;
+  gap: var(--s0h);
+  padding-right: var(--s2);
+  margin-right: var(--s1);
+  border-right: 1px solid var(--border-soft);
+}
+
+.row-actions__group:last-child { border-right: 0; padding-right: 0; margin-right: 0; }
+
+/* `.icon-action` and its two variants used to be declared here — a 32px square
+   with a soft "on" state and a red hover, hand-rolled because the shared icon
+   button was a circle and a circle is wrong at this density.
+
+   The primitive grew a `shape` instead, so the nine row actions in the menu and
+   offers editors are `IconButton … shape="square"` now and this block is dead.
+   What the move actually changed, beyond one class list:
+
+   - **The box is 34px, not 32.** The ladder's `md` step, so a console action is
+     the same size as a card's save button instead of a size that existed only
+     here — which is also why the ≤640 override at §15 could go.
+   - **The pointer target is 44px tall.** It was 32 on every device. The reach
+     only extends to 36px horizontally because siblings sit 2px apart; that cap
+     is stated in primitives.css §2 rather than silently missed.
+   - **The hide/show toggle finally looks pressed.** It announced
+     `aria-pressed` while carrying no `--on` class, so a hidden dish was
+     indistinguishable from a visible one unless you read the status text. */
+
+/* Reveal on hover at pointer widths only — touch has no hover, so on small
+   screens the actions stay visible (section 14). */
+@media (hover: hover) and (pointer: fine) {
+  .record .row-actions,
+  .admin-table tbody tr .row-actions { opacity: 0.45; transition: opacity var(--tr-settle); }
+  .record:hover .row-actions,
+  .record:focus-within .row-actions,
+  .admin-table tbody tr:hover .row-actions,
+  .admin-table tbody tr:focus-within .row-actions { opacity: 1; }
+}
+
+/* ==========================================================================
+   9. FORMS AND FIELDS INSIDE A CONSOLE
+   --------------------------------------------------------------------------
+   This section used to re-declare the whole field system, scoped to four
+   console ancestors, on the reasoning that `.field` is shared with the
+   public site. The effect was the opposite of scoping: because
+   `.admin .field input` is (0,2,1) it beat every later single-class file,
+   so the *same component* rendered one way with a console ancestor above it
+   and another way without — 14px radius against 10px, 13px type against
+   14px, `--border` against `--border-strong`, and a borderless 3px espresso
+   ring against a 2px espresso outline. Neither focus treatment was §7's.
+
+   Phase 2c resolved all of it into primitives.css §6, which styles
+   `.kk-field` and the legacy `.field` from one rule list. What was dropped
+   here rather than moved:
+
+   - **The uppercase micro-caps label** (`.admin .field > label` and its
+     three siblings) was **dead**, and had been. Every one of the 34 field
+     blocks in the product is `<label class="field">` wrapping a
+     `<span class="field__label">`, so `.field > label` matched nothing —
+     console labels have always rendered as phase3's 13px semibold sentence
+     case. Restoring the intent would be a visible redesign of every admin
+     form, so it is left for Phase 3's signed-in work to decide on purpose.
+   - **`.admin-shell`**, which appears in zero markup: those selector arms
+     were dead twice over.
+   - **`.form-error`**, now declared once in §6. Its `--danger` restatement
+     here was the only reason the public site's `.form-error` was red at
+     all; phase3.css had it painting the undefined `--error`.
+
+   The one console-specific thing kept is the taller textarea, below: an
+   admin description is long-form in a way a public note is not.
+   ========================================================================== */
+
+.admin .field textarea,
+.admin-shell .field textarea,
+.profile-body .field textarea { min-height: 96px; }
+
+/* phase3.css collapses .admin-form__row at ≤720; re-stated in section 14. */
+.admin-form__row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s4);
+}
+
+.admin-form__row--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.admin-form__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding-top: var(--s4);
+  margin-top: var(--s1);
+  border-top: 1px solid var(--border-soft);
+}
+
+.admin-form__actions .field__hint { margin-right: auto; }
+
+/* `.form-error` moved to primitives.css §6 — same declarations, one home. */
+
+/* The `.switch-row` family — the row, its `:last-child` rule and the two-line
+   `.switch-row__text` — was written for the `.switch` component in index.css
+   and, like it, was never emitted by anything. Both are gone in the same pass;
+   an availability toggle in the restaurant console is a `.field` checkbox. */
+
+/* ==========================================================================
+   10. EMPTY STATES
+   --------------------------------------------------------------------------
+   Load-bearing, not decorative: the brief forbids inventing metrics, so
+   every unavailable measure resolves to one of these instead of a zero.
+   ========================================================================== */
+
+.console-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s10) var(--s6);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.console-empty--inset { border: 0; background: transparent; padding: var(--s8) var(--s4); }
+.console-empty--tight { padding: var(--s6) var(--s4); }
+
+.console-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  color: var(--ink-faint);
+}
+
+.console-empty__icon > svg { width: 20px; height: 20px; }
+
+.console-empty__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--weight-semi);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.console-empty__text {
+  margin: 0;
+  max-width: 46ch;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+}
+
+.console-empty__actions { display: flex; gap: var(--s2); flex-wrap: wrap; justify-content: center; margin-top: var(--s2); }
+
+/* The "this measure does not exist yet" variant — a labelled blank, so an
+   owner can tell "we have no data" from "your number is zero". */
+.metric-pending {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1h);
+  padding: var(--s1) var(--s5);
+  border-left: 1px solid var(--border-soft);
+  min-width: 0;
+}
+
+.stat-grid > .metric-pending:first-child,
+.ledger > .metric-pending:first-child { border-left: 0; padding-left: 0; }
+
+.metric-pending__label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.metric-pending__dash {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 1.3rem + 0.9vw, 2.15rem);
+  font-weight: var(--weight-semi);
+  line-height: 1;
+  /* Quiet, but it has to read as a deliberate absence rather than a cell that
+     failed to render — --border-strong disappeared next to real figures. */
+  color: var(--ink-faint);
+}
+
+.metric-pending__note {
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+
+/* ==========================================================================
+   11. PROFILE
+   ========================================================================== */
+
+.profile-page { background: var(--bg); }
+
+/* The identity mark: the avatar, wearing its own completion figure.
+   A conic gradient is the whole meter — `--pct` is the same derived figure the
+   panel's bar and its answered count use, so the three cannot disagree — and
+   the squircle radius is 4px looser than the avatar's 22px so the ring reads as
+   a frame around it rather than a second tile behind it. It fills from twelve
+   o'clock clockwise, because a meter that starts anywhere else has to be read
+   twice. Gold for what is done, the softest hairline for what is not: on paper
+   this is a quiet ring, not a dashboard donut. */
+.profile-identity {
+  position: relative;
+  flex: none;
+  padding: var(--s1h);
+  border-radius: 26px;
+  background: conic-gradient(
+    var(--accent) 0,
+    var(--accent) calc(var(--pct, 0) * 1%),
+    var(--border-soft) calc(var(--pct, 0) * 1%),
+    var(--border-soft) 100%
+  );
+}
+
+/* The figure, sat on the ring's lower edge. A ring with no number is a decoration
+   — it says something is partly done without saying how much, which is the one
+   thing a meter exists to say. */
+.profile-identity__figure {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  padding: var(--s0h) var(--s2);
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0;
+  color: var(--primary-strong);
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--shadow-xs);
+}
+
+/* Identity band. Editorial, full-bleed paper, hairline base — not a card. */
+.profile-head {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s6);
+  flex-wrap: wrap;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: var(--s10) var(--gutter) var(--s6);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.profile-head__avatar {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  flex: none;
+  border-radius: var(--r-full);
+  background: var(--grad-primary);
+  color: var(--ink-on-primary);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: var(--weight-semi);
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-head__avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.profile-head__info { flex: 1 1 260px; min-width: 0; }
+
+.profile-head__eyebrow {
+  display: block;
+  margin-bottom: var(--s2);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.profile-head__info h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 1.4rem + 1.6vw, 2.7rem);
+  font-weight: var(--weight-semi);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+
+.profile-head__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-top: var(--s2);
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+
+.profile-head__meta > * + *::before {
+  content: '·';
+  margin-right: var(--s2);
+  color: var(--border-strong);
+}
+
+/* The badges you hold, as marks. `.profile-head__pip` is deliberately the same
+   object as `.badge-tile__mark` two panels down — struck gold, white glyph, a
+   faint gold halo — at 18px instead of 34, so the head band's row and the badge
+   grid are visibly the same currency rather than two unrelated treatments of
+   one idea. They overlap by 5px: a row of touching discs reads as a collection,
+   an evenly spaced row reads as three separate icons that happen to be nearby.
+   The halo is `--accent-faint` rather than the page colour because the band is
+   transparent and sits on whatever the page is; a warm ring works on any of it.
+
+   Each pip carries its own badge's mark, as the tiles do. Five copies of one
+   rosette at 18px overlapping by 5px resolved into a single wide gold smudge —
+   the row said "some badges" where five different silhouettes say "these five".
+   The lit top edge comes down from the tile too, minus the shaded underside: at
+   18px a 2px inner shadow is a third of the disc. */
+.profile-head__badges { display: inline-flex; align-items: center; gap: var(--s2); }
+
+/* The separator dot is injected into this span by the rule above, which means
+   it becomes a flex item here and would take that rule's 8px margin on top of
+   this row's 8px gap. */
+.profile-head__meta > .profile-head__badges::before { margin-right: 0; }
+
+.profile-head__pips { display: inline-flex; align-items: center; }
+
+.profile-head__pip {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-full);
+  background: var(--grad-gold);
+  color: #fff;
+  box-shadow:
+    0 0 0 1.5px var(--accent-faint),
+    inset 0 1px 0 rgb(255 255 255 / 0.5);
+}
+
+.profile-head__pip + .profile-head__pip { margin-left: -5px; }
+
+/* The token balance. This was a bare numeral against a hairline rule, which
+   gave the one figure on the page a diner actually spends the same visual
+   weight as their phone number. It is a plaque now: a coin mark that says what
+   kind of number follows before the number is read, the figure stacked over its
+   unit so the numeral keeps the display serif to itself, and a chevron because
+   the thing is a link to the wallet and only its title attribute used to say so.
+   Gold ink on gold-faint paper with a gold hairline — not a gold fill, which §3
+   reserves for the single commercial action per view. */
+.profile-head__tokens,
+.profile-head__tokens--button {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex: none;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-md);
+  padding: var(--s3) var(--s4);
+  background: linear-gradient(150deg, var(--accent-faint), var(--surface) 70%);
+  cursor: pointer;
+  text-align: left;
+  /* `font: inherit` first, because a <button> otherwise keeps the UA's 13.33px
+     and every child here would be sized against it. */
+  font: inherit;
+  font-family: var(--font-body);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.profile-head__tokens--button:focus-visible { outline: var(--focus-ring); outline-offset: 3px; }
+
+/* The coin. Not the badge disc any more, and the split is deliberate: the badges
+   are a set you collect, so they stay identical objects at two sizes, but the
+   balance is a single struck token and now looks like one — `CoinMark` from
+   components/ui/marks.tsx, milled edge and the brand's bowl struck into the face,
+   where this used to be Lucide's two flat overlapping discs in white.
+   That drawing is self-coloured (primitives.css §12) and needs a quiet field
+   under it, not the gold fill a white glyph needed: a shallow gold well, an
+   `--accent-line` hairline and a `--surface` ring that separates the well from
+   the warm plaque and is what widens on hover. It also puts the plaque's own
+   stated language — gold ink on gold-faint paper, §3's filled gold spent on the
+   claim button instead — into the one element that was contradicting it. */
+.profile-head__tokens-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  box-shadow:
+    inset 0 0 0 1px var(--accent-line),
+    0 0 0 4px var(--surface);
+  transition: box-shadow var(--dur-med) var(--ease-out);
+}
+
+.profile-head__tokens-figure { display: grid; gap: var(--s0h); }
+
+.profile-head__tokens strong {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: var(--weight-semi);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Classed, not `.profile-head__tokens span`: that selector is (0,1,1) and would
+   outrank every single-class rule in this family, including the coin's. */
+.profile-head__tokens-unit {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.profile-head__tokens-go {
+  flex: none;
+  margin-left: var(--s1);
+  color: var(--accent-strong);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+/* phase3.css lifted this button 1px and flooded it with --primary-strong. A
+   plaque in a page header does not need to move to prove it is pressable; the
+   line firms, the coin's halo widens, and the chevron leans. */
+.profile-head__tokens--button:hover {
+  transform: none;
+  background: linear-gradient(150deg, var(--accent-faint), var(--surface) 70%);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-xs);
+}
+
+.profile-head__tokens--button:hover .profile-head__tokens-mark {
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 0 6px var(--surface);
+}
+.profile-head__tokens--button:hover .profile-head__tokens-go { transform: translateX(2px); }
+.profile-head__tokens--button:hover strong { color: var(--primary-strong); }
+
+/* Tab bar — reused from .auth-card__tabs by ProfilePage. Underline, not
+   pills: the same device Explore uses for its result modes. */
+.profile-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s5);
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.profile-tabs::-webkit-scrollbar { display: none; }
+
+.profile-tabs button {
+  position: relative;
+  padding: var(--s3) 0 calc(var(--s3) + 1px);
+  border: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  font-weight: var(--weight-semi);
+  color: var(--ink-faint);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--tr-settle);
+}
+
+.profile-tabs button:hover { color: var(--ink-soft); }
+.profile-tabs button:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+.profile-tabs button[aria-selected='true'] { color: var(--ink); }
+
+.profile-tabs button[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 2px 2px 0 0;
+}
+
+.profile-body {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: var(--s8) var(--gutter) var(--s16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s8);
+}
+
+/* Preference questions.
+   ------------------------------------------------------------
+   Eight `Disclosure`s in `row` variant. §7 owns the trigger — its 44px floor,
+   its focus ring, its chevron and the rotation — so what is left here is the
+   two-column summary and the panel, plus one correction to §7's own geometry:
+   `--s5` top and bottom padding is right for a bordered FAQ card and too much
+   for eight stacked rows inside a panel that already has its own padding, so
+   the row is compacted to `--s3`. That is the *appearance* half §7's docblock
+   says the call site owns, not an override of its wiring.
+
+   The summary is `space-between` rather than a gap: question left, answer
+   right, chevron beyond it. Both halves are inside the button on purpose —
+   the answer is then part of the accessible name, so a closed row announces
+   "Favourite cuisines, Bengali, Thai" instead of eight buttons that each
+   announce only the name of a question. */
+.pref-q .kk-disc__trigger {
+  padding: var(--s3) 0;
+  font-size: var(--fs-md);
+}
+
+.pref-q .kk-disc__summary {
+  flex: 1 1 auto;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.pref-q__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  font-weight: var(--weight-semi);
+  color: var(--ink);
+}
+
+/* The same tick / hollow dot pair the completion checklist above uses, at the
+   same 13-14px, because they are two views of one fact: this question is
+   answered. A second visual language for "done" on one page would be a
+   second thing to learn. */
+.pref-q__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--success);
+}
+
+.pref-q__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-full);
+  background: var(--border-strong);
+}
+
+.pref-q__read {
+  min-width: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-reg);
+  line-height: var(--lh-snug);
+  color: var(--ink-soft);
+  text-align: right;
+  /* Two selected areas can be longer than the row. Truncating the readout is
+     correct here and only here: the full list is one click away inside the
+     panel, which is the whole point of folding. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pref-q__read[data-answered='false'] {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.pref-q__panel {
+  padding-bottom: var(--s4);
+}
+
+.pref-q__effect {
+  margin: 0;
+  max-width: 62ch;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-body);
+  color: var(--ink-faint);
+}
+
+/* The values row keeps its old class so §3's remove-mark arithmetic — a 38px
+   reach against this 6px row gap — stays the measured thing it documents. */
+.pref-q .pref-block__values {
+  margin-top: var(--s3);
+}
+
+.pref-q__action {
+  margin-top: var(--s3);
+}
+
+.pref-block__values {
+  display: flex;
+  align-items: center;
+  gap: var(--s1h);
+  flex-wrap: wrap;
+  margin-top: var(--s2);
+}
+
+/* Completion meter. Seven fields in one column is a long thin list; letting it
+   wrap into columns keeps it a glanceable checklist. The row gap is 12px rather
+   than 8 because five of these rows are now buttons: their targets bleed 4px above
+   and below the text to be comfortably tappable, and two adjacent targets should
+   not share an edge. */
+.completion-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--s3) var(--s5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.completion-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+
+.completion-list li > svg { flex: none; width: 16px; height: 16px; }
+.completion-list li[data-done='true'] { color: var(--ink-faint); }
+.completion-list li[data-done='true'] > svg { color: var(--success); }
+
+/* An unanswered field IS the control that answers it. The list used to sit
+   directly above the five pickers that fill it — it named what was missing and
+   then made you go and find the thing that fixed it. The row is the whole target:
+   negative margin against the padding so the text still lines up with the done
+   rows above and below it, and the chevron holds a column of its own so the
+   labels don't ragged-right against a moving mark. */
+.completion-list__go {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  /* Stretch, don't measure. `width: 100%` on a flex item resolves against the
+     row's content box and then the negative margins slide the whole thing 8px
+     left, so the target sat off-centre against the rows above and below it.
+     Growing into the panel's own padding is the point of the negative margins. */
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: -4px -8px;
+  padding: var(--s1) var(--s2);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.completion-list__go:hover {
+  background: var(--primary-faint);
+  color: var(--primary-strong);
+}
+
+.completion-list__go:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* The mark leans in on hover rather than appearing on it: a chevron that only
+   exists while the pointer is over the row means the row does not look like a
+   control until you have already guessed that it is one. */
+.completion-list__mark {
+  flex: none;
+  margin-left: auto;
+  color: var(--border-strong);
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.completion-list__go:hover .completion-list__mark,
+.completion-list__go:focus-visible .completion-list__mark {
+  transform: translateX(2px);
+  color: var(--primary);
+}
+
+.completion-list__dot { transition: background-color var(--dur-fast) var(--ease-out); }
+
+.completion-list__go:hover .completion-list__dot {
+  background: var(--primary);
+}
+
+.progress {
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+/* The answered count. This replaces `.completion-pct`, which stated the same
+   percentage the head band's ring and the meter below it both already carry —
+   three copies of one figure and no sense of what it was out of. The numeral is
+   display-serif and inked; the words around it stay quiet, so the pair reads as
+   "3" with a caption rather than as a sentence with a number in it. */
+.completion-count {
+  flex: none;
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.completion-count strong {
+  margin-right: var(--s0h);
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--weight-semi);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.progress > span,
+.progress__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--grad-primary);
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+/* A ladder, not a bar. Seven profile fields were drawn as one continuous stripe,
+   so a diner three fields in saw a stripe that was some amount long — there was
+   nothing to be three *of*. Hairline gaps at each field boundary make the same
+   fill countable, and the track thickens by 2px because a segmented 6px reads as
+   dashes rather than as a meter.
+
+   The notches are a mask so they cut both the fill and the track: painted as a
+   background they would sit under the fill and vanish exactly where the meter is
+   doing its work. `--segments` comes from PROFILE_FIELDS.length, so adding a
+   field to the profile adds a rung here and nowhere else. */
+.progress--segmented {
+  height: 8px;
+  --seg-w: calc(100% / var(--segments, 7));
+  -webkit-mask-image: repeating-linear-gradient(
+    to right,
+    #000 0,
+    #000 calc(var(--seg-w) - 3px),
+    transparent calc(var(--seg-w) - 3px),
+    transparent var(--seg-w)
+  );
+  mask-image: repeating-linear-gradient(
+    to right,
+    #000 0,
+    #000 calc(var(--seg-w) - 3px),
+    transparent calc(var(--seg-w) - 3px),
+    transparent var(--seg-w)
+  );
+}
+
+/* The lede. This sentence is the closest thing the product has to a portrait of
+   the diner — assembled from their own preferences — and it was set as a beige
+   notice callout, which is the shape this codebase uses for warnings. Set as an
+   editorial standfirst instead: display serif, full ink, a short gold rule above
+   it doing the work the left border used to do without boxing the sentence in. */
+.food-identity {
+  margin: 0 0 var(--s5);
+  padding-top: var(--s3);
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 1.5vw, 1.24rem);
+  line-height: 1.55;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+  text-wrap: pretty;
+}
+
+.food-identity::before {
+  content: '';
+  display: block;
+  width: 30px;
+  height: 2px;
+  margin-bottom: var(--s3);
+  border-radius: var(--r-full);
+  background: var(--grad-gold);
+}
+
+/* editorial.css:1685 re-skins every panel inside .profile-body at (0,2,0),
+   which outranks both .panel and .panel--plain in this file — so it was quietly
+   reinstating the elevation .panel deliberately drops, and .panel--plain could
+   not flatten itself. Restate the console's own panel at matching specificity. */
+.profile-body .panel { box-shadow: none; }
+.profile-body .panel--plain { border: 0; background: transparent; padding: 0; }
+
+/* Sign out closes the profile column. It is not a section, so it gets a rule
+   and some air rather than a panel of its own. */
+.profile-signout {
+  margin-top: var(--s5);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--border-soft);
+}
+
+/* .panel is a plain block by design, so the short column inside the
+   food-profile panel declares its own vertical rhythm. Scoped to a direct child
+   so the small meters nested inside milestone rows keep their own spacing. */
+.profile-body .panel > .progress { margin-bottom: var(--s5); }
+.profile-body .panel > p.status-text { margin: var(--s4) 0 0; }
+.profile-body .panel > .console-banner:last-child { margin-bottom: 0; }
+/* A banner or disclosure that closes a panel needs air above it, whatever it
+   follows — a list, a meter or a form. .panel is a plain block, so nothing
+   else supplies that gap. */
+.profile-body .panel > *:not(:first-child) + .console-banner,
+.profile-body .panel > *:not(:first-child) + .reward-disclosure { margin-top: var(--s5); }
+
+/* A preference row is followed by a save confirmation, which is a <p> — so the
+   last row is last-of-type rather than last-child. `.pref-q` is a <div> and so
+   is nothing else in this panel, which keeps that true. */
+.pref-q:last-of-type { border-bottom: 0; }
+
+/* Activity + review lists. */
+.activity-list,
+.my-review-list,
+.tx-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-list > li,
+.my-review-list > li,
+.tx-list > li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+
+.activity-list > li:last-child,
+.my-review-list > li:last-child,
+.tx-list > li:last-child { border-bottom: 0; }
+
+.activity-list time,
+.tx-list time {
+  margin-left: auto;
+  flex: none;
+  font-size: var(--fs-xs);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-list__amount {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-list__amount--in { color: var(--success); }
+.tx-list__amount--out { color: var(--ink-soft); }
+
+/* Badge grid. */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: var(--s3);
+}
+
+.badge-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s4);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-md);
+  background: linear-gradient(158deg, var(--accent-faint), var(--surface) 62%);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Direct, unclassed child only. `.badge-tile span` as written also matched the
+   mark disc and the progress line, and at (0,1,1) it outspecified both of their
+   own single-class rules — the disc came out at --fs-xs faint grey, which is the
+   one thing an earned badge's glyph must not be. */
+.badge-tile > span:not([class]) { font-size: var(--fs-xs); line-height: 1.45; color: var(--ink-faint); }
+
+.badge-tile strong { font-size: var(--fs-sm); font-weight: var(--weight-semi); color: var(--ink); }
+
+/* The mark. Earned and locked tiles were the same pale rectangle told apart by a
+   16px glyph, so two badges out of six looked like zero out of six. The disc is
+   the difference: gold and lit for something you hold, a hollow ring for
+   something you don't.
+
+   Each tile now draws its own badge's glyph (components/ui/marks.tsx) rather than
+   one shared rosette, and a locked tile draws that same glyph greyed instead of a
+   padlock — so the grid reads as seven collectable things, six of which say what
+   they are while you are still earning them.
+
+   The disc is struck rather than filled: the gradient is still `--grad-gold`, but
+   a white hairline along the top inside edge and a warm shadow along the bottom
+   give it a lit face and a shaded underside. A flat gradient circle with a white
+   glyph centred in it is the single most generic shape in software; two inset
+   lines are the whole difference between that and a piece of metal, and they cost
+   no extra element. */
+.badge-tile .badge-tile__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-full);
+  background: var(--grad-gold);
+  color: #fff;
+  box-shadow:
+    0 0 0 4px var(--accent-faint),
+    inset 0 1px 0 rgb(255 255 255 / 0.5),
+    inset 0 -2px 3px -1px color-mix(in srgb, var(--saffron-800) 45%, transparent);
+}
+
+/* How far along a countable goal is. Small, tabular and gold-lettered so it reads
+   as a running figure rather than a second line of description. */
+.badge-tile .badge-tile__toward {
+  margin-top: auto;
+  padding-top: var(--s1);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-semi);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.badge-tile[data-locked='true'] {
+  background: var(--surface-2);
+  border-color: var(--border);
+  border-style: dashed;
+  box-shadow: none;
+}
+.badge-tile[data-locked='true'] strong { color: var(--ink-faint); }
+.badge-tile[data-locked='true'] .badge-tile__mark {
+  background: var(--surface);
+  color: var(--ink-faint);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* ==========================================================================
+   12. REWARDS
+   ========================================================================== */
+
+/* The wallet is a column of panels, nothing more.
+   editorial.css made `.wallet` itself the dark gradient slab AND the container
+   for every panel inside it, including `.wallet strong { color: #fff }` — which
+   turned bold text white on the white panels nested within it. The gradient
+   belongs to one element, the balance band, so it moved to .wallet-hero and the
+   container went back to being a container. */
+.wallet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s8);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+}
+
+.wallet strong { color: inherit; }
+
+/* …with the exceptions that own their colour. `.wallet strong` is (0,1,1), so
+   each of these has to be scoped to .wallet to outrank it. */
+.wallet .tx-list__amount--in { color: var(--success); }
+.wallet .tx-list__amount--out { color: var(--ink-soft); }
+.wallet .reward-card__cost strong { color: var(--accent-strong); }
+.wallet .reward-card[data-affordable='false'] .reward-card__cost strong { color: var(--ink-faint); }
+.wallet .coupon-card > strong { color: var(--ink); }
+
+/* Balance band — the one place in the console where a gradient surface is
+   allowed, because it is the product's reward moment. Espresso, not gold:
+   gold stays type-only. */
+.wallet-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s6);
+  flex-wrap: wrap;
+  padding: var(--s7);
+  border-radius: var(--r-xl);
+  background: var(--grad-primary);
+  color: var(--ink-on-primary);
+  overflow: hidden;
+  position: relative;
+}
+
+.wallet-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ambient);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.wallet-hero__text { position: relative; z-index: 1; min-width: 0; }
+
+.wallet-hero__label {
+  display: block;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink-on-primary) 62%, transparent);
+}
+
+.wallet-hero__value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  margin-top: var(--s2);
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 1.8rem + 2.2vw, 3.4rem);
+  font-weight: var(--weight-semi);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.wallet-hero__value span {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink-on-primary) 68%, transparent);
+}
+
+/* The next unlock. Gold on the dark band, because this is the one line in the
+   wallet that is about wanting something rather than about accounting for it. The
+   track is deliberately thin — 3px — so it reads as a distance under a sentence
+   and not as a second meter competing with the balance above it. */
+.wallet-next {
+  position: relative;
+  z-index: 1;
+  margin-top: var(--s3);
+  max-width: 34ch;
+}
+
+.wallet-next__text {
+  margin: 0 0 var(--s2);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--ink-on-primary) 72%, transparent);
+}
+
+.wallet-next__text strong {
+  font-weight: var(--weight-semi);
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.wallet-next__track {
+  display: block;
+  height: 3px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--ink-on-primary) 20%, transparent);
+  overflow: hidden;
+}
+
+.wallet-next__track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--grad-gold);
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+.wallet-hero__note {
+  margin: var(--s3) 0 0;
+  max-width: 46ch;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: color-mix(in srgb, var(--ink-on-primary) 72%, transparent);
+}
+
+.wallet-hero__figures {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: var(--s6);
+  flex: none;
+}
+
+.wallet-hero__figure { display: flex; flex-direction: column; gap: var(--s1); }
+
+.wallet-hero__figure strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--weight-semi);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.wallet-hero__figure span {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink-on-primary) 60%, transparent);
+}
+
+/* Reward catalogue. */
+.reward-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: var(--s4);
+}
+
+.reward-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s5);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  transition: border-color var(--tr-settle);
+}
+
+.reward-card:hover { border-color: var(--primary-line); }
+
+/* editorial.css lifts this card 3px and drops a shadow on hover. A reward
+   catalogue is a price list; it should not bounce. */
+.reward-card:hover { transform: none; box-shadow: none; }
+
+.reward-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.reward-card__headtext { min-width: 0; flex: 1 1 auto; }
+
+/* editorial.css fills this as a gold pill. Gold is type-only in this system,
+   so the grouping label becomes an eyebrow instead of a surface. */
+.reward-card__tag {
+  display: block;
+  margin-bottom: var(--s1);
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+
+.reward-card__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  font-weight: var(--weight-semi);
+  line-height: var(--lh-snug);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.reward-card__cost {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s0h);
+}
+
+.reward-card__cost strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--weight-semi);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.reward-card__cost span {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.reward-card p { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-body); color: var(--ink-soft); }
+
+/* phase3.css styles this selector as a three-row flex <dl>. A 232px card cannot
+   afford a table, so the same three values are one line of prose here. */
+p.reward-card__terms {
+  display: block;
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+/* phase3.css closes this row with a dashed rule; a hairline is quieter and
+   matches every other foot in the console. */
+.reward-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border-soft);
+  /* A card whose state carries no button (locked, used, expired) would sit
+     shorter than its neighbours. The foot reserves the height of the small
+     button so every card in a row ends on the same line. */
+  min-height: calc(44px + var(--s3));
+}
+
+.reward-card[data-affordable='false'] { background: var(--surface-2); }
+.reward-card[data-affordable='false'] .reward-card__cost strong { color: var(--ink-faint); }
+
+/* A locked reward states its distance. The foot is a space-between row built for
+   a status and a button; this state has no button, so the block takes the whole
+   width and stacks the line over its own track. */
+.reward-card__toward {
+  flex: 1 1 100%;
+  min-width: 0;
+  align-self: center;
+}
+
+.reward-card__meter {
+  display: block;
+  height: 3px;
+  margin-top: var(--s2);
+  border-radius: var(--r-full);
+  background: var(--border-soft);
+  overflow: hidden;
+}
+
+.reward-card__meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--grad-gold);
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+/* Coupons. */
+.coupon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: var(--s4);
+}
+
+.coupon-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s5);
+  border: 1px solid var(--primary-line);
+  border-radius: var(--r-lg);
+  background: var(--primary-faint);
+}
+
+.coupon-card__code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: var(--s3);
+  border: 1px dashed var(--primary-line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  color: var(--primary-strong);
+}
+
+/* The face value, at the far end of the stub from the code. Moved here from
+   phase3.css so the whole coupon family has one owner. */
+.coupon-card__value {
+  flex: none;
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.coupon-card[data-status='used'],
+.coupon-card[data-status='expired'] {
+  border-color: var(--border);
+  background: var(--surface-2);
+  opacity: 0.72;
+}
+
+.coupon-card[data-status='used'] .coupon-card__code,
+.coupon-card[data-status='expired'] .coupon-card__code {
+  border-style: solid;
+  border-color: var(--border);
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}
+
+.coupon-card p { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-body); color: var(--ink-soft); }
+
+.coupon-card__terms {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.coupon-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border-soft);
+}
+
+/* How to earn. */
+.earn-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.earn-list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+
+.earn-list > li:last-child { border-bottom: 0; }
+
+.earn-list__text { flex: 1 1 auto; min-width: 0; }
+
+.earn-list__text strong {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  color: var(--ink);
+}
+
+.earn-list__text span {
+  display: block;
+  margin-top: var(--s0h);
+  font-size: var(--fs-xs);
+  color: var(--ink-faint);
+}
+
+.earn-list__amount {
+  margin-left: auto;
+  flex: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-lead);
+  font-weight: var(--weight-semi);
+  letter-spacing: -0.02em;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Milestones.
+   Every figure here is counted from the token ledger against a cap that the
+   reward config actually enforces — a granted one-off, or n-of-cap on a
+   repeatable earner. There is no level, tier or streak, because none of those
+   exist in the data. */
+.milestone-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.milestone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s4) 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.milestone:first-child { padding-top: 0; }
+.milestone:last-child { border-bottom: 0; padding-bottom: 0; }
+
+.milestone__head { display: flex; align-items: baseline; gap: var(--s3); }
+
+.milestone__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  color: var(--ink);
+}
+
+.milestone__count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+.milestone__note { margin: 0; font-size: var(--fs-xs); line-height: 1.45; color: var(--ink-faint); }
+
+/* Referral. */
+/* The invite row, stacked.
+
+   Two bugs shipped here, and they were the same bug twice. `.invite-form
+   .field` was written for the hand-rolled field markup; Phase 2c moved this
+   form onto the `Field` primitive, whose wrapper is `.kk-field`, so the rule
+   granting the field `flex: 1 1 220px` stopped matching anything and the
+   input collapsed to 213px inside a 1078px panel. And `align-items: flex-end`
+   was correct when the field was label + input: `Field` also renders a hint,
+   so end-alignment pinned the submit button's bottom to the *hint's* bottom
+   and left it hanging 25px below the input it belongs to.
+
+   Both are fixed structurally rather than with a nudge. The button takes its
+   own row, which is exact at every width and needs no arithmetic against the
+   label or the hint — the alternative, lifting the hint out of `Field` to get
+   a clean two-line box, would have cost the input its `aria-describedby`.
+   The measure is capped because an invite form is one short answer: a
+   1078px-wide text input reads as a search bar. */
+.invite-form {
+  display: grid;
+  justify-items: start;
+  gap: var(--s3);
+  max-width: 420px;
+}
+
+.invite-form > .kk-field,
+.invite-form > .field {
+  justify-self: stretch;
+}
+
+.invite-form > .btn { min-height: 44px; }
+
+.referral-list {
+  display: flex;
+  flex-direction: column;
+  /* The list follows the invite form directly, so it opens with a rule of its
+     own rather than butting up against the submit row. */
+  margin: var(--s5) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border-soft);
+  list-style: none;
+}
+
+.referral-list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+
+.referral-list > li:last-child { border-bottom: 0; }
+
+/* The initial, in the same disc language as the profile header's avatar and
+   §11's badge marks. A referral list is a list of *people*, and it had been
+   rendering as left-aligned strings with the panel's full width of empty
+   paper between each name and its status. */
+.referral-list__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-full);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  line-height: 1;
+}
+
+.referral-list__name {
+  /* Was `flex: 1 1 auto`, which pushed the status pill and the amount to the
+     far wall of a 1078px panel — a name and its state read as unrelated at
+     that distance. The name takes the width it needs and its state follows
+     it directly; only the row's *action* claims the far edge. */
+  flex: 0 1 auto;
+  min-width: 0;
+  font-weight: var(--weight-semi);
+  color: var(--ink);
+}
+
+.referral-list > li > .btn { margin-left: auto; }
+
+/* The reward figure is borrowed from the earn list, where `margin-left: auto`
+   is correct because there the figure *is* the row's right-hand column. Here
+   the amount belongs to the name's cluster, so the push is cancelled beside
+   its own base rather than out-specified from a later file. */
+.referral-list .earn-list__amount { margin-left: 0; }
+
+/* The demo-scope disclosure that must survive every redesign. */
+.reward-disclosure {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s4);
+  border: 1px dashed var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-body);
+  color: var(--ink-faint);
+}
+
+.reward-disclosure > svg { flex: none; margin-top: var(--s0h); width: 16px; height: 16px; }
+
+/* ==========================================================================
+   13. AUTH — split stage
+   ========================================================================== */
+
+.auth-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+/* Left: the brand side. Deep espresso, one line of type, no photograph —
+   calm, and it cannot be broken by a missing asset. */
+.auth-page__aside {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--s8);
+  padding: var(--s10) clamp(var(--s8), 5vw, var(--s16));
+  background: var(--grad-ink);
+  color: var(--ink-inverse);
+  overflow: hidden;
+}
+
+.auth-page__aside::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ambient);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.auth-page__aside > * { position: relative; z-index: 1; }
+
+.auth-page__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  text-decoration: none;
+  color: inherit;
+}
+
+.auth-page__brand strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: var(--weight-semi);
+  letter-spacing: -0.015em;
+}
+
+.auth-page__pitch { max-width: 46ch; }
+
+.auth-page__pitch h2 {
+  margin: 0;
+  /* The measure belongs to the headline, not the column — the sub-paragraph and
+     the points list below it read at a longer line. */
+  max-width: 22ch;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 1.4rem + 2.4vw, 3.1rem);
+  font-weight: var(--weight-semi);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: var(--ink-inverse);
+}
+
+.auth-page__pitch em {
+  font-style: normal;
+  background: var(--grad-spice);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /* Grow the paint box so glyph ink outside the box still paints, and hand
+     the growth back to layout. See css-background-clip-text notes. */
+  padding: 0.04em 0.06em;
+  margin: -0.04em -0.06em;
+}
+
+.auth-page__pitch p {
+  margin: var(--s4) 0 0;
+  max-width: 34ch;
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  color: color-mix(in srgb, var(--ink-inverse) 74%, transparent);
+}
+
+.auth-page__points {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  /* The points close the pitch block, so they open with air of their own and
+     hold a readable measure rather than running the full column width. */
+  margin: var(--s7) 0 0;
+  max-width: 40ch;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-page__points li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: color-mix(in srgb, var(--ink-inverse) 78%, transparent);
+}
+
+.auth-page__points li > svg { flex: none; margin-top: var(--s0h); width: 16px; height: 16px; color: var(--accent); }
+
+.auth-page__foot {
+  font-size: var(--fs-xs);
+  color: color-mix(in srgb, var(--ink-inverse) 52%, transparent);
+}
+
+/* Right: the form stage. */
+.auth-page__stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s10) var(--gutter);
+  min-width: 0;
+}
+
+/* On the login stage the class stops being a card: the split-screen already
+   supplies the frame, so a second bordered panel inside it is a box in a box.
+   This rule used to say that unscoped — and `.auth-card` has two other
+   consumers, the restaurant application and the partner enquiry, neither of
+   which sits on a stage. Both were rendering as a bare 420px block, flush
+   left in an 860px column, with phase3's padding, radius and shadow removed
+   and nothing put back. Scoped to where the treatment belongs. */
+.auth-page .auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Off the stage it is a card, and a form-shaped one. Two things the base rules
+   never had reason to say:
+   — 860px is the column, not the form. Seven short fields set that wide read as
+     a spreadsheet; 560px centred is the measure the fields were designed at.
+   — `.auth-card form` gives the field stack its rhythm, which only matches when
+     the form is *inside* the card. The partner enquiry makes the form the card
+     itself, so that selector missed and every label sat hard against the input
+     above it. */
+.section--narrow .auth-card {
+  max-width: 560px;
+  margin-inline: auto;
+}
+
+form.auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.auth-card__head { margin-bottom: var(--s6); }
+
+/* The head of a card that *is* the form. What follows it is a label, not a
+   paragraph, and a label needs more air above it than the 24px that separates
+   two blocks of prose — at 24px "Your name" reads as the last line of the
+   intro. The base rule cannot carry this: on the login stage the head is
+   followed by a tab track, which brings its own margin. */
+.auth-card__head--form { margin-bottom: var(--s8); }
+
+.auth-card__head h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 1.3rem + 1vw, 2.05rem);
+  font-weight: var(--weight-semi);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.022em;
+  color: var(--ink);
+}
+
+.auth-card__head p {
+  margin: var(--s2) 0 0;
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+}
+
+.auth-card__tabs {
+  display: flex;
+  gap: var(--s5);
+  margin-bottom: var(--s6);
+  border-bottom: 1px solid var(--border);
+  /* phase3.css:18 makes this a segmented pill track — a filled box with 4px of
+     padding and rounded corners. Those properties have to be named to be
+     undone, or the underline below draws inside a pill and reads as neither. */
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.auth-card__tab {
+  position: relative;
+  padding: var(--s3) 0 calc(var(--s3) + 1px);
+  border: 0;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  font-weight: var(--weight-semi);
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color var(--tr-settle);
+  /* Same story as the track: phase3.css:26 gives each tab flex:1, a radius and
+     centred content so the pair fills the row as two buttons. An underlined tab
+     sits at its own label width, so those are named and dropped here. */
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--s2);
+  border-radius: 0;
+}
+
+.auth-card__tab:hover { color: var(--ink-soft); }
+.auth-card__tab:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.auth-card__tab[aria-selected='true'] { color: var(--ink); }
+
+.auth-card__tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 2px 2px 0 0;
+}
+
+.auth-card form { display: flex; flex-direction: column; gap: var(--s4); }
+
+/* The one commitment on the page, so it holds a full tap target at every
+   width — .btn's own padding lands at 41px on a phone. */
+.auth-card__submit { width: 100%; min-height: 44px; justify-content: center; }
+
+.auth-card__alt {
+  margin: var(--s5) 0 0;
+  padding-top: var(--s5);
+  border-top: 1px solid var(--border-soft);
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.auth-card__alt button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: var(--weight-semi);
+  color: var(--primary-strong);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+  transition: text-decoration-color var(--tr-settle);
+}
+/* The "create an account" / "sign in instead" switch. It carried no state at
+   all: no hover, no focus ring, on the one control that changes what /login
+   is. Same treatment as `.linklike` so a text control behaves the same
+   wherever one appears. */
+.auth-card__alt button:hover {
+  text-decoration-color: currentColor;
+  transition-duration: var(--tr-answer);
+}
+.auth-card__alt button:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* Role choice. editorial.css collapses .auth-card__role-options at ≤640;
+   re-stated in section 14. */
+.auth-card__role-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s2);
+}
+
+.auth-card__role-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--tr-settle), background var(--tr-settle);
+}
+
+.auth-card__role-option:hover { border-color: var(--border-strong); }
+.auth-card__role-option:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+
+.auth-card__role-option--on {
+  border-color: var(--primary);
+  background: var(--primary-faint);
+  box-shadow: var(--ring-inset);
+}
+
+.auth-card__role-option--on > svg { color: var(--primary); }
+
+/* OTP entry. */
+.auth-card__otp-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.auth-card__otp-tip {
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+
+/* Recovery. Passwordless auth has no reset — this is the honest substitute
+   and it replaces the unused .auth-card__forgot rule in editorial.css. */
+.auth-card__recovery {
+  /* Helper text closing the form, not a section. A filled box here would sit
+     beside the dashed dev box in the same beige and the two would read as a
+     matched pair of panels — so this gets a rule and air instead. */
+  margin-top: var(--s5);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--border-soft);
+}
+
+.auth-card__recovery > strong {
+  display: block;
+  margin-bottom: var(--s2);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  color: var(--ink);
+}
+
+.auth-card__recovery ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-card__recovery li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.auth-card__recovery li > svg { flex: none; margin-top: var(--s0h); width: 14px; height: 14px; color: var(--ink-faint); }
+
+/* Dev-only affordances. Deliberately look like scaffolding, not product.
+   The frame goes on the wrapper, not the grid, so the heading and the note that
+   explain the scaffolding sit inside it rather than beside it. phase3.css:64
+   gives .auth-card__demo a bare dashed border-top; `border` here overrides it. */
+.auth-card__dev-otp,
+.demo-account-list,
+.auth-card__demo {
+  margin-top: var(--s5);
+  padding: var(--s4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+/* phase3.css ≤720 and editorial.css ≤480 both collapse this to one column;
+   re-stated in section 14. */
+.auth-card__demo-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+
+/* The demo buttons sit on the scaffolding fill, so they need their own surface
+   to read as controls rather than as text on a panel. */
+.auth-card__demo .demo-account { background: var(--surface); }
+
+/* The brand mark. Type and colour only — no image asset to fail. */
+.auth-page__brand > svg {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  color: var(--accent);
+}
+
+/* Access denied — the role boundary. */
+.access-denied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  max-width: 44ch;
+  margin: var(--s16) auto;
+  padding: var(--s8) var(--s6);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  text-align: center;
+}
+
+.access-denied h1,
+.access-denied h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--weight-semi);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.access-denied p { margin: 0; font-size: var(--fs-md); line-height: var(--lh-body); color: var(--ink-soft); }
+
+/* Route loader inside a console. */
+.admin-shell .page-loader,
+.auth-page .page-loader { min-height: 50vh; }
+
+/* ==========================================================================
+   14. OWNER CONSOLE — preview, photography, menu groups
+   --------------------------------------------------------------------------
+   The owner console reuses sections 1–13 almost entirely; these are the three
+   things it needs that a KK admin screen does not.
+
+   The customer-facing preview is deliberately NOT a copy of the discovery
+   card component. An owner is checking one question — "what does a diner
+   actually see of me?" — so this shows the same photograph, name, tagline and
+   meta run, in the console's own type, rather than importing a consumer
+   component that would then have to be kept in visual sync with two designs.
+   ========================================================================== */
+
+.owner-preview {
+  display: block;
+}
+
+.owner-preview__media {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-block: 1px solid var(--border-soft);
+}
+
+.owner-preview__media img,
+.owner-preview__media .img-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.owner-preview__body {
+  padding: var(--s4) var(--s6) 0;
+}
+
+.owner-preview__name {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--weight-semi);
+  letter-spacing: -0.02em;
+  line-height: var(--lh-tight);
+  color: var(--ink);
+}
+
+.owner-preview__tagline {
+  margin: var(--s2) 0 var(--s2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+}
+
+/* The meta run under the name reuses .record__meta so the separator dots and
+   colour match every other fact list in the console. */
+.owner-preview__body .record__meta { margin-top: var(--s2); }
+
+/* --- Photography ------------------------------------------------------- */
+/* Replaces two inline gridTemplateColumns declarations. Thumbnails are large
+   enough to judge a photograph by, which is the only reason an owner opens
+   this tab. */
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
+  gap: var(--s3);
+  margin-top: var(--s5);
+}
+
+.photo-grid img,
+.photo-grid .photo-tile {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+}
+
+/* A photograph that could not be resolved. It has to look like a photograph's
+   absence — same tile, same corners — rather than like text that escaped its
+   element, which is what a failed <img> does when it falls back to its alt.
+
+   Scoped to `.photo-grid` deliberately: the tile rule above it is
+   `.photo-grid .photo-tile` (two classes), so a bare `.photo-tile--unavailable`
+   loses `display`, and its `border-style`/`border-color` longhands lose to that
+   rule's `border` shorthand. Measured: the probe came back `display: block` with
+   a border the same colour as its own background. Equal specificity, later in
+   the file, is what makes this block win. */
+.photo-grid .photo-tile--unavailable {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--s2);
+  padding: var(--s3);
+  border: 1px dashed var(--border);
+  background: var(--surface-2);
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+.photo-grid .photo-tile--unavailable > svg { color: var(--ink-faint); }
+
+.photo-grid .photo-tile--unavailable > span {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-semi);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+/* --- Menu categories --------------------------------------------------- */
+/* A category was a bordered box holding dashed-rule dish rows — a table in
+   everything but name. It is now a ruled editorial group: a titled head, then
+   the standard .records list, so a dish row in the owner console looks like a
+   record row everywhere else in the product. */
+.menu-cat {
+  margin-top: var(--s7);
+}
+
+.menu-cat:first-of-type { margin-top: var(--s5); }
+
+.menu-cat__head {
+  margin-bottom: 0;
+  padding-bottom: var(--s2);
+}
+
+.menu-cat__head .console-section__hint { margin-left: auto; }
+
+/* The delete-category control sits after the count, hard right. */
+.menu-cat__head .row-actions { margin-left: var(--s2); }
+
+.menu-cat__add { margin-top: var(--s3); }
+
+/* An inline add/edit form standing in for a record row has to take the whole
+   row rather than sitting in the record's first flex slot. */
+.record > .admin-inline-form,
+.admin-inline-form--edit {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  align-items: center;
+}
+
+.record > .admin-inline-form input { min-width: 120px; }
+
+/* A record's trailing control is a destination, not a paragraph. Left to the
+   flex default it shrinks and wraps its own label ("Fill these / in") whenever
+   the title beside it is long — which in an action list is most of the time. */
+.record > .btn,
+.record > a.btn {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   15. KK ADMIN — REVIEW QUEUES
+   --------------------------------------------------------------------------
+   Two things the executive console reviews that are not rows in a table: a
+   restaurant's application to join, and an owner's submitted menu against
+   the published one.
+
+   Every class in here was already being written in the markup and had no
+   CSS anywhere in the product — `.application-list`, the five
+   `.application-card*`, `.admin-review-summary` and the seven
+   `.menu-review-*`. So the two screens a KK reviewer uses to make the
+   platform's two highest-consequence decisions were rendering as unstyled
+   block flow: a `<dl>` of six unlabelled rows, and a dish diff that was a
+   bare bulleted list. A class in the markup with nothing behind it is the
+   quietest kind of missing work — it looks finished in the source.
+   ========================================================================== */
+
+/* --- An inbound application ------------------------------------------- */
+.application-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  margin-top: var(--s5);
+}
+
+.application-card {
+  padding: var(--s5);
+  /* `--border`, not `--border-soft`: `--border-soft` and `--surface-2` resolve
+     to the same paper, so the soft edge was a border that painted nothing —
+     measured live as a 1px rule in exactly the card's own fill. An inbound
+     application is a decision unit and needs a visible edge. */
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.application-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--border);
+}
+
+.application-card__head > div { min-width: 0; }
+
+.application-card__head strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--weight-semi);
+  letter-spacing: -0.015em;
+  line-height: var(--lh-snug);
+  color: var(--ink);
+}
+
+/* The applicant's own six facts use the console's label/value grid rather
+   than a private one — an application is the same kind of reading as a
+   restaurant summary, and it should not have a second layout for it. */
+.application-card .console-defs { margin-top: var(--s4); }
+
+.application-card__notes {
+  margin: var(--s4) 0 0;
+  padding-left: var(--s4);
+  border-left: 2px solid var(--accent-line);
+  font-size: var(--fs-sm);
+  font-style: italic;
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+}
+
+/* --- A submitted menu against the published one ------------------------ */
+.admin-review-summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+/* The restaurant draft queue's opening line gets `.admin-draft-detail > strong`
+   — a small caps label. The menu queue's identical line ("Awaiting review — …")
+   sits one level deeper, inside this summary row, so it missed that rule and
+   read as a plain bold sentence. Two queues, the same sentence, two sizes.
+   Stated here so both review screens open the same way. */
+.admin-review-summary > strong {
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.menu-review-diff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+  margin-top: var(--s4);
+}
+
+.menu-review-cat { min-width: 0; }
+
+.menu-review-cat__name {
+  margin: 0 0 var(--s2);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--border-soft);
+  font-family: var(--font-body);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.menu-review-dishes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menu-review-dish {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  padding: var(--s2) 0;
+  border-top: 1px solid var(--border-soft);
+  font-size: var(--fs-sm);
+}
+
+.menu-review-dish:first-child { border-top: 0; }
+
+.menu-review-dish__name {
+  font-weight: var(--weight-semi);
+  color: var(--ink);
+}
+
+/* A dish that did not change is context, not news. It is listed so the
+   reviewer can see the whole category, and it recedes so the three that
+   did change are what the eye lands on. */
+.menu-review-dish--unchanged .menu-review-dish__name {
+  font-weight: var(--weight-medium);
+  color: var(--ink-soft);
+}
+
+.menu-review-change {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s1h);
+  flex-wrap: wrap;
+}
+
+/* The old/new pair is declared in editorial.css and is shared with the
+   restaurant draft diff; this only stops a long run of changes from pushing
+   the dish name off the row. */
+.menu-review-dish > .admin-draft-diff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+/* ==========================================================================
+   16. RESPONSIVE
+   --------------------------------------------------------------------------
+   Targets from the brief: 375 / 768 / 1024 / 1440. Two jobs here.
+
+   (a) New behaviour: the rail becomes a drawer below 1024.
+   (b) RE-STATEMENTS. This file loads after phase3.css and editorial.css, so
+       every unconditional value above that overwrote one of their media
+       queries has to be re-declared. The full list, with its original home:
+         .admin-columns          phase3.css   ≤720 → 1fr
+         .admin-form__row        phase3.css   ≤720 → 1fr
+         .auth-card__demo-list   phase3.css   ≤720 → 1fr, editorial ≤480 → 1fr
+         .auth-card__role-options editorial.css ≤640 → 1fr
+         .admin__inner padding   editorial.css ≤640
+         .admin__head padding    editorial.css ≤640
+         .admin-table            editorial.css ≤640
+         .panel padding          editorial.css ≤640
+         .stat-card              editorial.css ≤640
+   ========================================================================== */
+
+/* --- 1024 and below: the two-column page collapses, the rail does not ---
+   A laptop at 1024 keeps its permanent rail — 264px of navigation against
+   760px of content is the shape this console is for, and a hamburger there
+   reads as a phone layout stretched wide. What does not survive 1024 is the
+   1.55fr/1fr page split, which would leave the narrow column at ~290px. */
+@media (max-width: 1024px) {
+  .admin-columns { grid-template-columns: minmax(0, 1fr); }
+
+  /* The preview sits in the narrow column at desktop widths, where 16/10 is
+     ~230px tall. Once the columns collapse it spans the full page and the same
+     ratio would make it a 420px photograph heading a page that is mostly about
+     pending work — so it crops to a fixed height instead.
+     NOTE: this must replace the ratio, not cap it. A max-height on a box with
+     aspect-ratio shrinks the box's WIDTH to preserve the ratio rather than
+     cropping, which is why aspect-ratio is switched off here. */
+  .owner-preview__media { aspect-ratio: auto; height: 264px; }
+}
+
+/* --- 1000 and below: rail becomes a drawer ----------------------------- */
+@media (max-width: 1000px) {
+  .admin-shell { grid-template-columns: minmax(0, 1fr); }
+
+  .admin-shell__side {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(300px, 86vw);
+    z-index: 50;
+    border-right: 1px solid var(--border);
+    box-shadow: var(--shadow-xl);
+    transform: translateX(-100%);
+    transition: transform var(--dur-med) var(--ease-out);
+    visibility: hidden;
+  }
+
+  .admin-shell--open .admin-shell__side { transform: translateX(0); visibility: visible; }
+  .admin-shell--open .admin-shell__scrim { display: block; }
+  .admin-shell__close { display: grid; }
+  .admin-shell__topbar { display: flex; }
+
+  /* The close button is absolutely positioned over the drawer's top-right, and
+     the brand had no room reserved for it. Measured at 375px: the title's ink ran
+     to x=254 and the button's opaque disc began at x=249, so the last letter sat
+     underneath it and "KK Demo Restaurant" read as "KK Demo Restauran". Reserving
+     the button's width lets the name wrap instead of colliding. */
+  .admin-shell__brand { padding-right: 46px; }
+
+  /* In the drawer the rail is being tapped, not pointed at. 40px is a
+     comfortable mouse row and a mean finger target. */
+  .admin-shell__link { min-height: 44px; }
+
+  /* Reduced motion is active in some environments — the drawer must still
+     arrive, it just arrives immediately. */
+  @media (prefers-reduced-motion: reduce) {
+    .admin-shell__side { transition: none; }
+  }
+
+  .admin-shell__content .admin__inner { padding: var(--s6) var(--gutter) var(--s12); }
+}
+
+/* --- 768 and below ----------------------------------------------------- */
+@media (max-width: 768px) {
+  /* editorial.css ≤768 sets .app { padding-bottom: bottom-nav-h } for the
+     consumer bar, which these routes do not render. */
+  .app--console { padding-bottom: 0; }
+
+  .admin__inner { padding: var(--s6) var(--gutter) var(--s12); }
+  .admin__head,
+  .console-head { align-items: flex-start; flex-direction: column; gap: var(--s4); padding-bottom: var(--s4); margin-bottom: var(--s6); }
+  .console-head__actions { width: 100%; }
+  /* Buttons share the row at phone widths, where a full-width tap target is
+     the point. On a tablet two stretched pills read as a wizard's footer, so
+     they keep their natural width. */
+  .console-head__actions .btn { justify-content: center; }
+
+  .stat-grid,
+  .ledger { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4) 0; }
+  /* In a 2-up grid the third item starts a new row, so it needs the flush
+     left edge too. nth-child(2n+1) handles any row count. */
+  .stat-grid > *:nth-child(2n + 1),
+  .ledger > *:nth-child(2n + 1) { border-left: 0; padding-left: 0; }
+
+  .wallet-hero { padding: var(--s6); }
+  .wallet-hero__figures { gap: var(--s5); }
+
+  /* Touch has no hover, so hidden row actions would be unreachable. The
+     media query in section 8 already gates the fade to fine pointers; this
+     is the belt-and-braces restatement. */
+  .record .row-actions,
+  .admin-table tbody tr .row-actions { opacity: 1; }
+
+  /* phase3.css pins the toast with left:50% and no width, so it shrinks to the
+     space right of centre — half the screen, six lines deep — and it lands
+     under the consumer bottom bar, which /profile still renders. Pin both
+     edges and clear the bar. */
+  .toast {
+    left: var(--gutter);
+    right: var(--gutter);
+    transform: none;
+    max-width: none;
+    bottom: calc(var(--bottom-nav-h) + var(--s4) + env(safe-area-inset-bottom));
+    align-items: flex-start;
+  }
+}
+
+/* --- 720 and below: phase3.css re-statements --------------------------- */
+@media (max-width: 720px) {
+  .admin-columns,
+  .admin-columns--even { grid-template-columns: minmax(0, 1fr); }
+  .admin-form__row,
+  .admin-form__row--three { grid-template-columns: minmax(0, 1fr); }
+  .auth-card__demo-list { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* --- 640 and below: editorial.css re-statements + mobile console -------- */
+@media (max-width: 640px) {
+  .admin__inner { padding: var(--s5) var(--gutter) var(--s12); }
+  .admin-shell__content .admin__inner { padding-top: var(--s5); }
+  .admin__head,
+  .console-head { padding: 0 0 var(--s4); }
+
+  .auth-card__role-options { grid-template-columns: minmax(0, 1fr); }
+
+  /* Full-width tap targets are right on a phone. */
+  .console-head__actions .btn { flex: 1 1 auto; }
+
+  .panel { padding: var(--s4); border-radius: var(--r-md); }
+  .panel--flush .panel__head { padding: var(--s4) var(--s4) var(--s3); }
+  .panel--flush .panel__body { padding: 0 var(--s4) var(--s4); }
+  .panel__head { flex-direction: column; align-items: flex-start; gap: var(--s2); }
+
+  /* A 4-figure ledger at 375 is two columns of ~150px; the display size has
+     to come down or the figures collide with their own labels. */
+  .stat-card__value,
+  .ledger__value,
+  .metric-pending__dash { font-size: 1.7rem; }
+
+  .stat-card,
+  .ledger__item,
+  .metric-pending { padding-left: var(--s3); padding-right: var(--s3); }
+  .stat-grid > *:nth-child(2n + 1),
+  .ledger > *:nth-child(2n + 1) { padding-left: 0; }
+
+  /* Table: a real table cannot be made narrow, so it scrolls inside its own
+     wrapper rather than pushing the page sideways. Rows stay ruled. */
+  .admin-table { font-size: var(--fs-xs); min-width: 520px; }
+  .admin-table th { padding: 0 var(--s2) var(--s2); }
+  .admin-table td { padding: var(--s3) var(--s2); }
+
+  /* Records stack: title block over meta, everything else on its own line.
+     The order DEFAULT is the load-bearing rule here. .record__main is order 1,
+     so any sibling without an order — a status pill, a price figure, an action
+     cluster, a link — would default to 0 and render ABOVE the title it
+     describes. Every non-main child is pushed below instead. */
+  .record { align-items: flex-start; gap: var(--s3); padding: var(--s4) 0; flex-wrap: wrap; }
+  .record > * { order: 2; }
+  .record__thumb { width: 44px; height: 44px; order: 0; }
+  .record__main { flex: 1 1 100%; order: 1; }
+  .record__side { flex: 1 1 100%; justify-content: space-between; }
+  .record__figure { text-align: left; }
+  /* A dish row puts its price at the left of that line and its controls at the
+     right, so the two never collide at 375. */
+  .record > .row-actions { margin-left: auto; }
+
+  .owner-preview__body { padding: var(--s4) var(--s4) 0; }
+  .photo-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+  .menu-cat { margin-top: var(--s6); }
+
+  .profile-head { padding: var(--s7) var(--gutter) var(--s5); gap: var(--s4); align-items: center; }
+  .profile-head__avatar { width: 64px; height: 64px; font-size: 1.5rem; }
+  /* Full width at 375, but still a plaque: the old rule turned it back into a
+     bare figure under a border-top, which is exactly the treatment the desktop
+     band just stopped using. */
+  .profile-head__tokens,
+  .profile-head__tokens--button { flex: 1 1 100%; justify-content: flex-start; }
+  /* A full-width plaque is a row, and a row puts its mark at the far end. */
+  .profile-head__tokens-go { margin-left: auto; }
+  .profile-body { padding: var(--s6) var(--gutter) var(--s14); gap: var(--s6); }
+
+  /* The question and its answer stop sharing a line: 309px of panel cannot hold
+     "What you're usually looking for" and three chosen interests side by side,
+     and truncating the answer to nothing is worse than stacking it. The row's
+     own `flex-wrap` does the stacking; this only stops the readout being
+     right-aligned under a left-aligned question. */
+  .pref-q__read { text-align: left; }
+  .pref-q__action .btn { width: 100%; justify-content: center; }
+
+  .wallet-hero { padding: var(--s5); border-radius: var(--r-lg); flex-direction: column; align-items: flex-start; gap: var(--s5); }
+  .wallet-hero__figures { width: 100%; justify-content: space-between; gap: var(--s4); }
+
+  .reward-grid,
+  .coupon-grid { grid-template-columns: minmax(0, 1fr); }
+
+  .console-empty { padding: var(--s7) var(--s4); }
+
+  /* The consumer bottom nav is suppressed on console routes, but /profile
+     keeps it — leave room so the last row is not under the bar. */
+  .profile-page .profile-body { padding-bottom: calc(var(--bottom-nav-h) + var(--s8)); }
+}
+
+/* --- 480 and below ---------------------------------------------------- */
+@media (max-width: 480px) {
+  .stat-grid,
+  .ledger { grid-template-columns: minmax(0, 1fr); gap: var(--s4); padding: var(--s4) 0; }
+  .stat-card,
+  .ledger__item,
+  .metric-pending { border-left: 0; padding-left: 0; padding-right: 0; }
+  .stat-card + .stat-card,
+  .ledger__item + .ledger__item,
+  .metric-pending + .metric-pending,
+  .stat-card + .metric-pending,
+  .metric-pending + .stat-card { padding-top: var(--s4); border-top: 1px solid var(--border-soft); }
+
+  .auth-card__demo-list { grid-template-columns: minmax(0, 1fr); }
+  .row-actions__group { border-right: 0; padding-right: 0; margin-right: 0; }
+  /* `.icon-action { width: 34px; height: 34px }` stood here: the mobile-only
+     bump that made the row's 32px squares tappable. It is gone with the class —
+     `IconButton`'s `md` box is 34px at every width, and the target is 44px tall
+     regardless of the pointer, so the phone no longer needs a special case. */
+}
+
+/* --- Auth: the split collapses before the form gets cramped ------------ */
+@media (max-width: 900px) {
+  .auth-page { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+
+  /* The brand side becomes a compact header band rather than disappearing —
+     "entering Khabo Kothay" has to survive on a phone. */
+  .auth-page__aside {
+    padding: var(--s7) var(--gutter) var(--s8);
+    gap: var(--s5);
+  }
+
+  .auth-page__pitch { max-width: none; }
+  .auth-page__pitch h2 { font-size: clamp(1.7rem, 1.3rem + 2.4vw, 2.3rem); }
+  .auth-page__pitch p { max-width: 52ch; }
+  .auth-page__points { display: none; }
+  .auth-page__foot { display: none; }
+  .auth-page__stage { padding: var(--s8) var(--gutter) var(--s14); align-items: flex-start; }
+  .auth-page .auth-card { max-width: 460px; margin: 0 auto; }
+}
+
+@media (max-width: 640px) {
+  .auth-page__aside { padding: var(--s6) var(--gutter) var(--s7); }
+  .auth-page__stage { padding: var(--s7) var(--gutter) calc(var(--bottom-nav-h) + var(--s8)); }
+  .auth-card__tabs { gap: var(--s4); }
+  .auth-card__tab { font-size: var(--fs-sm); }
+  /* The "code sent to …" banner carries an inline Change button. There is room
+     for both on a laptop; at this width the button squeezes the message into a
+     two-word column, so the action drops to its own row. */
+  .auth-card .console-banner { flex-wrap: wrap; }
+  .auth-card .console-banner__actions { width: 100%; }
+}
+
+/* ============================================================
+   THE ENTER — see design-system.css §8b
+   ============================================================
+   Every rule above declares its LEAVE (`var(--tr-settle)`). This is the
+   other half of the pair: the answer, grouped here rather than repeated
+   across the individual state rules, so the two halves stay legible and
+   the whole file retunes from one place.
+   ------------------------------------------------------------ */
+.admin-shell__exit:focus-visible,
+.admin-shell__exit:hover,
+.admin-shell__link:hover > svg,
+.admin-table tbody tr:focus-within .row-actions,
+.admin-table tbody tr:hover,
+.admin-table tbody tr:hover .row-actions,
+.auth-card__tab:focus-visible,
+.auth-card__tab:hover,
+.profile-tabs button:focus-visible,
+.profile-tabs button:hover,
+.record:focus-within .row-actions,
+.record:hover,
+.record:hover .row-actions {
+  transition-duration: var(--tr-answer);
+}

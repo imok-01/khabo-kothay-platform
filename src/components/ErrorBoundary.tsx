@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { ChefHat } from 'lucide-react';
+import { ChefHat, RotateCcw, RefreshCw } from 'lucide-react';
+import { Button } from './ui';
 
 interface Props {
   children: ReactNode;
@@ -29,15 +30,15 @@ export default class ErrorBoundary extends Component<Props, State> {
           <div className="section__inner">
             <div className="empty" role="alert">
               <span className="empty__icon" aria-hidden="true"><ChefHat size={36} /></span>
-              <h3>Something went wrong</h3>
-              <p>We dropped the curry. Try reloading the page — if it keeps happening, come back later.</p>
+              <h3>Something on this page broke</h3>
+              <p>Not your connection — ours. Reloading usually clears it, and nothing you saved has been lost.</p>
               <div className="empty__actions">
-                <button type="button" className="btn btn--primary" onClick={this.reset}>
+                <Button variant="primary" icon={RotateCcw} onClick={this.reset}>
                   Try again
-                </button>
-                <button type="button" className="btn btn--ghost" onClick={() => window.location.reload()}>
+                </Button>
+                <Button variant="ghost" icon={RefreshCw} onClick={() => window.location.reload()}>
                   Reload page
-                </button>
+                </Button>
               </div>
             </div>
           </div>

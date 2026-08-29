@@ -1,26 +1,38 @@
 import { useMemo } from 'react';
-import { Heart } from 'lucide-react';
+import { Heart, Trash2 } from 'lucide-react';
 import type { Restaurant } from '../types';
 import type { RecommendationContext } from '../domain/recommendation';
 import { topMatches } from '../hooks/useRecommendations';
 import { derivePreferences, mergeProfileIntoPreferences } from '../lib/preferences';
 import { usePageTitle } from '../lib/usePageTitle';
+import { useSaved } from '../context/SavedContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import { useAuth } from '../context/AuthContext';
 import { useRestaurants } from '../hooks/useRestaurants';
 import RestaurantCard from '../components/RestaurantCard';
 import EmptyState from '../components/EmptyState';
-import SectionHeading from '../components/SectionHeading';
+import CollectionTabs from '../components/CollectionTabs';
+import BandHead from '../components/BandHead';
 import FetchError from '../components/FetchError';
 import { SkeletonGrid } from '../components/Skeleton';
+import { ConfirmButton } from '../components/ui';
 
+/**
+ * `/favorites` — the Favourites half of Collection.
+ *
+ * This page previously set the document title to "Saved" and rendered
+ * `<h1>Saved</h1>`, which made it indistinguishable from `/saved` in the tab
+ * bar, in browser history and on the page itself. It is the curated list, and
+ * it now says so.
+ */
 export default function FavoritesPage() {
   const { favoriteIds, clearFavorites } = useFavorites();
+  const { savedIds } = useSaved();
   const { recentIds } = useRecentlyViewed();
   const { user } = useAuth();
   const { status, data, reload } = useRestaurants();
-  usePageTitle('Saved');
+  usePageTitle('Favourites');
 
   const preferences = useMemo(() => {
     const derived = derivePreferences(favoriteIds, recentIds);
@@ -29,8 +41,8 @@ export default function FavoritesPage() {
 
   if (status === 'error' && !data) {
     return (
-      <main className="section">
-        <div className="section__inner">
+      <main className="band">
+        <div className="band__inner">
           <FetchError onRetry={reload} />
         </div>
       </main>
@@ -42,6 +54,7 @@ export default function FavoritesPage() {
   const recents = recentIds
     .map((id) => restaurants.find((r) => r.id === id))
     .filter((r): r is Restaurant => Boolean(r));
+  const isEmpty = status === 'ready' && favs.length === 0;
 
   const ctx: RecommendationContext = {
     favorites: favs,
@@ -56,67 +69,70 @@ export default function FavoritesPage() {
     ({ restaurant }) => !favoriteIds.includes(restaurant.id),
   );
 
-  if (status === 'ready' && favs.length === 0) {
-    return (
-      <main className="section">
-        <div className="section__inner">
-          <EmptyState
-            icon={<Heart size={34} />}
-            title="No saved places yet"
-            message="Tap the heart on any restaurant to save it here — and we'll learn what you like to recommend better spots."
-            actionLabel="Start exploring"
-            actionTo="/explore"
-          />
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main className="section">
-      <div className="section__inner">
-        <div className="favorites-head">
-          <div>
-            <span className="section-heading__eyebrow">Your shortlist</span>
-            <h1>Saved</h1>
-            <p>
-              {status === 'loading' && !data
-                ? 'Loading…'
-                : `${favs.length} ${favs.length === 1 ? 'restaurant' : 'restaurants'} saved`}
-            </p>
-          </div>
-          {favs.length > 0 && (
-            <button type="button" className="btn btn--ghost" onClick={clearFavorites}>
+    <main>
+      <CollectionTabs
+        active="favourites"
+        savedCount={savedIds.length}
+        favouriteCount={favoriteIds.length}
+        action={
+          favs.length > 0 ? (
+            <ConfirmButton
+              size="sm"
+              icon={Trash2}
+              confirmLabel="Clear all? Tap again"
+              armedAnnouncement="Tap again to clear every favourite."
+              onConfirm={clearFavorites}
+            >
               Clear all
-            </button>
+            </ConfirmButton>
+          ) : undefined
+        }
+      />
+
+      <section className="band band--tight">
+        <div className="band__inner">
+          {status === 'loading' && !data ? (
+            <SkeletonGrid count={4} />
+          ) : isEmpty ? (
+            <EmptyState
+              icon={<Heart size={34} />}
+              title="No favourites yet"
+              message="Tap the heart on a restaurant you would genuinely recommend. Favourites is the strongest signal you can give us — your matches sharpen as the list grows."
+              actionLabel="Browse your saved list"
+              actionTo="/saved"
+            />
+          ) : (
+            <div className="c-grid">
+              {favs.map((r) => (
+                <RestaurantCard key={r.id} restaurant={r} />
+              ))}
+            </div>
           )}
         </div>
+      </section>
 
-        {status === 'loading' && !data ? (
-          <SkeletonGrid count={4} />
-        ) : (
-          <div className="grid">
-            {favs.map((r) => (
-              <RestaurantCard key={r.id} restaurant={r} />
-            ))}
-          </div>
-        )}
-
-        {status === 'ready' && recommendations.length > 0 && (
-          <div className="favorites-recs">
-            <SectionHeading
-              eyebrow="We're getting to know your taste"
-              title="Because you liked these"
+      {status === 'ready' && recommendations.length > 0 && (
+        <section className="band band--ruled">
+          <div className="band__inner">
+            <BandHead
+              eyebrow="Getting to know your taste"
+              title={isEmpty ? <>Start your <em>shortlist</em></> : <>Because you <em>liked these</em></>}
+              lede={
+                isEmpty
+                  ? 'A few matches to consider — heart the ones worth keeping.'
+                  : 'Scored against your favourites, with the reasons each one matched.'
+              }
               action={{ label: 'Explore more', to: '/explore' }}
             />
-            <div className="grid">
+            <div className="c-grid">
               {recommendations.map(({ restaurant, match }) => (
                 <RestaurantCard key={restaurant.id} restaurant={restaurant} match={match} personalized />
               ))}
             </div>
           </div>
-        )}
-      </div>
+        </section>
+      )}
     </main>
   );
 }

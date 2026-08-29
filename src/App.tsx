@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import MobileNav from './components/MobileNav';
 import Footer from './components/Footer';
@@ -39,6 +39,7 @@ const PartnerHowPage = lazy(() => import('./pages/PartnersPage').then((m) => ({ 
 const PartnerEnquiryPage = lazy(() => import('./pages/PartnersPage').then((m) => ({ default: m.PartnerEnquiryPage })));
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
 const AdminPlaceholderSection = lazy(() => import('./components/AdminLayout').then((m) => ({ default: m.AdminPlaceholderSection })));
+const ExecutiveAdminSection = lazy(() => import('./pages/ExecutiveAdminPage').then((m) => ({ default: m.ExecutiveAdminSection })));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -46,6 +47,19 @@ function ScrollToTop() {
     window.scrollTo(0, 0);
   }, [pathname]);
   return null;
+}
+
+/**
+ * Routes that own their whole viewport: the two consoles, which carry their own
+ * sidebar navigation, and authentication, which is a full-height split stage.
+ *
+ * The consumer header, mobile bottom nav, footer and compare tray are all
+ * suppressed on these. Two reasons beyond taste: a console with a consumer
+ * header has two competing navigations, and the 62px mobile bottom bar sat on
+ * top of console content with no way to scroll past it.
+ */
+function isFullScreenRoute(pathname: string) {
+  return pathname === '/login' || pathname === '/manage' || pathname === '/admin' || pathname.startsWith('/admin/');
 }
 
 function RouteFallback() {
@@ -58,17 +72,20 @@ function RouteFallback() {
 }
 
 export default function App() {
+  const { pathname } = useLocation();
+  const fullScreen = isFullScreenRoute(pathname);
+
   useEffect(() => {
     trackSessionStart();
     refreshOffers();
   }, []);
 
   return (
-    <div className="app">
+    <div className={`app ${fullScreen ? 'app--console' : ''}`}>
       <a href="#main-content" className="skip-link">Skip to content</a>
       <ScrollToTop />
-      <Navbar />
-      <MobileNav />
+      {!fullScreen && <Navbar />}
+      {!fullScreen && <MobileNav />}
       <div className="app__body" id="main-content" tabIndex={-1}>
         <ErrorBoundary>
           <Suspense fallback={<RouteFallback />}>
@@ -88,13 +105,23 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/restaurant/apply" element={<RestaurantApplyPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              {/* KK admin console. Every section below is a working tool that
+                  used to be hidden behind a tab strip on /admin; the sidebar is
+                  now the only navigation. /admin/verification, /admin/data and
+                  /admin/reports are kept as URLs so existing links resolve —
+                  the first two now reach the real queues and the third redirects
+                  to where flags actually live. */}
               <Route element={<RequireRole roles={['executive']}><AdminLayout /></RequireRole>}>
                 <Route path="/admin" element={<ExecutiveAdminPage />} />
-                <Route path="/admin/restaurants" element={<AdminPlaceholderSection section="restaurants" />} />
-                <Route path="/admin/verification" element={<AdminPlaceholderSection section="verification" />} />
-                <Route path="/admin/reports" element={<AdminPlaceholderSection section="reports" />} />
-                <Route path="/admin/reviews" element={<AdminPlaceholderSection section="reviews" />} />
-                <Route path="/admin/data" element={<AdminPlaceholderSection section="data" />} />
+                <Route path="/admin/applications" element={<ExecutiveAdminSection section="applications" />} />
+                <Route path="/admin/verification" element={<ExecutiveAdminSection section="menus" />} />
+                <Route path="/admin/data" element={<ExecutiveAdminSection section="intelligence" />} />
+                <Route path="/admin/offers" element={<ExecutiveAdminSection section="offers" />} />
+                <Route path="/admin/reviews" element={<ExecutiveAdminSection section="reviews" />} />
+                <Route path="/admin/restaurants" element={<ExecutiveAdminSection section="restaurants" />} />
+                <Route path="/admin/prices" element={<ExecutiveAdminSection section="prices" />} />
+                <Route path="/admin/users" element={<ExecutiveAdminSection section="users" />} />
+                <Route path="/admin/reports" element={<Navigate to="/admin/reviews" replace />} />
                 <Route path="/admin/settings" element={<AdminPlaceholderSection section="settings" />} />
               </Route>
               <Route
@@ -121,8 +148,8 @@ export default function App() {
           </Suspense>
         </ErrorBoundary>
       </div>
-      <Footer />
-      <CompareTray />
+      {!fullScreen && <Footer />}
+      {!fullScreen && <CompareTray />}
     </div>
   );
 }

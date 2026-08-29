@@ -1,42 +1,139 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
-  LayoutDashboard, Store, Image, UtensilsCrossed, BadgePercent, MessageSquareQuote,
-  Plus, Trash2, ArrowUp, ArrowDown, Send, Save, Check, Eye, Info, Sparkles,
+  LayoutDashboard, Store, Image as ImageIcon, ImageOff, UtensilsCrossed, BadgePercent, MessageSquareQuote,
+  Plus, Trash2, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Send, Save, Check, Eye, EyeOff, Info, Sparkles,
+  Pencil, Star, Award, LineChart, ExternalLink, Upload, ChefHat, Soup,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePageTitle } from '../lib/usePageTitle';
 import { getEffectiveMenu } from '../lib/menu';
 import { isSupabaseConfigured } from '../integrations/supabase/client';
-import { restaurants, saveMenuOverride, useMenusVersion } from '../hooks/useRestaurantData';
+import { saveMenuOverride, useMenusVersion } from '../hooks/useRestaurantData';
 import { useOwnerRestaurants } from '../hooks/useOwnerRestaurant';
 import { useOwnerMenu, type OwnerMenuState } from '../hooks/useOwnerMenu';
 import { useUserReviews } from '../hooks/useReviews';
 import { useRestaurantOffers } from '../hooks/useRestaurantOffers';
 import { uploadRestaurantImage, fetchOwnerImages } from '../repositories/imageUploadRepository';
+import { googlePhotoUrlAtWidth } from '../repositories/ImageProvider';
 import {
   getRestaurantDraft, upsertRestaurantDraft, useRestaurantDrafts, useSuggestions, upsertSuggestion,
 } from '../hooks/useDrafts';
+import ConsoleShell, { type ConsoleNavGroup } from '../components/ConsoleShell';
+import RestaurantImage from '../components/RestaurantImage';
+import { Button, Field, IconButton } from '../components/ui';
+import { selectRestaurantPhotos } from '../lib/photos';
 import { uid } from '../lib/uid';
 import { validateOfferDraft } from '../lib/offerValidation';
+import { describeWriteFailure } from '../lib/writeFailure';
 import { getEffectiveIntelligence } from '../lib/intelligence';
 import { BEST_FOR, DINING_FEATURES, FOOD_CHARACTERISTICS, SPECIALTIES, type IntelligenceSuggestion } from '../domain/intelligence';
 import type { Offer } from '../domain/offers';
 import { formatCurrency } from '../lib/format';
 import type { Menu, MenuItem } from '../domain/menu';
+import type { Restaurant } from '../types';
+
+/**
+ * Restaurant owner console.
+ *
+ * Two things changed structurally in this pass and both are UX, not logic.
+ *
+ * 1. The seven sections were a horizontal tab strip inside the consumer page
+ *    frame; they are now the rail of the shared ConsoleShell, in button mode,
+ *    with the section written into `?tab=` so a deep link, the back button and
+ *    the rail all agree. Previously `?tab=` was read once on mount and then
+ *    diverged from the visible section.
+ * 2. Every tab read the *bundled* catalogue snapshot (`restaurants.find(...)`)
+ *    while the page itself already had the resolved record in scope from
+ *    useOwnerRestaurants — which also resolves venues that exist only in the
+ *    database (application → approval, not yet in the public catalogue). Those
+ *    venues made `find()` return undefined behind a non-null assertion. The
+ *    record is now passed down, so every tab reads the same restaurant the
+ *    page resolved.
+ *
+ * No write path, permission, validation or approval rule is altered.
+ */
 
 type Tab = 'overview' | 'profile' | 'photos' | 'menu' | 'offers' | 'reviews' | 'attributes';
+
+/**
+ * How a console row action presses.
+ *
+ * A toggle in this page is reporting a *state*, not asking for emphasis: up to
+ * seven marks stand 2px apart inside a 64px record, and the primitive's default
+ * pressed fill — solid `--primary` — would put two blocks of maroon in the
+ * middle of that row and make a menu look like a page of warnings. So the fill
+ * is the palest primary we hold, and the edge is stated separately: a
+ * `--primary-soft` ground on `--surface` without a line is a lighter patch of
+ * paper rather than a button that is on.
+ */
+const CONSOLE_ON = {
+  onColor: 'var(--primary-soft)',
+  onInk: 'var(--primary-strong)',
+  onLine: 'var(--primary-line)',
+} as const;
+
+const TAB_META: Record<Tab, { eyebrow: string; title: string; sub: string }> = {
+  overview: {
+    eyebrow: 'Restaurant',
+    title: 'Overview',
+    sub: 'Everything Khabo Kothay records about your restaurant, and anything waiting on you.',
+  },
+  profile: {
+    eyebrow: 'Your listing',
+    title: 'Profile',
+    sub: 'The words diners read on your public page. Edits become a draft and go live once Khabo Kothay approves them.',
+  },
+  photos: {
+    eyebrow: 'Your listing',
+    title: 'Photos',
+    sub: 'The imagery on your listing — what you have uploaded, and what is linked from your verified source.',
+  },
+  menu: {
+    eyebrow: 'Menu',
+    title: 'Menu',
+    sub: 'Categories, dishes, prices and availability. Your live menu is replaced only after an approved submission.',
+  },
+  offers: {
+    eyebrow: 'Menu',
+    title: 'Offers',
+    sub: 'Promotions on your public page. Drafts stay private until Khabo Kothay approves them.',
+  },
+  reviews: {
+    eyebrow: 'Community',
+    title: 'Reviews',
+    sub: 'What diners have written about your restaurant.',
+  },
+  attributes: {
+    eyebrow: 'Your listing',
+    title: 'Discovery tags',
+    sub: 'The structured metadata that decides which searches surface you. You suggest; Khabo Kothay approves.',
+  },
+};
+
+const TAB_KEYS = Object.keys(TAB_META) as Tab[];
 
 export default function RestaurantAdminPage() {
   usePageTitle('Restaurant admin');
   const { session } = useAuth();
-  // Deep-link support: /manage?tab=profile opens the edit tab directly so the
-  // owner "Update information" flows land on the management edit system.
-  const [params] = useSearchParams();
-  const [tab, setTab] = useState<Tab>(() => (params.get('tab') as Tab) || 'overview');
+
+  // The URL is the single source of truth for the visible section, so
+  // /manage?tab=profile (the owner "Update information" entry point), the rail
+  // and the browser back button can never disagree.
+  const [params, setParams] = useSearchParams();
+  const requested = params.get('tab');
+  const tab: Tab = TAB_KEYS.includes(requested as Tab) ? (requested as Tab) : 'overview';
+  const setTab = (next: Tab) => {
+    const p = new URLSearchParams(params);
+    if (next === 'overview') p.delete('tab');
+    else p.set('tab', next);
+    setParams(p);
+  };
+
   useMenusVersion();
   useRestaurantDrafts();
   const userReviews = useUserReviews();
+  const suggestions = useSuggestions();
 
   const { restaurants: owned, loading: ownedLoading } = useOwnerRestaurants(session?.restaurantIds);
 
@@ -56,10 +153,9 @@ export default function RestaurantAdminPage() {
 
   if (ownedLoading) {
     return (
-      <main className="section section--narrow">
-        <div className="section__inner">
-          <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Loading your restaurant…</p>
-        </div>
+      <main className="page-loader" aria-busy="true" role="status">
+        <span className="page-loader__spinner" aria-hidden="true" />
+        <span className="sr-only">Loading your restaurant…</span>
       </main>
     );
   }
@@ -72,7 +168,7 @@ export default function RestaurantAdminPage() {
             <Store size={40} aria-hidden="true" />
             <h1>No restaurant assigned</h1>
             <p>This account manages restaurants on Khabo Kothay, but no restaurants are assigned to it.</p>
-            <Link to="/" className="btn btn--primary">Back to home</Link>
+            <Button variant="primary" to="/" icon={ArrowLeft}>Back to home</Button>
           </div>
         </div>
       </main>
@@ -83,117 +179,498 @@ export default function RestaurantAdminPage() {
   const draft = getRestaurantDraft(restaurant.id);
   const myReviews = userReviews.filter((r) => r.restaurantId === restaurant.id);
   const publicOffers = myOffers.filter((o) => o.status === 'approved');
+  const draftOffers = myOffers.filter((o) => o.status === 'draft').length;
+  const pendingSuggestions = suggestions.filter((s) => s.restaurantId === restaurant.id && s.status === 'pending').length;
   // Dish count reflects the real, working menu (PUBLISHED/DRAFT/PENDING) loaded
   // from Supabase — not the demo-store seed, which is empty for most restaurants.
   const dishCount = ownerMenu.menu
     ? ownerMenu.menu.categories.reduce((n, c) => n + c.dishes.length, 0)
     : 0;
 
-  const tabs: Array<{ key: Tab; label: string; icon: React.ReactNode }> = [
-    { key: 'overview', label: 'Overview', icon: <LayoutDashboard size={15} /> },
-    { key: 'profile', label: 'Profile', icon: <Store size={15} /> },
-    { key: 'photos', label: 'Photos', icon: <Image size={15} /> },
-    { key: 'menu', label: 'Menu', icon: <UtensilsCrossed size={15} /> },
-    { key: 'offers', label: 'Offers', icon: <BadgePercent size={15} /> },
-    { key: 'reviews', label: 'Reviews', icon: <MessageSquareQuote size={15} /> },
-    { key: 'attributes', label: 'Discovery tags', icon: <Sparkles size={15} /> },
+  const groups: ConsoleNavGroup[] = [
+    // Overview leads the rail without a heading. "Restaurant" stood here over a
+    // single item and named the whole console rather than that item's group.
+    {
+      key: 'lead',
+      items: [
+        { key: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} aria-hidden="true" />, onSelect: () => setTab('overview'), active: tab === 'overview' },
+      ],
+    },
+    {
+      label: 'Your listing',
+      items: [
+        { key: 'profile', label: 'Profile', icon: <Store size={16} aria-hidden="true" />, onSelect: () => setTab('profile'), active: tab === 'profile' },
+        { key: 'photos', label: 'Photos', icon: <ImageIcon size={16} aria-hidden="true" />, onSelect: () => setTab('photos'), active: tab === 'photos' },
+        { key: 'attributes', label: 'Discovery tags', icon: <Sparkles size={16} aria-hidden="true" />, onSelect: () => setTab('attributes'), active: tab === 'attributes', badge: pendingSuggestions, attention: true },
+      ],
+    },
+    {
+      label: 'Menu & offers',
+      items: [
+        { key: 'menu', label: 'Menu', icon: <UtensilsCrossed size={16} aria-hidden="true" />, onSelect: () => setTab('menu'), active: tab === 'menu' },
+        { key: 'offers', label: 'Offers', icon: <BadgePercent size={16} aria-hidden="true" />, onSelect: () => setTab('offers'), active: tab === 'offers', badge: draftOffers, attention: true },
+      ],
+    },
+    {
+      // "Community" said nothing "Reviews" did not. This heading earns its line:
+      // it tells an owner the section holds writing that arrived, not writing
+      // they do.
+      label: 'From diners',
+      items: [
+        { key: 'reviews', label: 'Reviews', icon: <MessageSquareQuote size={16} aria-hidden="true" />, onSelect: () => setTab('reviews'), active: tab === 'reviews' },
+      ],
+    },
   ];
 
+  const meta = TAB_META[tab];
+
   return (
-    <main className="admin">
-      <div className="admin__inner">
-        <div className="admin__head">
-          <div>
-            <span className="section-heading__eyebrow">Restaurant admin</span>
-            <h1>Manage your restaurant</h1>
-            <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-              You can only manage restaurants assigned to this account.
-            </p>
-          </div>
-          {owned.length > 1 && (
-            <label className="field" style={{ maxWidth: 260 }}>
-              <span className="field__label">Restaurant</span>
-              <select value={restaurant.id} onChange={(e) => setSelectedId(e.target.value)}>
-                {owned.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-            </label>
-          )}
-        </div>
-
-        <div className="admin__tabs" role="tablist" aria-label="Restaurant admin sections">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.key}
-              className={`admin__tab ${tab === t.key ? 'admin__tab--active' : ''}`}
-              onClick={() => setTab(t.key)}
-            >
-              {t.icon} {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="admin__content">
-          <Link to={`/restaurant/${restaurant.id}`} className="btn btn--ghost btn--sm" style={{ marginBottom: 'var(--s4)' }}>
-            <Eye size={13} aria-hidden="true" /> View public page
-          </Link>
+    <ConsoleShell
+      brand={{ title: restaurant.name, subtitle: 'Restaurant console', icon: <Soup size={18} />, to: '/manage' }}
+      groups={groups}
+      currentLabel={meta.title}
+      identity={{ name: session.name ?? 'Restaurant owner', role: 'Restaurant owner' }}
+      backTo={{
+        /* `/`, not the owner's own listing: the console head already carries a
+           "View public page" link on every tab, and that one stays visible when
+           the rail collapses into a drawer. Two controls for the same URL in the
+           same persistent chrome is one too many, so the rail foot does the job
+           only it can — leave the console and go back to Khabo Kothay. Both
+           consoles now say the same thing here. */
+        to: '/',
+        label: 'Back to Khabo Kothay',
+      }}
+    >
+      <main className="admin">
+        <div className="admin__inner">
+          <header className="console-head">
+            <div className="console-head__text">
+              <span className="console-head__eyebrow">{meta.eyebrow}</span>
+              <h1 className="console-head__title">{meta.title}</h1>
+              <p className="console-head__sub">{meta.sub}</p>
+            </div>
+            <div className="console-head__actions">
+              {owned.length > 1 && (
+                <Field label="Restaurant" style={{ minWidth: 200 }}>
+                  <select value={restaurant.id} onChange={(e) => setSelectedId(e.target.value)}>
+                    {owned.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </Field>
+              )}
+              <Button variant="ghost" size="sm" to={`/restaurant/${restaurant.id}`} icon={Eye}>
+                View public page
+              </Button>
+            </div>
+          </header>
 
           {tab === 'overview' && (
-            <Overview restaurantId={restaurant.id} restaurantName={restaurant.name} dishCount={dishCount} offerCount={publicOffers.length} reviewCount={restaurant.khabo.reviewCount + myReviews.length} draftStatus={draft?.status ?? 'published'} />
+            <Overview
+              restaurant={restaurant}
+              ownerMenu={ownerMenu}
+              dishCount={dishCount}
+              myOffers={myOffers}
+              publicOffers={publicOffers}
+              reviewCount={restaurant.khabo.reviewCount + myReviews.length}
+              appReviewCount={myReviews.length}
+              draftStatus={draft?.status ?? null}
+              pendingSuggestions={pendingSuggestions}
+              onGo={setTab}
+            />
           )}
-          {tab === 'profile' && <ProfileTab restaurantId={restaurant.id} />}
-          {tab === 'photos' && <PhotosTab restaurantId={restaurant.id} />}
-          {tab === 'menu' && <MenuTab restaurant={restaurant.id} ownerMenu={ownerMenu} />}
-            {tab === 'offers' && <OffersTab restaurantName={restaurant.name} myOffers={myOffers} publicOffers={publicOffers} createOffer={createDbOffer} submitOffer={submitDbOffer} removeOffer={removeOffer} />}
-          {tab === 'reviews' && <ReviewsTab restaurantId={restaurant.id} restaurantName={restaurant.name} myReviews={myReviews} />}
+          {tab === 'profile' && <ProfileTab restaurant={restaurant} />}
+          {tab === 'photos' && <PhotosTab restaurant={restaurant} />}
+          {tab === 'menu' && <MenuTab restaurant={restaurant} ownerMenu={ownerMenu} />}
+          {tab === 'offers' && <OffersTab restaurantName={restaurant.name} myOffers={myOffers} publicOffers={publicOffers} createOffer={createDbOffer} submitOffer={submitDbOffer} removeOffer={removeOffer} />}
+          {tab === 'reviews' && <ReviewsTab restaurant={restaurant} myReviews={myReviews} />}
           {tab === 'attributes' && <AttributesTab restaurantId={restaurant.id} restaurantName={restaurant.name} />}
         </div>
-      </div>
-    </main>
+      </main>
+    </ConsoleShell>
   );
 }
 
 /* ------------------------------------------------------------------ */
+/* Dashboard home                                                      */
+/* ------------------------------------------------------------------ */
 
-function Overview({ restaurantId, restaurantName, dishCount, offerCount, reviewCount, draftStatus }: {
-  restaurantId: string; restaurantName: string; dishCount: number; offerCount: number; reviewCount: number; draftStatus: string;
+/** A menu workflow state, in the words an owner would use. */
+function menuStateLabel(status: OwnerMenuState['menuStatus']): { text: string; pill: string } {
+  switch (status) {
+    case 'PUBLISHED': return { text: 'Live menu', pill: 'status-pill status-pill--ok' };
+    case 'PENDING_REVIEW': return { text: 'In review', pill: 'status-pill status-pill--pending' };
+    case 'DRAFT': return { text: 'Private draft', pill: 'status-pill' };
+    default: return { text: 'No menu yet', pill: 'status-pill' };
+  }
+}
+
+interface ActionRow {
+  key: string;
+  title: string;
+  detail: string;
+  pill: string;
+  pillClass: string;
+  tab: Tab;
+  cta: string;
+}
+
+function Overview({
+  restaurant, ownerMenu, dishCount, myOffers, publicOffers, reviewCount, appReviewCount,
+  draftStatus, pendingSuggestions, onGo,
+}: {
+  restaurant: Restaurant;
+  ownerMenu: OwnerMenuState;
+  dishCount: number;
+  myOffers: Offer[];
+  publicOffers: Offer[];
+  reviewCount: number;
+  appReviewCount: number;
+  draftStatus: 'draft' | 'pending' | 'published' | 'rejected' | null;
+  pendingSuggestions: number;
+  onGo: (tab: Tab) => void;
 }) {
-  const stats = [
-    { label: 'Menu dishes', value: dishCount },
-    { label: 'Public offers', value: offerCount },
-    { label: 'Community reviews', value: reviewCount },
-    { label: 'Profile status', value: draftStatus },
-  ];
+  const configured = isSupabaseConfigured();
+  const photo = selectRestaurantPhotos(restaurant, 'card').photos[0];
+  const categoryCount = ownerMenu.menu?.categories.length ?? 0;
+  const draftOffers = myOffers.filter((o) => o.status === 'draft').length;
+  const pendingOffers = myOffers.filter((o) => o.status === 'pending').length;
+  const menuState = menuStateLabel(ownerMenu.menuStatus);
+  const menuLive = ownerMenu.menuStatus === 'PUBLISHED';
+  const sourceRating = restaurant.google?.rating ?? 0;
+  const sourceReviews = restaurant.google?.reviewCount ?? 0;
+
+  // Listing fields a diner notices the absence of. Counted from the record the
+  // page resolved — nothing here is inferred or estimated.
+  const missing: string[] = [];
+  if (restaurant.cuisines.length === 0) missing.push('cuisine');
+  if (!restaurant.openingHours) missing.push('opening hours');
+  if (!restaurant.address) missing.push('address');
+  if (!restaurant.description) missing.push('description');
+
+  /* The work waiting on a person, in the order it blocks a diner. Each row is
+     derived from a real workflow state; there is no row for "you could try
+     harder" and no invented urgency. */
+  const actions: ActionRow[] = [];
+
+  if (!ownerMenu.loading) {
+    if (ownerMenu.menuStatus === null) {
+      actions.push({
+        key: 'menu-none', tab: 'menu', cta: 'Start a menu',
+        title: 'No menu recorded yet',
+        detail: 'Your listing shows no dishes or prices to a diner deciding where to eat.',
+        pill: 'Needs you', pillClass: 'status-pill status-pill--pending',
+      });
+    } else if (ownerMenu.menuStatus === 'PUBLISHED' && dishCount === 0) {
+      /* The quietest failure in the product: a live menu record with nothing on
+         it. Nothing is broken, and a diner still sees no menu. */
+      actions.push({
+        key: 'menu-empty', tab: 'menu', cta: 'Add your dishes',
+        title: 'Your live menu has no dishes on it',
+        detail: 'The record exists but is empty, so diners see no menu at all on your page.',
+        pill: 'Needs you', pillClass: 'status-pill status-pill--pending',
+      });
+    } else if (ownerMenu.menuStatus === 'DRAFT') {
+      actions.push({
+        key: 'menu-draft', tab: 'menu', cta: 'Review and submit',
+        title: 'Your menu draft is private',
+        detail: 'It replaces your live menu only after you submit it and Khabo Kothay approves it.',
+        pill: 'Needs you', pillClass: 'status-pill status-pill--pending',
+      });
+    } else if (ownerMenu.menuStatus === 'PENDING_REVIEW') {
+      actions.push({
+        key: 'menu-review', tab: 'menu', cta: 'See what you sent',
+        title: 'Your menu is with Khabo Kothay',
+        detail: 'Nothing to do — your live menu stays up until the submission is approved.',
+        pill: 'In review', pillClass: 'status-pill status-pill--info',
+      });
+    }
+  }
+
+  if (draftStatus === 'draft') {
+    actions.push({
+      key: 'profile-draft', tab: 'profile', cta: 'Open the draft',
+      title: 'Profile changes saved but not submitted',
+      detail: 'Your edits are held privately. Submit them for review to change your public page.',
+      pill: 'Needs you', pillClass: 'status-pill status-pill--pending',
+    });
+  } else if (draftStatus === 'pending') {
+    actions.push({
+      key: 'profile-pending', tab: 'profile', cta: 'See what you sent',
+      title: 'Profile changes are in review',
+      detail: 'Your public page is unchanged until a reviewer decides.',
+      pill: 'In review', pillClass: 'status-pill status-pill--info',
+    });
+  }
+
+  if (missing.length > 0) {
+    actions.push({
+      key: 'profile-gaps', tab: 'profile', cta: 'Fill these in',
+      title: `Your listing has no ${missing.join(', no ')}`,
+      detail: 'These fields decide which searches you appear in and what a diner reads first.',
+      pill: 'Needs you', pillClass: 'status-pill status-pill--pending',
+    });
+  }
+
+  if (!photo) {
+    actions.push({
+      key: 'photos', tab: 'photos', cta: 'Add photography',
+      title: 'No photography on your listing',
+      detail: 'A listing without a photograph is the one diners scroll past.',
+      pill: 'Needs you', pillClass: 'status-pill status-pill--pending',
+    });
+  }
+
+  if (draftOffers > 0) {
+    actions.push({
+      key: 'offers-draft', tab: 'offers', cta: 'Open offers',
+      title: `${draftOffers} offer draft${draftOffers === 1 ? '' : 's'} not submitted`,
+      detail: 'A draft offer is invisible to diners until it is approved.',
+      pill: 'Needs you', pillClass: 'status-pill status-pill--pending',
+    });
+  }
+
+  if (pendingOffers > 0) {
+    actions.push({
+      key: 'offers-pending', tab: 'offers', cta: 'See offers',
+      title: `${pendingOffers} offer${pendingOffers === 1 ? '' : 's'} awaiting approval`,
+      detail: 'Nothing to do — a reviewer will publish or decline them.',
+      pill: 'In review', pillClass: 'status-pill status-pill--info',
+    });
+  }
+
+  if (pendingSuggestions > 0) {
+    actions.push({
+      key: 'tags', tab: 'attributes', cta: 'See suggestions',
+      title: `${pendingSuggestions} discovery tag suggestion${pendingSuggestions === 1 ? '' : 's'} in review`,
+      detail: 'Tags only affect recommendations once approved.',
+      pill: 'In review', pillClass: 'status-pill status-pill--info',
+    });
+  }
+
   return (
-    <div className="admin-overview">
-      <div className="stat-grid">
-        {stats.map((s) => (
-          <div key={s.label} className="stat-card">
-            <span className="stat-card__label">{s.label}</span>
-            <strong className="stat-card__value">{s.value}</strong>
+    <>
+      {/* Counts of your own records. Every figure is read at render time from
+          the menu, offers and reviews this restaurant actually has. */}
+      <div className="ledger">
+        <div className="ledger__item">
+          <span className="ledger__label">Menu dishes</span>
+          <strong className="ledger__value">{dishCount}</strong>
+          <p className="ledger__note">
+            {categoryCount > 0 ? `Across ${categoryCount} categor${categoryCount === 1 ? 'y' : 'ies'}` : 'No categories yet'}
+          </p>
+        </div>
+        <div className="ledger__item">
+          <span className="ledger__label">Public offers</span>
+          <strong className="ledger__value">{publicOffers.length}</strong>
+          <p className="ledger__note">
+            {draftOffers + pendingOffers > 0
+              ? `${draftOffers + pendingOffers} not public yet`
+              : 'Nothing waiting'}
+          </p>
+        </div>
+        <div className="ledger__item">
+          <span className="ledger__label">Community reviews</span>
+          <strong className="ledger__value">{reviewCount.toLocaleString('en-IN')}</strong>
+          <p className="ledger__note">
+            {appReviewCount > 0 ? `${appReviewCount} written in the app` : 'None written on Khabo Kothay yet'}
+          </p>
+        </div>
+        {/* The rating an owner cares about, with its source named. A Khabo
+            Kothay community rating takes precedence because it is ours; when
+            there isn't one we show the rating recorded from the linked source
+            rather than withholding a real number. Only when neither exists does
+            this become a blank — and a blank, not a 0.0, because a zero would
+            read as a terrible score instead of an absent one. */}
+        {restaurant.khabo.rating > 0 ? (
+          <div className="ledger__item">
+            <span className="ledger__label">Khabo rating</span>
+            <strong className="ledger__value">{restaurant.khabo.rating.toFixed(1)}<small>/5</small></strong>
+            <p className="ledger__note">From {restaurant.khabo.reviewCount.toLocaleString('en-IN')} Khabo Kothay reviews</p>
           </div>
-        ))}
+        ) : sourceRating > 0 ? (
+          <div className="ledger__item">
+            <span className="ledger__label">Source rating</span>
+            <strong className="ledger__value">{sourceRating.toFixed(1)}<small>/5</small></strong>
+            <p className="ledger__note">
+              {sourceReviews > 0
+                ? `From ${sourceReviews.toLocaleString('en-IN')} reviews on your linked listing`
+                : 'From your linked listing'}
+            </p>
+          </div>
+        ) : (
+          <div className="metric-pending">
+            <span className="metric-pending__label">Rating</span>
+            <span className="metric-pending__dash" aria-hidden="true">—</span>
+            <span className="metric-pending__note">No rating on record yet</span>
+          </div>
+        )}
       </div>
-      <div className="panel">
-        <h2>Quick actions</h2>
-        <div className="quick-actions">
-          <Link to={`/restaurant/${restaurantId}`} className="btn btn--ghost">View public page</Link>
-          <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>Menu, offers, profile and reviews are managed from the tabs above.</span>
+
+      <div className="admin-columns">
+        <div>
+          <section className="panel">
+            <div className="panel__head">
+              <h2 className="panel__title">Waiting on you</h2>
+              {actions.length > 0 && <span className="panel__hint">{actions.length} item{actions.length === 1 ? '' : 's'}</span>}
+            </div>
+            {ownerMenu.loading ? (
+              <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Checking your menu…</p>
+            ) : actions.length === 0 ? (
+              <div className="console-empty console-empty--inset">
+                <span className="console-empty__icon"><Check size={20} aria-hidden="true" /></span>
+                <h3 className="console-empty__title">Nothing is waiting on you</h3>
+                <p className="console-empty__text">
+                  Your menu, offers and listing details are all in the state you left them. Anything
+                  submitted for review will appear here until it is decided.
+                </p>
+              </div>
+            ) : (
+              <ul className="records records--bare">
+                {actions.map((a) => (
+                  <li key={a.key} className="record">
+                    <div className="record__main">
+                      <p className="record__title">
+                        {a.title}
+                        <span className={a.pillClass}>{a.pill}</span>
+                      </p>
+                      <span className="record__meta"><span>{a.detail}</span></span>
+                    </div>
+                    <Button variant="ghost" size="sm" iconAfter={ArrowRight} onClick={() => onGo(a.tab)}>
+                      {a.cta}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="panel">
+            <div className="panel__head">
+              <h2 className="panel__title">What is public right now</h2>
+            </div>
+            <ul className="records records--bare">
+              <li className="record">
+                <div className="record__main">
+                  <p className="record__title">Public page</p>
+                  <span className="record__meta"><span>Your listing on Khabo Kothay</span></span>
+                </div>
+                <Button variant="ghost" size="sm" to={`/restaurant/${restaurant.id}`} iconAfter={ExternalLink}>
+                  Open
+                </Button>
+              </li>
+              <li className="record">
+                <div className="record__main">
+                  <p className="record__title">Menu</p>
+                  <span className="record__meta"><span>{dishCount} dish{dishCount === 1 ? '' : 'es'} in your working menu</span></span>
+                </div>
+                <span className={menuLive && dishCount === 0 ? 'status-pill status-pill--pending' : menuState.pill}>
+                  {menuLive && dishCount === 0 ? 'Live, but empty' : menuState.text}
+                </span>
+              </li>
+              <li className="record">
+                <div className="record__main">
+                  <p className="record__title">Offers</p>
+                  <span className="record__meta"><span>{publicOffers.length === 0 ? 'None visible to diners' : `${publicOffers.length} visible to diners`}</span></span>
+                </div>
+                <span className={publicOffers.length > 0 ? 'status-pill status-pill--ok' : 'status-pill'}>
+                  {publicOffers.length > 0 ? 'Live' : 'None'}
+                </span>
+              </li>
+              <li className="record">
+                <div className="record__main">
+                  <p className="record__title">Editorial placement</p>
+                  <span className="record__meta"><span>Chosen by the Khabo Kothay team — not requestable here</span></span>
+                </div>
+                <span className={restaurant.khabo.featured ? 'status-pill status-pill--ok' : 'status-pill'}>
+                  {restaurant.khabo.featured ? 'Featured' : 'Not featured'}
+                </span>
+              </li>
+              <li className="record">
+                <div className="record__main">
+                  <p className="record__title">Verified source link</p>
+                  <span className="record__meta"><span>Where your rating, hours and photos are read from</span></span>
+                </div>
+                <span className={restaurant.google?.placeId ? 'status-pill status-pill--ok' : 'status-pill'}>
+                  {restaurant.google?.placeId ? 'Linked' : 'Not linked'}
+                </span>
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <div>
+          {/* The customer-facing preview: the same photograph, name and meta a
+              diner sees on a discovery card, built from this restaurant's own
+              record so it cannot drift from the public page. */}
+          <section className="panel panel--flush">
+            <div className="panel__head">
+              <h2 className="panel__title">How diners see you</h2>
+              <span className="panel__hint">Discovery card</span>
+            </div>
+            <div className="owner-preview">
+              <div className="owner-preview__media">
+                <RestaurantImage source={photo} name={restaurant.name} width={640} eager />
+              </div>
+              <div className="owner-preview__body">
+                <strong className="owner-preview__name">{restaurant.name}</strong>
+                {restaurant.tagline && <p className="owner-preview__tagline">{restaurant.tagline}</p>}
+                <div className="record__meta">
+                  {restaurant.cuisines.length > 0 && <span>{restaurant.cuisines.slice(0, 2).join(' · ')}</span>}
+                  {restaurant.location && <span>{restaurant.location}</span>}
+                  {restaurant.priceForTwo > 0 && <span>{formatCurrency(restaurant.priceForTwo)} for two</span>}
+                  {restaurant.khabo.rating > 0
+                    ? <span><strong>{restaurant.khabo.rating.toFixed(1)}</strong> Khabo</span>
+                    : sourceRating > 0
+                      ? <span><strong>{sourceRating.toFixed(1)}</strong> source rating</span>
+                      : null}
+                </div>
+              </div>
+            </div>
+            <div className="panel__body">
+              <p className="t-xs" style={{ color: 'var(--ink-faint)', margin: '0 0 var(--s3)' }}>
+                Anything empty above is empty on your public page too.
+              </p>
+              <Button variant="ghost" size="sm" to={`/restaurant/${restaurant.id}`} iconAfter={ExternalLink}>
+                Open the real page
+              </Button>
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="panel__head">
+              <h2 className="panel__title">Insights</h2>
+              <span className="panel__hint">Not measured yet</span>
+            </div>
+            <div className="console-empty console-empty--inset">
+              <span className="console-empty__icon"><LineChart size={20} aria-hidden="true" /></span>
+              <h3 className="console-empty__title">No audience data is recorded</h3>
+              <p className="console-empty__text">
+                Khabo Kothay does not yet record how many people open your listing, read your menu or
+                tap for directions. When that measurement exists it will appear here. Until then this
+                space stays empty rather than showing an estimate.
+              </p>
+            </div>
+          </section>
         </div>
       </div>
-      <p className="t-xs" style={{ color: 'var(--ink-faint)' }}>
-        Demo panel — changes are stored in this browser. {restaurantName} cannot be renamed or deleted here.
+
+      <p className="console-footnote">
+        <Info size={14} aria-hidden="true" />
+        <span>
+          The figures on this page are counts of your own records — dishes, offers and reviews — not
+          audience measurement.{' '}
+          {configured
+            ? 'Menu and offer changes are saved to your restaurant’s record. Profile edits and discovery-tag suggestions are held as private drafts in this browser until a Khabo Kothay reviewer approves them.'
+            : 'No backend is connected in this build, so everything you change here is stored in this browser only.'}
+        </span>
       </p>
-    </div>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------ */
 
-function ProfileTab({ restaurantId }: { restaurantId: string }) {
-  const restaurant = restaurants.find((r) => r.id === restaurantId)!;
+function ProfileTab({ restaurant }: { restaurant: Restaurant }) {
+  const restaurantId = restaurant.id;
   const draft = getRestaurantDraft(restaurantId);
   // Every field is PRELOADED from the current public listing — a draft only
   // overrides what the owner actually changed; untouched fields stay populated.
@@ -207,6 +684,7 @@ function ProfileTab({ restaurantId }: { restaurantId: string }) {
   const [notice, setNotice] = useState<string | null>(null);
 
   const status = draft?.status ?? 'published';
+  const locked = status === 'pending';
 
   const save = (submit: boolean) => {
     upsertRestaurantDraft({
@@ -227,79 +705,184 @@ function ProfileTab({ restaurantId }: { restaurantId: string }) {
   };
 
   return (
-    <div className="panel">
-      <div className="panel__head">
-        <h2>Restaurant profile</h2>
-        <span className={`admin-status admin-status--${status}`}>{status}</span>
-      </div>
-      <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-        This is the current public listing. Edits become a draft — only an executive-approved draft is
-        published to your public page, so nothing changes without review.
-      </p>
-
-      {status === 'pending' && (
-        <p className="admin-banner" role="status"><Info size={13} aria-hidden="true" /> Changes are pending executive review and cannot be edited until a decision is made.</p>
+    <>
+      {/* The draft state is a property of the whole submission, not of one
+          field group, so it is stated once here rather than as a pill floating
+          beside a panel title. Emerald is reserved for verification in this
+          design system and "published" is not a verification act, so no state
+          here borrows it. */}
+      {locked ? (
+        <div className="console-banner console-banner--pending" role="status">
+          <Info size={16} aria-hidden="true" />
+          <div className="console-banner__body">
+            <strong>Your changes are in review</strong>
+            <p>
+              These fields are locked until Khabo Kothay approves or declines your submission. Your
+              public page is unchanged in the meantime.
+            </p>
+          </div>
+        </div>
+      ) : status === 'draft' ? (
+        <div className="console-banner console-banner--pending" role="status">
+          <Info size={16} aria-hidden="true" />
+          <div className="console-banner__body">
+            <strong>You have unsubmitted changes</strong>
+            <p>
+              Your edits are saved privately and nothing public has changed. Submit them for review
+              to update your listing.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="console-banner" role="note">
+          <Info size={16} aria-hidden="true" />
+          <div className="console-banner__body">
+            <strong>Nothing here is public until it is approved</strong>
+            <p>
+              These fields hold your current public listing. Saving keeps a private draft; submitting
+              sends it for review. Your live page only changes after a reviewer approves it.
+            </p>
+          </div>
+        </div>
       )}
 
-      <form
-        className="admin-form"
-        onSubmit={(e) => { e.preventDefault(); save(true); }}
-      >
-        <div className="admin-form__row">
-          <label className="field">
-            <span className="field__label">Name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} disabled={status === 'pending'} />
-          </label>
-          <label className="field">
-            <span className="field__label">Cuisines (comma separated)</span>
-            <input value={cuisines} onChange={(e) => setCuisines(e.target.value)} disabled={status === 'pending'} />
-          </label>
-        </div>
-        <div className="admin-form__row">
-          <label className="field">
-            <span className="field__label">Address</span>
-            <input value={address} onChange={(e) => setAddress(e.target.value)} disabled={status === 'pending'} />
-          </label>
-          <label className="field">
-            <span className="field__label">Opening hours</span>
-            <input value={openingHours} onChange={(e) => setOpeningHours(e.target.value)} disabled={status === 'pending'} />
-          </label>
-        </div>
-        <label className="field">
-          <span className="field__label">Tagline</span>
-          <input value={tagline} onChange={(e) => setTagline(e.target.value)} disabled={status === 'pending'} />
-        </label>
-        <label className="field">
-          <span className="field__label">Description</span>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} disabled={status === 'pending'} />
-        </label>
-        <label className="field">
-          <span className="field__label">Highlights (one per line)</span>
-          <textarea value={highlights} onChange={(e) => setHighlights(e.target.value)} rows={4} disabled={status === 'pending'} />
-        </label>
-        <div className="admin-form__actions">
-          <button type="button" className="btn btn--ghost" onClick={() => save(false)} disabled={status === 'pending'}>
-            <Save size={14} aria-hidden="true" /> Save draft
-          </button>
-          <button type="submit" className="btn btn--primary" disabled={status === 'pending'}>
-            <Send size={14} aria-hidden="true" /> Submit for review
-          </button>
-        </div>
-        {notice && <p className="t-sm" style={{ color: 'var(--success)' }}><Check size={12} aria-hidden="true" /> {notice}</p>}
-      </form>
+      <form className="admin-form" onSubmit={(e) => { e.preventDefault(); save(true); }}>
+        <section className="panel">
+          <div className="panel__head">
+            <h2 className="panel__title">Identity</h2>
+          </div>
+          <div className="admin-form__row">
+            <Field label="Restaurant name">
+              <input value={name} onChange={(e) => setName(e.target.value)} disabled={locked} />
+            </Field>
+            <Field label="Cuisines" hint="Comma separated. These decide which cuisine pages list you.">
+              <input value={cuisines} onChange={(e) => setCuisines(e.target.value)} disabled={locked} placeholder="Bengali, Kebab, Continental" />
+            </Field>
+          </div>
+          <Field label="Tagline">
+            <input value={tagline} onChange={(e) => setTagline(e.target.value)} disabled={locked} placeholder="One line a diner reads under your name" />
+          </Field>
+        </section>
 
-      <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s3)' }}>
-        Photos can't be edited here yet (no storage backend) — current imagery comes from Google Maps links on this listing.
-      </p>
-    </div>
+        <section className="panel">
+          <div className="panel__head">
+            <h2 className="panel__title">Where and when</h2>
+          </div>
+          <div className="admin-form__row">
+            <Field label="Address">
+              <input value={address} onChange={(e) => setAddress(e.target.value)} disabled={locked} />
+            </Field>
+            <Field label="Opening hours">
+              <input value={openingHours} onChange={(e) => setOpeningHours(e.target.value)} disabled={locked} placeholder="12:00 PM – 11:00 PM" />
+            </Field>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel__head">
+            <h2 className="panel__title">Your story</h2>
+            <span className="panel__hint">Shown on your public page</span>
+          </div>
+          <Field label="Description">
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} disabled={locked} />
+          </Field>
+          <Field label="Highlights" hint="One per line — the short points listed beside your description.">
+            <textarea value={highlights} onChange={(e) => setHighlights(e.target.value)} rows={4} disabled={locked} />
+          </Field>
+        </section>
+
+        <div className="admin-form__actions">
+          {/* `unavailable`, not `disabled`. `locked` means a draft is already
+              with the editors — a real, temporary, explicable state. As
+              `disabled` it dropped both controls out of the tab order and
+              said nothing, so an owner who had just submitted found two
+              dead buttons and no reason for them. */}
+          <Button
+            variant="ghost"
+            icon={Save}
+            onClick={() => save(false)}
+            unavailable={locked}
+            unavailableReason="Your last submission is with our editors — you can edit again once it clears."
+          >
+            Save draft
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            icon={Send}
+            unavailable={locked}
+            unavailableReason="Already submitted — our editors are reading this draft now."
+          >
+            Submit for review
+          </Button>
+          <span className="field__hint">Photos are managed separately, under Photos.</span>
+        </div>
+        {notice && (
+          <div className="console-banner console-banner--ok" role="status">
+            <Check size={16} aria-hidden="true" />
+            <div className="console-banner__body"><p>{notice}</p></div>
+          </div>
+        )}
+      </form>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------ */
 
-function PhotosTab({ restaurantId }: { restaurantId: string }) {
-  const restaurant = restaurants.find((r) => r.id === restaurantId)!;
-  const googlePhotos = restaurant.google?.photos ?? [];
+/**
+ * One photograph in the console's grid.
+ *
+ * Two things went wrong here, and both showed up as the same thing on screen —
+ * a line of grey text where a photograph should be.
+ *
+ * 1. A bare `<img>` with no failure handling renders its `alt` when the fetch
+ *    fails, and these fetches do fail: Chrome answers a fraction of them with
+ *    ERR_BLOCKED_BY_ORB, measured live against the linked Google URLs. It is
+ *    intermittent, so one retry against a fresh URL recovers most of it; a tile
+ *    that still cannot load says so as a tile rather than impersonating a
+ *    caption.
+ * 2. The stored links are 122×92 thumbnails. Even when they loaded, they were
+ *    being blown up ~1.4× in a 162px tile, which is the softness that made the
+ *    panel look unfinished.
+ */
+function ConsolePhoto({ url, alt }: { url: string; alt: string }) {
+  const [attempt, setAttempt] = useState(0);
+
+  if (attempt > 1) {
+    return (
+      <div className="photo-tile photo-tile--unavailable" role="img" aria-label={`${alt} — could not be loaded`}>
+        <ImageOff size={18} aria-hidden="true" />
+        <span>Couldn’t be loaded</span>
+      </div>
+    );
+  }
+
+  // 480 covers the 162px tile at 3× and keeps the file small. The retry adds a
+  // cache-buster so the browser re-requests instead of replaying the failure.
+  const sized = googlePhotoUrlAtWidth(url, 480);
+  const src = attempt === 0 ? sized : `${sized}${sized.includes('?') ? '&' : '?'}retry=1`;
+
+  return (
+    <img
+      className="photo-tile"
+      src={src}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setAttempt((a) => a + 1)}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function PhotosTab({ restaurant }: { restaurant: Restaurant }) {
+  const restaurantId = restaurant.id;
+  // Only photos the browser can actually resolve. A Places API photoRef with no
+  // imageUrl can't be rendered here, so it is not counted as a photo either.
+  const googlePhotos = (restaurant.google?.photos ?? []).filter((p) => Boolean(p.imageUrl));
   const configured = isSupabaseConfigured();
   const [ownerImages, setOwnerImages] = useState<{ id: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -336,99 +919,119 @@ function PhotosTab({ restaurantId }: { restaurantId: string }) {
   };
 
   return (
-    <div className="panel">
-      <div className="panel__head"><h2>Restaurant photos</h2></div>
+    <>
+      <section className="panel">
+        <div className="panel__head">
+          <h2 className="panel__title">Your uploads</h2>
+          <span className="panel__hint">{configured ? `${ownerImages.length} photo${ownerImages.length === 1 ? '' : 's'}` : 'Not available'}</span>
+        </div>
 
-      {configured ? (
-        <div style={{ marginTop: 'var(--s3)' }}>
-          <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-            Upload owner-managed photos. They are stored in Supabase Storage and listed below.
-          </p>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            disabled={uploading}
-            onChange={onUpload}
-            style={{ marginTop: 'var(--s3)' }}
-          />
-          {uploading && <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Uploading…</p>}
-          {error && (
-            <p className="t-sm" style={{ color: 'var(--danger, #b00020)' }}>
-              {error}
+        {configured ? (
+          <>
+            <p className="t-sm" style={{ color: 'var(--ink-soft)', margin: '0 0 var(--s4)' }}>
+              Photographs you upload are stored against your restaurant and kept separate from the
+              imagery read from your verified source.
             </p>
-          )}
-          {ownerImages.length > 0 && (
-            <>
-              <h3 className="t-sm" style={{ marginTop: 'var(--s4)' }}>Owner uploads</h3>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                  gap: 'var(--s3)',
-                  marginTop: 'var(--s3)',
-                }}
-              >
+
+            {/* The documented exception. A file picker's trigger has to be
+                the `<label>` wrapping its `<input type="file">`, so this one
+                control borrows `.btn`'s paint rather than using `Button`. The
+                state cursor moved to `.upload-trigger[data-busy]` in
+                primitives.css — a cursor that depends on state is a
+                stylesheet's job — and the wait now shows the same spinner
+                every other busy control in the product shows, at the same
+                16px as the icon it replaces. */}
+            <label className="btn btn--primary btn--sm upload-trigger" data-busy={uploading || undefined}>
+              {uploading
+                ? <span className="kk-spinner" aria-hidden="true" />
+                : <Upload size={16} aria-hidden="true" />}
+              {uploading ? 'Uploading…' : 'Upload a photo'}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                disabled={uploading}
+                onChange={onUpload}
+                className="sr-only"
+              />
+            </label>
+
+            {error && (
+              <div className="console-banner console-banner--danger" role="alert" style={{ marginTop: 'var(--s4)' }}>
+                <Info size={16} aria-hidden="true" />
+                <div className="console-banner__body"><p>{error}</p></div>
+              </div>
+            )}
+
+            {ownerImages.length > 0 ? (
+              <div className="photo-grid">
                 {ownerImages.map((img) => (
-                  <img
-                    key={img.id}
-                    src={img.url}
-                    alt={`${restaurant.name} owner photo`}
-                    style={{ width: '100%', borderRadius: 10, aspectRatio: '4 / 3', objectFit: 'cover' }}
-                  />
+                  <ConsolePhoto key={img.id} url={img.url} alt={`${restaurant.name} owner photo`} />
                 ))}
               </div>
-            </>
-          )}
-        </div>
-      ) : (
-        <p className="t-sm" style={{ color: 'var(--ink-soft)', marginTop: 'var(--s3)' }}>
-          Photo uploads aren’t enabled in this build — there is no storage backend yet. The photos
-          below are pulled from the venue’s linked source and are read-only here.
-        </p>
-      )}
+            ) : (
+              <div className="console-empty console-empty--inset">
+                <span className="console-empty__icon"><ImageIcon size={20} aria-hidden="true" /></span>
+                <h3 className="console-empty__title">You haven’t uploaded a photo yet</h3>
+                <p className="console-empty__text">
+                  Your listing currently shows whatever imagery is linked from your verified source.
+                </p>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="console-empty console-empty--inset">
+            <span className="console-empty__icon"><ImageIcon size={20} aria-hidden="true" /></span>
+            <h3 className="console-empty__title">Uploads aren’t enabled in this build</h3>
+            <p className="console-empty__text">
+              There is no storage backend connected, so photographs can’t be added here. The imagery
+              below is read from your linked source and is read-only.
+            </p>
+          </div>
+        )}
+      </section>
 
-      {googlePhotos.length > 0 ? (
-        <>
-          <h3 className="t-sm" style={{ marginTop: 'var(--s4)' }}>Linked source photos</h3>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-              gap: 'var(--s3)',
-              marginTop: 'var(--s3)',
-            }}
-          >
+      <section className="panel">
+        <div className="panel__head">
+          <h2 className="panel__title">Linked source photos</h2>
+          <span className="panel__hint">{googlePhotos.length > 0 ? `${googlePhotos.length} photo${googlePhotos.length === 1 ? '' : 's'} · read-only` : 'None linked'}</span>
+        </div>
+        {googlePhotos.length > 0 ? (
+          <div className="photo-grid">
             {googlePhotos.map((p, i) => (
-              <img
-                key={i}
-                src={p.imageUrl ?? ''}
+              <ConsolePhoto
+                key={p.imageUrl ?? i}
+                url={p.imageUrl ?? ''}
                 alt={p.alt ?? `${restaurant.name} photo`}
-                style={{ width: '100%', borderRadius: 10, aspectRatio: '4 / 3', objectFit: 'cover' }}
               />
             ))}
           </div>
-        </>
-      ) : (
-        <p className="t-sm" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s4)' }}>
-          No photos are linked to this restaurant yet.
+        ) : (
+          <div className="console-empty console-empty--inset">
+            <span className="console-empty__icon"><ImageIcon size={20} aria-hidden="true" /></span>
+            <h3 className="console-empty__title">No photos are linked yet</h3>
+            <p className="console-empty__text">
+              Your listing has no imagery from a verified source. Khabo Kothay links these — you
+              can’t add them here.
+            </p>
+          </div>
+        )}
+        <p className="panel__foot">
+          Source metadata is preserved per image, so a diner can always see where a photograph came from.
         </p>
-      )}
-      <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s4)' }}>
-        Source metadata is preserved per image. Owner-managed uploads are stored in Supabase.
-      </p>
-    </div>
+      </section>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------ */
 
-function MenuTab({ restaurant, ownerMenu }: { restaurant: string; ownerMenu: OwnerMenuState }) {
+function MenuTab({ restaurant, ownerMenu }: { restaurant: Restaurant; ownerMenu: OwnerMenuState }) {
   if (isSupabaseConfigured()) return <OwnerMenuTab restaurant={restaurant} owner={ownerMenu} />;
   return <MenuEditorTab restaurant={restaurant} />;
 }
 
-function OwnerMenuTab({ restaurant, owner }: { restaurant: string; owner: OwnerMenuState }) {
+function OwnerMenuTab({ restaurant, owner }: { restaurant: Restaurant; owner: OwnerMenuState }) {
   const [localMenu, setLocalMenu] = useState<Menu | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -436,18 +1039,12 @@ function OwnerMenuTab({ restaurant, owner }: { restaurant: string; owner: OwnerM
     setLocalMenu(owner.menu);
   }, [owner.menu]);
 
-  // Menu writes require a backend-owned restaurant account (RLS: the signed-in
-  // user must be linked to the restaurant via `roles`). Dev-mock demo logins have
-  // no real Supabase session, so a write is rejected — surface that clearly
-  // instead of leaving a silently-dead button.
-  const EDIT_BLOCKED =
-    "Menu changes can't be saved from this account — it isn't linked to a verified restaurant owner in the backend. Sign in as the restaurant's owner to edit.";
   const runWrite = async (fn: () => Promise<void>) => {
     setError(null);
     try {
       await fn();
-    } catch {
-      setError(EDIT_BLOCKED);
+    } catch (err) {
+      setError(describeWriteFailure(err));
     }
   };
 
@@ -462,39 +1059,78 @@ function OwnerMenuTab({ restaurant, owner }: { restaurant: string; owner: OwnerM
   });
   const onCreate = () => runWrite(() => owner.createDraft());
 
-  const statusLabel =
-    owner.menuStatus === 'DRAFT'
-      ? 'Draft — private, not public yet'
-      : owner.menuStatus === 'PENDING_REVIEW'
-        ? 'Submitted for review'
-        : owner.menuStatus === 'PUBLISHED'
-          ? 'Live menu'
-          : 'No menu yet';
+  const state = menuStateLabel(owner.menuStatus);
+  const dishTotal = localMenu ? localMenu.categories.reduce((n, c) => n + c.dishes.length, 0) : 0;
 
+  /* A published menu record with no dishes on it is a real state in the data —
+     the restaurant has a menu row, and diners see nothing. Saying "this is your
+     live public menu" there would be technically true and practically a lie, so
+     the empty case gets its own sentence.
+
+     `owner.localDraft` is the demonstration venue's browser-only draft. Every
+     sentence below promises something about what happens next — approval, review,
+     notification — and none of it is true for a draft the backend never received.
+     So it gets said plainly rather than dressed as the real workflow. */
   const banner =
-    owner.menuStatus === 'DRAFT'
-      ? 'This is a private draft. Save it any time; it replaces your live menu only after Khabo Kothay approves a submission.'
-      : owner.menuStatus === 'PENDING_REVIEW'
-        ? "Submitted for review — you'll be notified when Khabo Kothay publishes it. It stays private until then."
-        : owner.menuStatus === 'PUBLISHED'
-          ? 'This is your live public menu. Create a draft to propose changes (forked from this menu).'
-          : 'No menu recorded yet. Create a draft to start building your menu.';
+    owner.localDraft
+      ? owner.menuStatus === 'PENDING_REVIEW'
+        ? 'Submitted — inside this demonstration only. Nothing reached Khabo Kothay’s reviewers, and reloading the page clears it.'
+        : 'A demonstration draft, held in this browser only. Edit it freely to see how the menu workflow behaves; it is never sent to Khabo Kothay, and reloading the page clears it.'
+      : owner.menuStatus === 'DRAFT'
+        ? 'This is a private draft. Save it any time; it replaces your live menu only after Khabo Kothay approves a submission.'
+        : owner.menuStatus === 'PENDING_REVIEW'
+          ? "Submitted for review — you'll be notified when Khabo Kothay publishes it. It stays private until then."
+          : owner.menuStatus === 'PUBLISHED'
+            ? dishTotal === 0
+              ? 'Your menu record is live but has no dishes on it, so diners see no menu at all. Create a draft to add them.'
+              : 'This is your live public menu. Create a draft to propose changes (forked from this menu).'
+            : 'No menu recorded yet. Create a draft to start building your menu.';
+
+  const bannerTone =
+    owner.localDraft ? 'console-banner console-banner--pending'
+    : owner.menuStatus === 'PENDING_REVIEW' ? 'console-banner console-banner--pending'
+    : owner.menuStatus === 'PUBLISHED' && dishTotal === 0 ? 'console-banner console-banner--pending'
+    : owner.menuStatus === 'PUBLISHED' ? 'console-banner console-banner--ok'
+    : 'console-banner';
+
+  const stateText =
+    owner.localDraft
+      ? owner.menuStatus === 'PENDING_REVIEW' ? 'Submitted (demonstration)' : 'Draft (this browser only)'
+      : owner.menuStatus === 'PUBLISHED' && dishTotal === 0 ? 'Live, but empty'
+      : state.text;
 
   return (
-    <div className="panel">
-      <div className="panel__head">
-        <h2>Menu manager</h2>
-        <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{statusLabel}</span>
-      </div>
-
-      {owner.loading && <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Loading your menu…</p>}
+    <>
+      {owner.loading && (
+        <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Loading your menu…</p>
+      )}
       {owner.status === 'error' && (
-        <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>Couldn't load your menu right now. Try again in a moment.</p>
+        <div className="console-banner console-banner--danger" role="alert">
+          <Info size={16} aria-hidden="true" />
+          <div className="console-banner__body">
+            <strong>Your menu couldn’t be loaded</strong>
+            <p>Nothing has been changed. Try again in a moment.</p>
+          </div>
+        </div>
       )}
 
-      {!owner.loading && owner.menuStatus && (
-        <div className="admin-banner" role="status">
-          <Info size={13} aria-hidden="true" /> {banner}
+      {!owner.loading && (
+        <div className={bannerTone} role="status">
+          <Info size={16} aria-hidden="true" />
+          <div className="console-banner__body">
+            <strong>{stateText}</strong>
+            <p>{banner}</p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="console-banner console-banner--danger" role="alert">
+          <Info size={16} aria-hidden="true" />
+          <div className="console-banner__body">
+            <strong>This change wasn’t saved</strong>
+            <p>{error}</p>
+          </div>
         </div>
       )}
 
@@ -503,49 +1139,63 @@ function OwnerMenuTab({ restaurant, owner }: { restaurant: string; owner: OwnerM
       )}
 
       {!owner.loading && !localMenu && owner.menuStatus === null && (
-        <div className="menu-empty">
-          <UtensilsCrossed size={24} aria-hidden="true" />
-          <div>
-            <h3>No menu recorded yet</h3>
-            <p>Create a draft to start building your menu.</p>
+        <div className="console-empty">
+          <span className="console-empty__icon"><UtensilsCrossed size={20} aria-hidden="true" /></span>
+          <h3 className="console-empty__title">No menu recorded yet</h3>
+          <p className="console-empty__text">
+            Create a draft to start building your menu. Nothing is public until you submit it and
+            Khabo Kothay approves it.
+          </p>
+          <div className="console-empty__actions">
+            <Button variant="primary" size="sm" icon={Plus} busy={owner.saving} onClick={onCreate}>
+              Create draft
+            </Button>
           </div>
         </div>
       )}
 
-      {error && (
-        <div className="admin-banner admin-banner--error" role="alert">
-          <Info size={13} aria-hidden="true" /> {error}
+      {(owner.canEdit || (!owner.canEdit && owner.menuStatus !== 'PENDING_REVIEW' && owner.menuStatus !== null)) && (
+        <div className="admin-form__actions">
+          {owner.canEdit ? (
+            <>
+              {/* `busy`, not `disabled`: these two already changed their own
+                  label mid-flight, which is the weakest signal a control can
+                  give — invisible to anyone whose eyes are on the menu rows
+                  above. The primitive keeps the words and adds the spinner
+                  and `aria-busy`. */}
+              <Button variant="ghost" icon={Save} busy={owner.saving} onClick={onSave}>
+                {owner.saving ? 'Saving…' : 'Save draft'}
+              </Button>
+              <Button variant="primary" icon={Send} busy={owner.submitting} onClick={onSubmit}>
+                {owner.submitting ? 'Submitting…' : 'Submit for review'}
+              </Button>
+              <span className="field__hint">
+                {owner.localDraft
+                  ? 'Both buttons act on the demonstration draft in this browser. Nothing leaves your device.'
+                  : 'Saving keeps it private. Submitting sends it for review.'}
+              </span>
+            </>
+          ) : (
+            <>
+              <Button variant="primary" icon={Plus} busy={owner.saving} onClick={onCreate}>
+                Create draft
+              </Button>
+              <span className="field__hint">A draft is forked from your live menu, so you start where you are.</span>
+            </>
+          )}
         </div>
       )}
-
-      <div className="admin-form__actions">
-        {owner.canEdit && (
-          <>
-            <button type="button" className="btn btn--primary" onClick={onSave} disabled={owner.saving}>
-              <Save size={14} aria-hidden="true" /> {owner.saving ? 'Saving…' : 'Save draft'}
-            </button>
-            <button type="button" className="btn btn--primary" onClick={onSubmit} disabled={owner.submitting}>
-              <Send size={14} aria-hidden="true" /> {owner.submitting ? 'Submitting…' : 'Submit for review'}
-            </button>
-          </>
-        )}
-        {!owner.canEdit && owner.menuStatus !== 'PENDING_REVIEW' && (
-          <button type="button" className="btn btn--primary" onClick={onCreate} disabled={owner.saving}>
-            <Plus size={14} aria-hidden="true" /> Create draft
-          </button>
-        )}
-      </div>
-    </div>
+    </>
   );
 }
 
 function MenuEditorTab({ restaurant, menu: menuProp, onPersist, readOnly }: {
-  restaurant: string;
+  restaurant: Restaurant;
   menu?: Menu;
   onPersist?: (next: Menu) => void;
   readOnly?: boolean;
 }) {
-  const demoMenu = getEffectiveMenu(restaurants.find((r) => r.id === restaurant)!);
+  const demoMenu = getEffectiveMenu(restaurant);
   const menu = menuProp ?? demoMenu;
   const [newCat, setNewCat] = useState('');
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -666,69 +1316,132 @@ function MenuEditorTab({ restaurant, menu: menuProp, onPersist, readOnly }: {
     });
   };
 
+  const dishTotal = menu.categories.reduce((n, c) => n + c.dishes.length, 0);
+
   return (
-    <div className="panel">
+    <section className="panel">
       <div className="panel__head">
-        <h2>Menu manager</h2>
-        <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{menu.categories.length} categories · changes go live immediately (demo)</span>
+        <h2 className="panel__title">Menu</h2>
+        <span className="panel__hint">
+          {menu.categories.length} categor{menu.categories.length === 1 ? 'y' : 'ies'} · {dishTotal} dish{dishTotal === 1 ? '' : 'es'}
+        </span>
       </div>
 
       {!readOnly && (
         <form className="admin-inline-form" onSubmit={addCategory}>
           <input value={newCat} onChange={(e) => setNewCat(e.target.value)} placeholder="New category name, e.g. Starters" aria-label="New category name" />
-          <button type="submit" className="btn btn--primary btn--sm"><Plus size={13} aria-hidden="true" /> Add category</button>
+          <Button type="submit" variant="ghost" size="sm" icon={Plus}>Add category</Button>
         </form>
       )}
 
       {menu.categories.length === 0 && (
-        <div className="menu-empty">
-          <UtensilsCrossed size={24} aria-hidden="true" />
-          <div>
-            <h3>No menu added yet</h3>
-            <p>
-              Add your first category to start building the menu. Dishes, prices and descriptions are
-              added per category and appear on your public page immediately (demo).
-            </p>
-          </div>
+        <div className="console-empty console-empty--inset">
+          <span className="console-empty__icon"><ChefHat size={20} aria-hidden="true" /></span>
+          <h3 className="console-empty__title">
+            {readOnly ? 'No dishes are recorded on this menu' : 'No menu added yet'}
+          </h3>
+          <p className="console-empty__text">
+            {readOnly
+              ? 'The menu record exists, but nothing has been added to it — so a diner opening your page sees no menu.'
+              : 'Add your first category to start building the menu. Dishes, prices and descriptions are added per category.'}
+          </p>
         </div>
       )}
 
       {menu.categories.map((cat) => (
-        <div key={cat.id} className="menu-cat-admin">
-          <div className="menu-cat-admin__head">
-            <h3>{cat.name}</h3>
-            <button type="button" className="btn btn--subtle btn--sm" onClick={() => removeCategory(cat.id)} aria-label={`Delete category ${cat.name}`}>
-              <Trash2 size={12} aria-hidden="true" />
-            </button>
+        <div key={cat.id} className="menu-cat">
+          <div className="console-section__head menu-cat__head">
+            <h3 className="console-section__title">{cat.name}</h3>
+            <span className="console-section__hint">{cat.dishes.length} dish{cat.dishes.length === 1 ? '' : 'es'}</span>
+            {!readOnly && (
+              <div className="row-actions">
+                <IconButton
+                  icon={Trash2}
+                  label={`Delete category ${cat.name}`}
+                  tone="danger"
+                  shape="square"
+                  onClick={() => removeCategory(cat.id)}
+                />
+              </div>
+            )}
           </div>
-          <ul className="menu-cat-admin__list">
+
+          <ul className="records">
             {cat.dishes.map((d) => (
-              <li key={d.id} className={editing?.dishId === d.id ? 'menu-dish-admin menu-dish-admin--editing' : 'menu-dish-admin'}>
+              <li key={d.id} className={editing?.dishId === d.id ? 'record record--stack' : 'record'}>
                 {editing?.dishId === d.id ? (
                   <form className="admin-inline-form admin-inline-form--edit" onSubmit={saveEdit}>
                     <input value={editName} onChange={(e) => setEditName(e.target.value)} aria-label="Dish name" />
                     <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} inputMode="numeric" aria-label="Price" className="admin-price-input" />
                     <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} aria-label="Description" placeholder="Short description (optional)" />
-                    <button type="submit" className="btn btn--primary btn--sm"><Save size={12} aria-hidden="true" /> Save</button>
-                    <button type="button" className="btn btn--subtle btn--sm" onClick={() => setEditing(null)}>Cancel</button>
+                    <Button type="submit" variant="primary" size="sm" icon={Save}>Save</Button>
+                    {/* `subtle`, not `ghost`. Save and Cancel sat side by side
+                        in the same weight; the one that discards work should
+                        not read as loud as the one that keeps it. */}
+                    <Button variant="subtle" size="sm" onClick={() => setEditing(null)}>Cancel</Button>
                   </form>
                 ) : (
                   <>
-                    <div className="menu-dish-admin__main">
-                      <strong>{d.name}</strong>
-                      <span className={`t-sm ${d.available ? '' : 'menu-dish--unavailable'}`}>{formatCurrency(d.price)}{!d.available && ' · unavailable'}</span>
-                      {d.featured && <span className="dish__tag">Chef's pick</span>}
-                      {d.isSignature && <span className="dish__tag dish__tag--signature">Signature</span>}
+                    <div className="record__main">
+                      <p className="record__title">
+                        {d.name}
+                        {d.isSignature && <span className="status-pill">Signature</span>}
+                        {d.featured && <span className="status-pill">Chef’s pick</span>}
+                      </p>
+                      <span className="record__meta">
+                        {d.description && <span>{d.description}</span>}
+                        {!d.available && <span className="status-text status-text--pending">Hidden from diners</span>}
+                      </span>
                     </div>
+                    <span className="record__figure">{formatCurrency(d.price)}</span>
                     {!readOnly && (
-                      <div className="menu-dish-admin__actions">
-                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => moveDish(cat.id, d.id, -1)} aria-label={`Move ${d.name} up`}><ArrowUp size={12} /></button>
-                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => moveDish(cat.id, d.id, 1)} aria-label={`Move ${d.name} down`}><ArrowDown size={12} /></button>
-                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => startEdit(cat.id, d)} aria-label={`Edit ${d.name}`}>Edit</button>
-                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleSignature(cat.id, d.id)} aria-label={d.isSignature ? 'Remove signature mark' : 'Mark as signature'}>{d.isSignature ? 'Unsign' : 'Sign'}</button>
-                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleFeatured(cat.id, d.id)} aria-label={d.featured ? 'Unfeature' : 'Feature'}>{d.featured ? 'Unfeature' : 'Feature'}</button>
-                        <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleDish(cat.id, d.id)} aria-label={d.available ? 'Mark unavailable' : 'Mark available'}>{d.available ? 'Hide' : 'Show'}</button>
-                        <button type="button" className="btn btn--subtle btn--sm" onClick={() => removeDish(cat.id, d.id)} aria-label={`Delete ${d.name}`}><Trash2 size={12} /></button>
+                      <div className="row-actions">
+                        <div className="row-actions__group">
+                          <IconButton icon={ArrowUp} label={`Move ${d.name} up`} shape="square" onClick={() => moveDish(cat.id, d.id, -1)} />
+                          <IconButton icon={ArrowDown} label={`Move ${d.name} down`} shape="square" onClick={() => moveDish(cat.id, d.id, 1)} />
+                        </div>
+                        <div className="row-actions__group">
+                          <IconButton
+                            icon={Star}
+                            shape="square"
+                            {...CONSOLE_ON}
+                            /* The star fills when it is on: a solid star is the
+                               recognised "kept" shape, and at 16px an outline
+                               against a pale ground is easy to miss. */
+                            fillWhenPressed
+                            pressed={Boolean(d.isSignature)}
+                            label={d.isSignature ? `Remove signature mark from ${d.name}` : `Mark ${d.name} as signature`}
+                            onClick={() => toggleSignature(cat.id, d.id)}
+                          />
+                          <IconButton
+                            icon={Award}
+                            shape="square"
+                            {...CONSOLE_ON}
+                            /* Not filled: a rosette with a ribbon becomes a blob
+                               the moment its interior is painted. */
+                            pressed={Boolean(d.featured)}
+                            label={d.featured ? `Remove chef’s pick from ${d.name}` : `Make ${d.name} a chef’s pick`}
+                            onClick={() => toggleFeatured(cat.id, d.id)}
+                          />
+                          <IconButton
+                            icon={d.available ? Eye : EyeOff}
+                            shape="square"
+                            {...CONSOLE_ON}
+                            /* This one already announced `aria-pressed` while
+                               carrying no visual pressed state at all, so a
+                               hidden dish looked exactly like a visible one to
+                               anyone not reading the row's status text. The
+                               primitive gives it the same soft ground as its two
+                               neighbours, and the glyph itself changes. */
+                            pressed={!d.available}
+                            label={d.available ? `Hide ${d.name} from diners` : `Show ${d.name} to diners`}
+                            onClick={() => toggleDish(cat.id, d.id)}
+                          />
+                        </div>
+                        <div className="row-actions__group">
+                          <IconButton icon={Pencil} label={`Edit ${d.name}`} shape="square" onClick={() => startEdit(cat.id, d)} />
+                          <IconButton icon={Trash2} label={`Delete ${d.name}`} tone="danger" shape="square" onClick={() => removeDish(cat.id, d.id)} />
+                        </div>
                       </div>
                     )}
                   </>
@@ -736,45 +1449,58 @@ function MenuEditorTab({ restaurant, menu: menuProp, onPersist, readOnly }: {
               </li>
             ))}
           </ul>
+
           {!readOnly && (
             addingTo === cat.id ? (
               <form className="admin-inline-form" onSubmit={(e) => addDish(e, cat.id)}>
                 <input value={dishName} onChange={(e) => setDishName(e.target.value)} placeholder="Dish name" aria-label="Dish name" />
                 <input value={dishPrice} onChange={(e) => setDishPrice(e.target.value)} inputMode="numeric" placeholder="Price" aria-label="Price" className="admin-price-input" />
                 <input value={dishDesc} onChange={(e) => setDishDesc(e.target.value)} placeholder="Short description (optional)" aria-label="Description" />
-                <button type="submit" className="btn btn--primary btn--sm"><Plus size={12} aria-hidden="true" /> Add</button>
-                <button type="button" className="btn btn--subtle btn--sm" onClick={() => setAddingTo(null)}>Cancel</button>
+                <Button type="submit" variant="primary" size="sm" icon={Plus}>Add</Button>
+                <Button variant="subtle" size="sm" onClick={() => setAddingTo(null)}>Cancel</Button>
               </form>
             ) : (
-              <button type="button" className="btn btn--ghost btn--sm" onClick={() => setAddingTo(cat.id)}><Plus size={12} aria-hidden="true" /> Add dish to {cat.name}</button>
+              <Button variant="ghost" size="sm" className="menu-cat__add" icon={Plus} onClick={() => setAddingTo(cat.id)}>
+                Add dish to {cat.name}
+              </Button>
             )
           )}
         </div>
       ))}
 
-      <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s3)' }}>
-        Price edits append a new recorded snapshot — users see the change as price history, and the executive can verify it.
+      <p className="panel__foot">
+        Changing a price appends a new recorded snapshot — diners see the change as price history,
+        and Khabo Kothay can verify it.
       </p>
-    </div>
+    </section>
   );
 }
 
 /* ------------------------------------------------------------------ */
 
+type OffersApi = ReturnType<typeof useRestaurantOffers>;
+
 function OffersTab({ restaurantName, myOffers, publicOffers, createOffer, submitOffer, removeOffer }: {
   restaurantName: string; myOffers: Offer[]; publicOffers: Offer[];
-  createOffer: (input: { title: string; discountLabel: string; value: string; validity: string; terms: string }) => void | Promise<void>;
-  submitOffer: (id: string) => void | Promise<void>;
-  removeOffer: (id: string) => void | Promise<void>;
+  createOffer: OffersApi['createOffer'];
+  submitOffer: OffersApi['submitOffer'];
+  removeOffer: OffersApi['removeOffer'];
 }) {
   const [form, setForm] = useState({ title: '', discountLabel: '', value: '', validity: '', terms: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [composing, setComposing] = useState(false);
   const { session } = useAuth();
 
   // Friendly labels for the offer lifecycle so owners can track status at a glance
   // (draft → pending approval → approved/public, plus scheduled/expired).
   const statusLabel = (s: Offer['status']): string =>
     ({ draft: 'Draft', pending: 'Pending approval', approved: 'Approved · public', scheduled: 'Scheduled', expired: 'Expired' } as Record<Offer['status'], string>)[s] ?? s;
+
+  const statusPill = (s: Offer['status']): string =>
+    s === 'approved' ? 'status-pill status-pill--ok'
+    : s === 'pending' ? 'status-pill status-pill--pending'
+    : s === 'expired' ? 'status-pill status-pill--danger'
+    : 'status-pill';
 
   const setField = (key: keyof typeof form, value: string) => {
     setForm({ ...form, [key]: value });
@@ -797,127 +1523,174 @@ function OffersTab({ restaurantName, myOffers, publicOffers, createOffer, submit
     });
     setForm({ title: '', discountLabel: '', value: '', validity: '', terms: '' });
     setErrors({});
-  };
-
-  const handleSubmitOffer = (id: string) => {
-    submitOffer(id);
+    setComposing(false);
   };
 
   return (
-    <div className="panel">
-      <div className="panel__head">
-        <h2>Offers for {restaurantName}</h2>
-        <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>Offers only appear publicly after executive approval</span>
-      </div>
-
-      <form className="admin-form" onSubmit={handleCreateOffer} noValidate>
-        <div className="admin-form__row">
-          <label className="field">
-            <span className="field__label">Title</span>
-            <input value={form.title} onChange={(e) => setField('title', e.target.value)} placeholder="e.g. Weekend biryani combo" />
-            {errors.title && <span className="field__error" role="alert">{errors.title}</span>}
-          </label>
-          <label className="field">
-            <span className="field__label">Discount label</span>
-            <input value={form.discountLabel} onChange={(e) => setField('discountLabel', e.target.value)} placeholder="e.g. 20% off" />
-            {errors.discountLabel && <span className="field__error" role="alert">{errors.discountLabel}</span>}
-          </label>
-        </div>
-        <div className="admin-form__row">
-          <label className="field">
-            <span className="field__label">Value</span>
-            <input value={form.value} onChange={(e) => setField('value', e.target.value)} placeholder="e.g. Save up to ৳400" />
-            {errors.value && <span className="field__error" role="alert">{errors.value}</span>}
-          </label>
-          <label className="field">
-            <span className="field__label">Validity</span>
-            <input value={form.validity} onChange={(e) => setField('validity', e.target.value)} placeholder="e.g. Weekdays, 12–4 PM" />
-            {errors.validity && <span className="field__error" role="alert">{errors.validity}</span>}
-          </label>
-        </div>
-        <label className="field">
-          <span className="field__label">Terms</span>
-          <input value={form.terms} onChange={(e) => setField('terms', e.target.value)} placeholder="Conditions of the offer" />
-          {errors.terms && <span className="field__error" role="alert">{errors.terms}</span>}
-        </label>
-        <div className="admin-form__actions">
-          <button type="submit" className="btn btn--primary"><Plus size={14} aria-hidden="true" /> Create offer (draft)</button>
-        </div>
-      </form>
-
-      <h3 style={{ marginTop: 'var(--s5)' }}>Your offers</h3>
-      <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s2)' }}>
-        Drafts are private. Submit one for executive approval — once approved it moves to “Currently public” below.
-      </p>
-      <div className="offer-admin-list">
-        {myOffers.length === 0 && <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>No offers created yet.</p>}
-        {myOffers.map((o) => (
-          <div key={o.id} className={`offer-admin-row offer-admin-row--${o.status}`}>
-            <div>
-              <strong>{o.title}</strong>
-              <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{o.discountLabel} · {o.validity}</span>
+    <>
+      <section className="panel">
+        <div className="panel__head">
+          <h2 className="panel__title">Your offers</h2>
+          <span className="panel__hint">{myOffers.length === 0 ? 'None yet' : `${myOffers.length} total`}</span>
+          {!composing && (
+            <div className="panel__actions">
+              <Button variant="primary" size="sm" icon={Plus} onClick={() => setComposing(true)}>
+                New offer
+              </Button>
             </div>
-            <span className={`admin-status admin-status--${o.status}`}>{statusLabel(o.status)}</span>
-            {o.status === 'draft' && (
-              <button type="button" className="btn btn--primary btn--sm" onClick={() => handleSubmitOffer(o.id)}><Send size={12} aria-hidden="true" /> Submit for approval</button>
-            )}
-            <button type="button" className="btn btn--subtle btn--sm" onClick={() => removeOffer(o.id)} aria-label={`Delete ${o.title}`}><Trash2 size={12} /></button>
-          </div>
-        ))}
-      </div>
+          )}
+        </div>
 
-      <h3 style={{ marginTop: 'var(--s5)' }}>Currently public</h3>
-      <div className="offer-admin-list">
-        {publicOffers.map((o) => (
-          <div key={o.id} className="offer-admin-row">
-            <div>
-              <strong>{o.title}</strong>
-              <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{o.discountLabel} · {o.validity}</span>
+        {composing && (
+          <form className="admin-form" onSubmit={handleCreateOffer} noValidate>
+            <div className="admin-form__row">
+              <Field label="Title" error={errors.title}>
+                <input value={form.title} onChange={(e) => setField('title', e.target.value)} placeholder="e.g. Weekend biryani combo" />
+              </Field>
+              <Field label="Discount label" error={errors.discountLabel}>
+                <input value={form.discountLabel} onChange={(e) => setField('discountLabel', e.target.value)} placeholder="e.g. 20% off" />
+              </Field>
             </div>
-            <span className="admin-status admin-status--approved">{o.source === 'seed' ? 'platform' : 'approved'}</span>
-          </div>
-        ))}
-      </div>
+            <div className="admin-form__row">
+              <Field label="Value" error={errors.value}>
+                <input value={form.value} onChange={(e) => setField('value', e.target.value)} placeholder="e.g. Save up to ৳400" />
+              </Field>
+              <Field label="Validity" error={errors.validity}>
+                <input value={form.validity} onChange={(e) => setField('validity', e.target.value)} placeholder="e.g. Weekdays, 12–4 PM" />
+              </Field>
+            </div>
+            <Field label="Terms" error={errors.terms}>
+              <input value={form.terms} onChange={(e) => setField('terms', e.target.value)} placeholder="Conditions of the offer" />
+            </Field>
+            <div className="admin-form__actions">
+              {/* `Save`, not `Plus`: the press writes a draft, it does not add
+                  another one. */}
+              <Button type="submit" variant="primary" icon={Save}>Save as draft</Button>
+              <Button variant="subtle" onClick={() => { setComposing(false); setErrors({}); }}>Cancel</Button>
+              <span className="field__hint">A draft is private until you submit it for approval.</span>
+            </div>
+          </form>
+        )}
 
-      <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s3)' }}>
-        {session?.name ?? 'You'} can manage only {restaurantName}'s offers — never another restaurant's.
-      </p>
-    </div>
+        {myOffers.length === 0 ? (
+          !composing && (
+            <div className="console-empty console-empty--inset">
+              <span className="console-empty__icon"><BadgePercent size={20} aria-hidden="true" /></span>
+              <h3 className="console-empty__title">No offers yet</h3>
+              <p className="console-empty__text">
+                An offer appears on your public page and in Khabo Kothay’s offer listings once it is
+                approved. Drafts stay private.
+              </p>
+            </div>
+          )
+        ) : (
+          <ul className="records">
+            {myOffers.map((o) => (
+              <li key={o.id} className="record">
+                <div className="record__main">
+                  <p className="record__title">
+                    {o.title}
+                    <span className={statusPill(o.status)}>{statusLabel(o.status)}</span>
+                  </p>
+                  <span className="record__meta">
+                    <span>{o.discountLabel}</span>
+                    <span>{o.validity}</span>
+                  </span>
+                </div>
+                <div className="row-actions">
+                  {o.status === 'draft' && (
+                    <Button variant="ghost" size="sm" icon={Send} onClick={() => submitOffer(o.id)}>
+                      Submit
+                    </Button>
+                  )}
+                  <IconButton
+                    icon={Trash2}
+                    label={`Delete ${o.title}`}
+                    tone="danger"
+                    shape="square"
+                    onClick={() => removeOffer(o.id)}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <h2 className="panel__title">Visible to diners</h2>
+          <span className="panel__hint">{publicOffers.length === 0 ? 'Nothing public' : `${publicOffers.length} live`}</span>
+        </div>
+        {publicOffers.length === 0 ? (
+          <p className="t-sm" style={{ color: 'var(--ink-soft)', margin: 0 }}>
+            Nothing of yours is showing on the public site right now.
+          </p>
+        ) : (
+          <ul className="records">
+            {publicOffers.map((o) => (
+              <li key={o.id} className="record">
+                <div className="record__main">
+                  <p className="record__title">{o.title}</p>
+                  <span className="record__meta">
+                    <span>{o.discountLabel}</span>
+                    <span>{o.validity}</span>
+                  </span>
+                </div>
+                <span className="status-pill status-pill--ok">{o.source === 'seed' ? 'Platform' : 'Approved'}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="panel__foot">
+          {session?.name ?? 'You'} can manage only {restaurantName}’s offers — never another restaurant’s.
+        </p>
+      </section>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------ */
 
-function ReviewsTab({ restaurantId, restaurantName, myReviews }: {
-  restaurantId: string; restaurantName: string; myReviews: ReturnType<typeof useUserReviews>;
+function ReviewsTab({ restaurant, myReviews }: {
+  restaurant: Restaurant; myReviews: ReturnType<typeof useUserReviews>;
 }) {
-  const restaurant = restaurants.find((r) => r.id === restaurantId)!;
   const all = [...myReviews, ...restaurant.khabo.reviews];
   return (
-    <div className="panel">
+    <section className="panel">
       <div className="panel__head">
-        <h2>Reviews for {restaurantName}</h2>
-        <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{all.length} community reviews</span>
+        <h2 className="panel__title">What diners wrote</h2>
+        <span className="panel__hint">{all.length === 0 ? 'None yet' : `${all.length} review${all.length === 1 ? '' : 's'}`}</span>
       </div>
-      <div className="reviews">
-        {all.map((r, i) => (
-          <blockquote key={`${r.id ?? i}`} className="review">
-            <div className="review__head">
-              <span className="review__avatar" aria-hidden="true">{r.author.charAt(0)}</span>
-              <div>
-                <strong>{r.author}{'userId' in r ? ' · You' : ''}</strong>
+      {all.length === 0 ? (
+        <div className="console-empty console-empty--inset">
+          <span className="console-empty__icon"><MessageSquareQuote size={20} aria-hidden="true" /></span>
+          <h3 className="console-empty__title">No reviews yet</h3>
+          <p className="console-empty__text">
+            Reviews written on Khabo Kothay appear here as soon as they are posted.
+          </p>
+        </div>
+      ) : (
+        <div className="reviews">
+          {all.map((r, i) => (
+            <blockquote key={`${r.id ?? i}`} className="review">
+              <div className="review__head">
+                <span className="review__avatar" aria-hidden="true">{r.author.charAt(0)}</span>
+                <div>
+                  <strong>{r.author}{'userId' in r ? ' · In the app' : ''}</strong>
+                </div>
+                <span className="review__date">{r.date}</span>
               </div>
-              <span className="review__date">{r.date}</span>
-            </div>
-            <p>“{r.comment}”</p>
-          </blockquote>
-        ))}
-        {all.length === 0 && <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>No reviews yet.</p>}
-      </div>
-      <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s3)' }}>
-        Reporting and reply-to-review arrive with moderation tooling in a future phase.
+              <p>“{r.comment}”</p>
+            </blockquote>
+          ))}
+        </div>
+      )}
+      <p className="panel__foot">
+        Replying to a review and reporting one arrive with moderation tooling — neither exists yet, so
+        neither is offered here.
       </p>
-    </div>
+    </section>
   );
 }
 
@@ -947,6 +1720,12 @@ function AttributesTab({ restaurantId, restaurantName }: { restaurantId: string;
   const current = effective[form.field] as string[];
   const available = meta.vocabulary.filter((v) => !current.includes(v));
 
+  const provenance =
+    effective.provenance === 'seed' ? 'curated by Khabo Kothay'
+    : effective.provenance === 'derived' ? 'derived from the venue’s own attributes (heuristic, not verified)'
+    : effective.provenance === 'verified' ? 'independently verified by Khabo Kothay'
+    : 'seed plus approved restaurant suggestions';
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!form.value) return;
@@ -966,103 +1745,131 @@ function AttributesTab({ restaurantId, restaurantName }: { restaurantId: string;
   };
 
   return (
-    <div className="panel">
-      <div className="panel__head">
-        <h2>Discovery tags</h2>
-        <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>{openCount} pending suggestion{openCount === 1 ? '' : 's'}</span>
+    <>
+      <div className="console-banner" role="note">
+        <Sparkles size={16} aria-hidden="true" />
+        <div className="console-banner__body">
+          <strong>You suggest, Khabo Kothay approves</strong>
+          <p>
+            These structured tags decide which searches surface {restaurantName}. A tag is never
+            inferred from your menu or description, and a suggestion has no effect on recommendations
+            until it is approved.
+          </p>
+        </div>
       </div>
-      <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-        These structured tags power Khabo Kothay's recommendations — what {restaurantName} is known for, who it's best for, and how it feels. You can <strong>suggest</strong> changes, but only an executive-approved tag is ever used by the recommendation engine. You can't claim attributes directly.
-      </p>
 
-      <h3 style={{ marginTop: 'var(--s5)' }}>Currently live (approved metadata)</h3>
-      <div className="admin-form__row" style={{ marginTop: 'var(--s3)' }}>
-        {FIELD_META.map((m) => (
-          <div key={m.key}>
-            <span className="field__label">{m.label}</span>
-            <div className="chip-row">
-              {(effective[m.key] as string[]).map((v) => (
-                <span key={v} className="chip">{v}</span>
-              ))}
-              {(effective[m.key] as string[]).length === 0 && <span className="t-sm" style={{ color: 'var(--ink-faint)' }}>None</span>}
-            </div>
+      <section className="panel">
+        <div className="panel__head">
+          <h2 className="panel__title">Live metadata</h2>
+          <span className="panel__hint">{provenance}</span>
+        </div>
+        <dl className="console-defs">
+          {FIELD_META.map((m) => {
+            const values = effective[m.key] as string[];
+            return (
+              <div key={m.key}>
+                <dt>{m.label}</dt>
+                <dd data-empty={values.length === 0 ? 'true' : undefined}>
+                  {values.length > 0 && (
+                    <span className="chip-row">
+                      {values.map((v) => <span key={v} className="chip">{v}</span>)}
+                    </span>
+                  )}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      </section>
+
+      <section className="panel">
+        <div className="panel__head">
+          <h2 className="panel__title">Suggest a change</h2>
+        </div>
+        <form className="admin-form" onSubmit={submit}>
+          <div className="admin-form__row admin-form__row--three">
+            <Field label="Attribute">
+              <select value={form.field} onChange={(e) => setForm({ ...form, field: e.target.value as IntelligenceSuggestion['field'], value: '' })}>
+                {FIELD_META.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Action">
+              <select value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value as 'add' | 'remove', value: '' })}>
+                <option value="add">Add</option>
+                <option value="remove">Remove</option>
+              </select>
+            </Field>
+            <Field label="Value">
+              <select value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })}>
+                <option value="">Choose…</option>
+                {form.action === 'add'
+                  ? available.map((v) => <option key={v} value={v}>{v}</option>)
+                  : current.map((v) => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </Field>
           </div>
-        ))}
-      </div>
-      <p className="t-xs" style={{ color: 'var(--ink-faint)' }}>
-        Provenance: {effective.provenance === 'seed'
-          ? 'curated by Khabo Kothay'
-          : effective.provenance === 'derived'
-            ? 'derived from the venue’s own attributes (heuristic, not verified)'
-            : effective.provenance === 'verified'
-              ? 'independently verified by Khabo Kothay'
-              : 'seed + approved restaurant suggestions'}.
-      </p>
-
-      <h3 style={{ marginTop: 'var(--s5)' }}>Suggest a change</h3>
-      <form className="admin-form" onSubmit={submit}>
-        <div className="admin-form__row">
-          <label className="field">
-            <span className="field__label">Attribute</span>
-            <select value={form.field} onChange={(e) => setForm({ ...form, field: e.target.value as IntelligenceSuggestion['field'], value: '' })}>
-              {FIELD_META.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
-            </select>
-          </label>
-          <label className="field">
-            <span className="field__label">Action</span>
-            <select value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value as 'add' | 'remove' })}>
-              <option value="add">Add</option>
-              <option value="remove">Remove</option>
-            </select>
-          </label>
-          <label className="field">
-            <span className="field__label">Value</span>
-            <select
-              value={form.value}
-              onChange={(e) => setForm({ ...form, value: e.target.value })}
+          <Field label="Why?" optional hint="Helps the reviewer decide.">
+            <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="e.g. We've been serving thalis for a decade" />
+          </Field>
+          <div className="admin-form__actions">
+            {/* `unavailable` + a reason. An empty select is a step not taken
+                yet, not a permanent no — and the old `disabled` skipped the
+                only submit on the panel without saying what it wanted. */}
+            <Button
+              type="submit"
+              variant="primary"
+              icon={Send}
+              unavailable={!form.value}
+              unavailableReason="Pick what to add or remove first."
             >
-              <option value="">Choose…</option>
-              {form.action === 'add'
-                ? available.map((v) => <option key={v} value={v}>{v}</option>)
-                : current.map((v) => <option key={v} value={v}>{v}</option>)}
-            </select>
-          </label>
-        </div>
-        <label className="field">
-          <span className="field__label">Why? (optional, helps the executive decide)</span>
-          <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="e.g. We've been serving thalis for a decade" />
-        </label>
-        <div className="admin-form__actions">
-          <button type="submit" className="btn btn--primary" disabled={!form.value}>
-            <Send size={14} aria-hidden="true" /> Submit for approval
-          </button>
-        </div>
-        {notice && <p className="t-sm" style={{ color: 'var(--success)' }}><Check size={12} aria-hidden="true" /> {notice}</p>}
-      </form>
-
-      <h3 style={{ marginTop: 'var(--s5)' }}>Your suggestions</h3>
-      <div className="offer-admin-list">
-        {mine.length === 0 && <p className="t-sm" style={{ color: 'var(--ink-soft)' }}>No suggestions yet.</p>}
-        {mine.map((s) => (
-          <div key={s.id} className={`offer-admin-row offer-admin-row--${s.status}`}>
-            <div>
-              <strong>{s.add[0] ?? s.remove[0]}</strong>
-              <span className="t-sm" style={{ color: 'var(--ink-soft)' }}>
-                {s.add.length > 0 ? 'Add' : 'Remove'} · {FIELD_META.find((m) => m.key === s.field)?.label}
-                {s.note ? ` · “${s.note}”` : ''}
-              </span>
-            </div>
-            <span className={`admin-status admin-status--${s.status}`}>{s.status}</span>
+              Submit for approval
+            </Button>
           </div>
-        ))}
-      </div>
+          {notice && (
+            <div className="console-banner console-banner--ok" role="status">
+              <Check size={16} aria-hidden="true" />
+              <div className="console-banner__body"><p>{notice}</p></div>
+            </div>
+          )}
+        </form>
+      </section>
 
-      <p className="t-xs" style={{ color: 'var(--ink-faint)', marginTop: 'var(--s3)' }}>
-        A tag is never inferred from your menu or description — it only counts once approved and visible here as live metadata.
-      </p>
-    </div>
+      <section className="panel">
+        <div className="panel__head">
+          <h2 className="panel__title">Your suggestions</h2>
+          <span className="panel__hint">
+            {mine.length === 0 ? 'None yet' : `${openCount} pending of ${mine.length}`}
+          </span>
+        </div>
+        {mine.length === 0 ? (
+          <p className="t-sm" style={{ color: 'var(--ink-soft)', margin: 0 }}>
+            You haven’t suggested a tag yet.
+          </p>
+        ) : (
+          <ul className="records">
+            {mine.map((s) => (
+              <li key={s.id} className="record">
+                <div className="record__main">
+                  <p className="record__title">{s.add[0] ?? s.remove[0]}</p>
+                  <span className="record__meta">
+                    <span>{s.add.length > 0 ? 'Add' : 'Remove'}</span>
+                    <span>{FIELD_META.find((m) => m.key === s.field)?.label}</span>
+                    {s.note && <span>“{s.note}”</span>}
+                  </span>
+                </div>
+                <span className={
+                  s.status === 'pending' ? 'status-pill status-pill--pending'
+                  : s.status === 'approved' ? 'status-pill status-pill--ok'
+                  : s.status === 'rejected' ? 'status-pill status-pill--danger'
+                  : 'status-pill'
+                }>
+                  {s.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
   );
 }
-
-/* ------------------------------------------------------------------ */
-

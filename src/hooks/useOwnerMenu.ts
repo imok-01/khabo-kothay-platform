@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Menu } from '../domain/menu';
 import type { MenuStatus } from '../integrations/supabase/database.types';
 import { menuRepository } from '../repositories/menuRepository';
+import { KK_DEMO_RESTAURANT_ID } from '../data/devSimulation';
 
 export interface OwnerMenuState {
   status: 'loading' | 'ready' | 'empty' | 'error';
@@ -12,6 +13,12 @@ export interface OwnerMenuState {
   canEdit: boolean;
   saving: boolean;
   submitting: boolean;
+  /**
+   * True when the working draft exists in this browser only — the demo venue's
+   * fallback (see DEMO DRAFTS below). The UI must say so wherever it describes
+   * what happens next, because for a local draft the answer is "nothing".
+   */
+  localDraft: boolean;
   /** Persist the current editor content as a DRAFT (creates one if needed). */
   saveDraft: (menu: Menu) => Promise<void>;
   /** DRAFT -> PENDING_REVIEW. */
@@ -20,6 +27,31 @@ export interface OwnerMenuState {
   createDraft: () => Promise<void>;
   reload: () => void;
 }
+
+/* ------------------------------------------------------------------ */
+/* DEMO DRAFTS                                                         */
+/*                                                                     */
+/* A menu write needs an authenticated owner. The demo logins are not   */
+/* authenticated against Supabase at all — a create-draft POST arrives  */
+/* as role `anon` and comes back 401 / 42501 "permission denied for     */
+/* table menus". Measured, not assumed.                                 */
+/*                                                                     */
+/* That is correct for a real venue: nobody should be able to edit      */
+/* Almajlis's menu from a demo phone number, and the error now says so  */
+/* accurately. But KK Demo Restaurant exists precisely to demonstrate   */
+/* the lifecycle, so when the backend refuses it, the draft is kept     */
+/* here instead — in memory, for the life of the page, keyed by slug so */
+/* it survives moving between console tabs.                             */
+/*                                                                     */
+/* This is NOT a repository swap: reads still come from Supabase for    */
+/* every venue including this one, and no other restaurant can reach    */
+/* this path. It is a write fallback for one demonstration venue, and   */
+/* the UI labels every draft that lands here.                           */
+/* ------------------------------------------------------------------ */
+
+const DEMO_DRAFT_ID = 'demo-draft';
+const demoDrafts = new Map<string, { menu: Menu; status: MenuStatus }>();
+
 
 /**
  * Owner menu edit workflow hook.
@@ -42,6 +74,17 @@ export function useOwnerMenu(restaurantSlug: string, actorId: string): OwnerMenu
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
+    const held = demoDrafts.get(restaurantSlug);
+    if (held) {
+      setState({
+        status: 'ready',
+        menu: held.menu,
+        menuStatus: held.status,
+        menuId: DEMO_DRAFT_ID,
+        loading: false,
+      });
+      return;
+    }
     setState((s) => ({ ...s, loading: true }));
     try {
       const res = await menuRepository.fetchOwnerMenu(restaurantSlug);
@@ -65,9 +108,16 @@ export function useOwnerMenu(restaurantSlug: string, actorId: string): OwnerMenu
     async (menu: Menu) => {
       setSaving(true);
       try {
+        if (state.menuId === DEMO_DRAFT_ID) {
+          demoDrafts.set(restaurantSlug, { menu, status: 'DRAFT' });
+          setState((s) => ({ ...s, menuStatus: 'DRAFT', menu }));
+          return;
+        }
         let id = state.menuId;
         if (!id) id = (await menuRepository.createMenuDraft(restaurantSlug, actorId)) ?? null;
-        if (!id) return;
+        // A null id used to end the function quietly, which is how a Save button
+        // came to do nothing at all and say nothing about it.
+        if (!id) throw new Error('The backend did not return a draft to save into.');
         await menuRepository.saveMenuDraftContent(id, menu, actorId);
         setState((s) => ({ ...s, menuId: id, menuStatus: 'DRAFT', menu }));
       } finally {
@@ -81,21 +131,38 @@ export function useOwnerMenu(restaurantSlug: string, actorId: string): OwnerMenu
     if (!state.menuId) return;
     setSubmitting(true);
     try {
+      if (state.menuId === DEMO_DRAFT_ID) {
+        const held = demoDrafts.get(restaurantSlug);
+        if (held) held.status = 'PENDING_REVIEW';
+        setState((s) => ({ ...s, menuStatus: 'PENDING_REVIEW' }));
+        return;
+      }
       await menuRepository.submitMenuForReview(state.menuId, actorId);
       setState((s) => ({ ...s, menuStatus: 'PENDING_REVIEW' }));
     } finally {
       setSubmitting(false);
     }
-  }, [state.menuId, actorId]);
+  }, [state.menuId, restaurantSlug, actorId]);
 
   const createDraft = useCallback(async () => {
-    const id = await menuRepository.createMenuDraft(restaurantSlug, actorId);
-    if (!id) return;
     // Fork from the currently displayed (RLS-readable) menu content so the owner
     // starts from their live menu rather than an empty sheet.
     const base = state.menu ?? { restaurantId: restaurantSlug, categories: [], updatedAt: new Date().toISOString() };
-    await menuRepository.saveMenuDraftContent(id, base, actorId);
-    setState((s) => ({ ...s, menuId: id, menuStatus: 'DRAFT', menu: base }));
+    setSaving(true);
+    try {
+      const id = await menuRepository.createMenuDraft(restaurantSlug, actorId);
+      if (!id) throw new Error('The backend did not create a draft.');
+      await menuRepository.saveMenuDraftContent(id, base, actorId);
+      setState((s) => ({ ...s, menuId: id, menuStatus: 'DRAFT', menu: base }));
+    } catch (err) {
+      // The demonstration venue keeps its draft locally rather than dead-ending;
+      // every other restaurant reports the real failure to the caller.
+      if (restaurantSlug !== KK_DEMO_RESTAURANT_ID) throw err;
+      demoDrafts.set(restaurantSlug, { menu: base, status: 'DRAFT' });
+      setState((s) => ({ ...s, menuId: DEMO_DRAFT_ID, menuStatus: 'DRAFT', menu: base }));
+    } finally {
+      setSaving(false);
+    }
   }, [restaurantSlug, actorId, state.menu]);
 
   return {
@@ -107,6 +174,7 @@ export function useOwnerMenu(restaurantSlug: string, actorId: string): OwnerMenu
     canEdit: state.menuStatus === 'DRAFT',
     saving,
     submitting,
+    localDraft: state.menuId === DEMO_DRAFT_ID,
     saveDraft,
     submitForReview,
     createDraft,

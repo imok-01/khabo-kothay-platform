@@ -186,6 +186,10 @@ class SupabaseMenuRepository implements MenuRepository {
   }
 
   async fetchMenuForRestaurant(restaurantId: string): Promise<Menu | null> {
+    // The dev simulation's isolated demo venue keeps its curated fixture menu.
+    if (isDevSimulation() && restaurantId === DEV_DEMO_RESTAURANT.id) {
+      return getMenuOverride(restaurantId) ?? DEV_DEMO_MENU;
+    }
     // Route ids are slugs, but the DB keys menus by the restaurant UUID.
     const uuid = await resolveRestaurantUuid(restaurantId);
     if (!uuid) return null;
@@ -266,6 +270,9 @@ class SupabaseMenuRepository implements MenuRepository {
   }
 
   async fetchOwnerMenu(restaurantId: string): Promise<{ menu: Menu | null; status: MenuStatus | null; menuId: string | null }> {
+    if (isDevSimulation() && restaurantId === DEV_DEMO_RESTAURANT.id) {
+      return mockMenuRepository.fetchOwnerMenu(restaurantId);
+    }
     const uuid = await resolveRestaurantUuid(restaurantId);
     if (!uuid) return { menu: null, status: null, menuId: null };
     const [menus, sources] = await Promise.all([
@@ -357,9 +364,15 @@ class SupabaseMenuRepository implements MenuRepository {
   }
 }
 
-/** Active repository — dev simulation forces the mock store; Supabase otherwise. */
-export const menuRepository: MenuRepository = isDevSimulation()
-  ? mockMenuRepository
-  : isSupabaseConfigured()
-    ? new SupabaseMenuRepository()
-    : mockMenuRepository;
+/**
+ * Active repository — Supabase when configured, the demo store otherwise.
+ *
+ * The dev simulation does NOT switch the source: forcing the demo store hid all
+ * 208 published Supabase menus, because `data/menus.ts` is a Kolkata-keyed
+ * fixture that matches no Dhaka venue and so returns an empty menu for every
+ * live restaurant. The isolated demo venue keeps its fixture menu through the
+ * id checks above instead.
+ */
+export const menuRepository: MenuRepository = isSupabaseConfigured()
+  ? new SupabaseMenuRepository()
+  : mockMenuRepository;

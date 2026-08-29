@@ -6,6 +6,8 @@ import {
   refreshGoogleSummary,
   subscribeGoogleRefresh,
 } from '../hooks/useGoogleRefresh';
+import { statusPill } from '../lib/statusPill';
+import { Button } from './ui';
 
 /** Stable idle metadata — avoids re-render loops in useSyncExternalStore. */
 const IDLE_META: GoogleRefreshMeta = { status: 'idle' };
@@ -20,8 +22,8 @@ interface GoogleRefreshButtonProps {
 /**
  * Executive-admin control: runs a controlled summary refresh (rating, count,
  * status, hours, price level, contact) for a place. Never touches photos,
- * menus, price history or Khabo Kothay fields. The status chip mirrors the
- * existing admin-status language used across the admin panels.
+ * menus, price history or Khabo Kothay fields. The status mark is the console's
+ * one `.status-pill`, derived from the refresh state through `statusPill`.
  */
 export default function GoogleRefreshButton({ placeId, label = 'Refresh Google data', showStatus = true }: GoogleRefreshButtonProps) {
   const meta = useSyncExternalStore(
@@ -37,9 +39,9 @@ export default function GoogleRefreshButton({ placeId, label = 'Refresh Google d
     void refreshGoogleSummary(placeId, { force: true });
   };
 
-  const statusClass =
-    meta.status === 'updated' ? 'approved'
-    : meta.status === 'failed' ? 'rejected'
+  const statusWord =
+    meta.status === 'updated' ? 'published'
+    : meta.status === 'failed' ? 'failed'
     : meta.status === 'refreshing' ? 'pending'
     : 'draft';
 
@@ -51,20 +53,25 @@ export default function GoogleRefreshButton({ placeId, label = 'Refresh Google d
     : 'Idle';
 
   return (
-    <span className="admin-table__actions" style={{ gap: 'var(--s2)', alignItems: 'center' }}>
-      <button
-        type="button"
-        className="btn btn--ghost btn--sm"
+    <span className="admin-table__actions">
+      {/* `busy` rather than a swapped label: the row already had the word
+          "Refreshing…" and nothing else, so a request in flight looked like a
+          button someone had renamed. The primitive adds the spinner and
+          `aria-busy` and swallows the click. */}
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={RefreshCw}
+        busy={running}
+        disabled={!placeId}
         onClick={onClick}
-        disabled={running || !placeId}
         title={meta.lastError ? `Last error: ${meta.lastError}` : undefined}
-        aria-label={`Refresh Google data for this place`}
+        aria-label="Refresh Google data for this place"
       >
-        <RefreshCw size={12} aria-hidden="true" className={running ? 'spin' : ''} />
         {running ? 'Refreshing…' : label}
-      </button>
-      {showStatus && (
-        <span className={`admin-status admin-status--${statusClass}`} title={meta.lastError}>
+      </Button>
+      {showStatus && meta.status !== 'idle' && (
+        <span className={statusPill(statusWord)} title={meta.lastError}>
           {statusText}
         </span>
       )}

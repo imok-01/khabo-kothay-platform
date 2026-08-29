@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { Restaurant } from '../../types';
 import {
   googleMapsDirectionsUrl,
-  googleMapsEmbedUrl,
   googleMapsPlaceUrl,
   googleMapsReviewsUrl,
   googleMapsSearchUrl,
@@ -95,18 +94,12 @@ describe('googleMapsDirectionsUrl', () => {
   });
 });
 
-describe('googleMapsEmbedUrl', () => {
-  it('builds a keyless embed URL at street zoom', () => {
-    const url = googleMapsEmbedUrl(base);
-    expect(url).toContain('output=embed');
-    expect(url).toContain('q=22.5546%2C88.3494');
-    expect(url).toContain('z=16');
-  });
-
-  it('never leaks an API key', () => {
-    expect(googleMapsEmbedUrl(base)).not.toContain('key=');
-  });
-});
+/* `googleMapsEmbedUrl` and its two tests are gone. The URL it produced 301s to
+   `/maps/embed?…&pb=…` and the redirect carries `X-Frame-Options: SAMEORIGIN`,
+   so the iframe rendered a blank box; the detail page now draws its own map
+   surface instead. The two assertions could not have caught this — both were
+   about the string, and the string was still exactly right. See the note in
+   maps.ts. */
 
 describe('googleMapsSearchUrl', () => {
   it('encodes the query', () => {

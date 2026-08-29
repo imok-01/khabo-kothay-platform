@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RestaurantImageSource } from '../domain/images';
 import { imageProvider } from '../hooks/useImages';
 import { loadImage } from '../lib/imageLoader';
@@ -57,19 +57,35 @@ export default function RestaurantImage({
     src ? (eager ? 'loading' : 'idle') : 'failed',
   );
   const wrapRef = useRef<HTMLDivElement>(null);
-  /** Measured container width (px) once the element is laid out. */
-  const measuredRef = useRef<number | undefined>(undefined);
+  /**
+   * The exact URL that was preloaded, set by `begin()` once the container has
+   * been measured. Held in state rather than derived in render because the
+   * measurement only exists after layout: a `useMemo` reading it computes
+   * `undefined` on the render that matters and then, having stable deps, never
+   * recomputes — which silently served the un-device-matched `src` to the
+   * `<img>` while the preload had fetched the small one, i.e. two downloads.
+   */
+  const [loadedUrl, setLoadedUrl] = useState<string | undefined>(undefined);
 
-  // Exact URL rendered — device-matched once measured, else the requested
-  // width. Computed in render so it always tracks the active source and the
-  // preload in the effect uses the identical formula (one download).
-  const deviceUrl = useMemo(() => {
-    if (!src || !measuredRef.current) return undefined;
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-    const needed = Math.ceil(measuredRef.current * dpr);
-    return imageProvider.urlFor(source!, Math.min(stepWidth(needed), width));
-  }, [src, source, width]);
+  /**
+   * The effect reads the source through a ref so the object itself is not a
+   * dependency. `src` is derived from it and is the honest signal (see below);
+   * a ref also keeps `exhaustive-deps` satisfied without a suppression.
+   */
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
 
+  /**
+   * Keyed on the resolved URL string, NOT on the `source` object. Callers build
+   * that object in render (`selectRestaurantPhotos(...).photos[0]`, whose every
+   * field comes from a `.map(p => ({…}))`), so its identity changes on every
+   * re-render of the parent — and with `source` in the deps, any unrelated
+   * re-render tore down a finished load and re-entered `begin()`, whose
+   * `setState('loading')` swaps the `<img>` back for the skeleton. On Explore
+   * that read as the whole grid flashing whenever a favourite / save / compare
+   * toggle re-rendered every card. A different photo always yields a different
+   * `src`, so the string carries every change that matters.
+   */
   useEffect(() => {
     if (!src) {
       setState('failed');
@@ -82,14 +98,10 @@ export default function RestaurantImage({
       if (cancelled) return;
       setState('loading');
       // Measure the container so the preload matches the rendered URL.
-      if (wrapRef.current) {
-        measuredRef.current = wrapRef.current.clientWidth || width;
-      }
+      const measured = wrapRef.current?.clientWidth || width;
       const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-      const url =
-        src && measuredRef.current
-          ? imageProvider.urlFor(source!, Math.min(stepWidth(Math.ceil(measuredRef.current * dpr)), width))
-          : src;
+      const url = imageProvider.urlFor(sourceRef.current!, Math.min(stepWidth(Math.ceil(measured * dpr)), width));
+      setLoadedUrl(url);
       loadImage(url).then((ok) => {
         if (cancelled) return;
         setState(ok ? 'loaded' : 'failed');
@@ -118,7 +130,7 @@ export default function RestaurantImage({
       cancelled = true;
       observer?.disconnect();
     };
-  }, [src, eager, source, width]);
+  }, [src, eager, width]);
 
   if (!src || state === 'failed') {
     if (fallback === 'none') return null;
@@ -137,7 +149,7 @@ export default function RestaurantImage({
       {state !== 'loaded' && <span className="skeleton skeleton--image" aria-hidden="true" />}
       {state === 'loaded' && (
         <img
-          src={deviceUrl ?? src}
+          src={loadedUrl ?? src}
           alt={alt ?? source?.alt}
           loading="lazy"
           decoding="async"

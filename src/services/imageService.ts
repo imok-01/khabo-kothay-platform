@@ -1,5 +1,6 @@
 import type { Restaurant } from '../types';
 import type { RestaurantImageSource } from '../domain/images';
+import { dedupePhotos } from '../domain/images';
 import { imageRepository } from '../repositories/imageRepository';
 
 export type PhotoContext = 'card' | 'hero' | 'gallery';
@@ -37,8 +38,11 @@ export const imageService = {
     }
 
     const all = [...google, ...khabo, ...(demo.length > 0 && (google.length > 0 || khabo.length > 0) ? [] : demo)];
-    // If real photos exist, prefer them over demo placeholders entirely.
-    const photos = google.length > 0 || khabo.length > 0 ? all : demo;
+    // If real photos exist, prefer them over demo placeholders entirely, and
+    // never hand the same picture back twice — google and khabo can both name a
+    // row of `image_references`, and a gallery that repeats a photo also counts
+    // it twice.
+    const photos = dedupePhotos(google.length > 0 || khabo.length > 0 ? all : demo);
     return {
       photos,
       leadSource: google.length > 0 ? 'google-photos' : khabo.length > 0 ? 'khabo' : 'demo',

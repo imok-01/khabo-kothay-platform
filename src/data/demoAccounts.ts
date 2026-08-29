@@ -36,12 +36,25 @@ export const DEMO_USER_IDS = [
   'kk-demo-customer-nila',
 ];
 
-export const DEMO_ACCOUNT_CREDENTIALS: Array<{ contact: string; role: string; restaurant?: string }> = [
+/**
+ * The one list of demo logins. The login screen renders straight from this, so
+ * a login can never be listed twice or drift from the seeded roles — it used to
+ * keep its own hand-copied copy, which had grown a duplicate entry.
+ *
+ * `note` distinguishes accounts that share a role, so two rows never read
+ * identically.
+ */
+export const DEMO_ACCOUNT_CREDENTIALS: Array<{
+  contact: string;
+  role: string;
+  restaurant?: string;
+  note?: string;
+}> = [
   { contact: '01712345678', role: 'executive' },
   { contact: '01812345678', role: 'restaurant_admin', restaurant: 'Seasonal Tastes' },
   { contact: '01912345678', role: 'restaurant_admin', restaurant: 'Almajlis Arabian Restaurant' },
-  { contact: '01612345678', role: 'user' },
-  { contact: '01512345678', role: 'user' },
+  { contact: '01612345678', role: 'user', note: 'part-completed profile' },
+  { contact: '01512345678', role: 'user', note: 'fresh account' },
   // Dev-simulation only — the KK Demo Restaurant owner login.
   { contact: KK_DEMO_RESTAURANT_ADMIN_CONTACT, role: 'restaurant_admin', restaurant: 'KK Demo Restaurant' },
 ];

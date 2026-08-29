@@ -1,0 +1,1378 @@
+/* ============================================================
+   KHABO KOTHAY — REFINEMENT PASS
+   ONE PRODUCT: HEADER, HERO, BUILDER, COLLECTIONS, FOOTER
+   ============================================================
+   Loaded LAST, after phase-c.css.
+
+   Phase C rebuilt the homepage's *rhythm* and left the surrounding
+   chrome alone, so the page read as two designs spliced together:
+   new editorial bands (ink/paper cadence, gold display serif,
+   numbered lists) wrapped in old product chrome (an emerald header,
+   an emerald filter panel, a bottle-green footer). Same page, two
+   brands.
+
+   This file closes that seam. It does not rebuild anything — every
+   Phase C layout, every class name and every data path is the one
+   that was there. What changes is the language they all speak:
+
+     1. ONE ACTION COLOUR. Espresso ink. See the note at the top of
+        design-system.css: --primary now points at the ink ramp and
+        emerald has retreated to verification only. That single token
+        move re-skins the buttons, the nav states, the builder and
+        the footer at once.
+
+     2. ONE EMPHASIS. Gold, and only as type: the italic serif word
+        in a headline, an eyebrow, an index numeral, a hairline. It
+        is never a surface, so it never competes with photography.
+
+     3. THE HEADER BELONGS TO THE PAGE. On the homepage the hero is
+        pulled up underneath the fixed bar and the bar drops all of
+        its chrome — lettering floating on the ink, materialising
+        into glass only once the page moves.
+
+     4. THE BUILDER IS THE PRODUCT. It reads as a titled instrument
+        panel with a gold edge and serif values, not as a row of
+        grey selects borrowed from a filter sidebar.
+
+   ORDERING HAZARD — read before editing.
+   There is no @layer in this project: six flat files at similar
+   specificity, where a later file's *unconditional* rule beats an
+   earlier file's *media-query* rule. So anything responsive that an
+   earlier file owns and this file re-declares has to be re-stated in
+   section 9 below. Every case where that applies is marked.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. THE HEADER
+   ------------------------------------------------------------
+   The bar was a separate website header sitting on top of a
+   product: a cream glass strip with an emerald rounded-rect logo
+   rotated -4deg, above an ink hero it had no relationship with.
+
+   Two changes. The logo becomes an ink chip with a gold mark, so
+   the brand lockup matches the wordmark beside it. And on the
+   homepage the hero extends up behind the bar, which lets the bar
+   be nothing at all until you scroll.
+   ------------------------------------------------------------ */
+
+/* `.app__body` reserves --nav-h for the fixed bar. On the homepage
+   that gap is what made the header a separate object, so the hero
+   reclaims it and pads itself instead. `.hero-c` renders on the
+   homepage only, which is what makes :has() the right test — it
+   survives any change to the routing or the wrapper markup. */
+.app__body:has(.hero-c) { padding-top: 0; }
+
+.nav__logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--grad-ink);
+  color: var(--on-ink-accent);
+  box-shadow: 0 2px 8px rgba(28, 23, 16, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  /* editorial.css tilts this -4deg. A tilted logo is a startup tell;
+     a premium mark sits straight and moves only on hover. */
+  transform: none;
+}
+.nav__brand:hover .nav__logo {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(28, 23, 16, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.nav__brand-mark {
+  font-size: 1.34rem;
+  letter-spacing: -0.035em;
+}
+.nav__brand-sub {
+  font-size: 0.56rem;
+  color: var(--ink-faint);
+}
+.nav__wordmark { transition: opacity var(--dur-med) var(--ease); }
+
+/* Drawer group labels, matched to the band eyebrows. */
+.nav__mobile-section > span {
+  color: var(--accent-strong);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+/* The bar is a flex row where the search box is the only greedy child, so
+   every label in it has to refuse to wrap — "Sign in" was breaking after
+   "Sign" and making the CTA a 63px-tall two-line block. `flex: none` on the
+   link group is what lets the search shrink instead.
+   NOT `display`: phase-c.css hides `.nav__links` below 900px. */
+.nav__links { flex: none; }
+.nav__link,
+.nav__cta,
+.nav__account-trigger,
+.nav__account-name { white-space: nowrap; }
+
+/* ---- Over the hero: ink glass, not nothing ---------------------
+   Set by Navbar only on `/` and only while scrollY <= 8, so the
+   light-on-light case can never happen on a paper page.
+
+   This used to be `background: transparent; backdrop-filter: none` —
+   literally no chrome, the bar's contents sitting straight on the hero
+   photograph. Legibility of `--on-ink-soft` links therefore depended
+   entirely on which image loaded. It became the same glass the paper
+   states use, in ink and held very thin.
+
+   Held thin was still a *band*. The three properties that made it one
+   were all on `.nav` itself, which is a 60px box with a hard bottom
+   edge: a fill that still had 0.12 alpha at y=60 stopped dead there, a
+   `backdrop-filter` stopped with it (the sharpest cut of the three,
+   because a blur boundary is visible even where a tint is not), and an
+   `inset 0 1px 0` sheen drew a bright rule along the top. Add the
+   hairline at 0.9 and the bar read as a separate solid strip laid over
+   the photograph rather than as part of it — the reported "header
+   cutting into the top of the hero".
+
+   So the ground moves to `::before`, which is free to be *taller than
+   the bar* and to dissolve inside itself. `inset: 0 0 -1.75rem`
+   overhangs 28px below the bar; the mask takes tint and blur together
+   to nothing across that overhang, so the material ends where nothing
+   is drawn instead of where the box ends. Same glass, same ink, same
+   tokens — no edge. The bar is now an overlay on the hero, and the only
+   geometry that changed is the pseudo-element's.
+
+   `::before` is the first child and `pointer-events: none`, so it needs
+   no z-index: `.nav__inner` is positioned too (polish.css §2) and paints
+   after it in DOM order, and `::after` — the hairline — after that.
+   The unconditional rule keeps the pseudo-element mounted at
+   `opacity: 0` on every route, so leaving the hero cross-fades this
+   ground out on the same `--tr-settle` that fades polish.css's paper
+   glass in. A pseudo-element that only exists inside the state cannot
+   transition out of it; it blinks. */
+.nav::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 -1.75rem 0;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity var(--tr-settle),
+    background-color var(--tr-settle),
+    backdrop-filter var(--tr-settle);
+  background: rgba(20, 16, 11, 0.42);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  /* Flat fill, gradient mask — one falloff, not two multiplied together.
+     The effective alpha is 0.42 at the top edge, ~0.35 through the band
+     the row's text occupies, and 0 by 28px below the bar. The text keeps
+     more ground than the old gradient gave it (~0.25 at the row's
+     centre); the hero keeps its top. */
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    rgba(0, 0, 0, 0.84) 44%,
+    rgba(0, 0, 0, 0.4) 72%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    rgba(0, 0, 0, 0.84) 44%,
+    rgba(0, 0, 0, 0.4) 72%,
+    transparent 100%
+  );
+}
+.nav.nav--over-hero::before {
+  opacity: 1;
+}
+.nav.nav--over-hero {
+  /* Nothing on the bar itself: no fill, no blur, no sheen, no hairline.
+     `background: none` and `backdrop-filter: none` are corrections of
+     index/editorial/phase-c, all of which give `.nav` a paper fill
+     unconditionally; the hairline goes to 0 rather than being deleted so
+     that scrolling brings it up through `--nav-line-o`'s own transition
+     instead of switching it on. */
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  --nav-line: var(--on-ink-line);
+  --nav-line-o: 0;
+  /* `--nav-sheen` used to be set here, dimming the search pill's travelling
+     highlight for this ground. The highlight is gone — hover moves the field
+     itself now rather than sweeping light across it — so the token has
+     nothing left to feed. polish.css §2. */
+}
+.nav.nav--over-hero .nav__brand-mark { color: var(--on-ink); }
+.nav.nav--over-hero .nav__brand-sub { color: var(--on-ink-faint); }
+.nav.nav--over-hero .nav__logo {
+  background: var(--on-ink-surface-2);
+  border: 1px solid var(--on-ink-line-strong);
+  box-shadow: none;
+}
+.nav.nav--over-hero .nav__link { color: var(--on-ink-soft); }
+.nav.nav--over-hero .nav__link svg { color: var(--on-ink-faint); }
+.nav.nav--over-hero .nav__link:hover {
+  color: var(--on-ink);
+  background: var(--on-ink-surface-2);
+}
+.nav.nav--over-hero .nav__link:hover svg,
+.nav.nav--over-hero .nav__link--on svg { color: var(--on-ink-accent); }
+.nav.nav--over-hero .nav__link--on { color: var(--on-ink); }
+
+.nav.nav--over-hero .nav__search {
+  background: var(--on-ink-surface);
+  border-color: var(--on-ink-line-strong);
+  box-shadow: none;
+}
+.nav.nav--over-hero .nav__search:focus-within {
+  background: var(--on-ink-surface-2);
+  border-color: var(--on-ink-accent);
+  box-shadow: none;
+}
+.nav.nav--over-hero .nav__search input { color: var(--on-ink); }
+/* This was `input::placeholder`. The header pill has no placeholder any
+   more — a 128px box cannot hold the long prompt, and swapping the
+   attribute mid-spread changed the text in a single frame — so the two
+   prompts are spans crossfading inside the field instead. Same colour, same
+   job. (0,3,0), so it beats polish.css's own (0,1,0) declaration from an
+   earlier file. */
+.nav.nav--over-hero .nav__search-label { color: var(--on-ink-faint); }
+.nav.nav--over-hero .nav__search-icon { color: var(--on-ink-faint); }
+
+/* An over-hero `.nav__burger` rule lived here — glass fill, strong line, on-ink
+   text. polish.css declares the same three properties at the same specificity
+   (0,3,0) and loads later, so all three lost; this was a whole rule that had
+   never painted. Deleted rather than reconciled. */
+.nav.nav--over-hero .nav__account-trigger { color: var(--on-ink-soft); }
+.nav.nav--over-hero .nav__account-trigger:hover,
+.nav.nav--over-hero .nav__account-trigger--open {
+  background: var(--on-ink-surface-2);
+  border-color: var(--on-ink-line-strong);
+  color: var(--on-ink);
+}
+.nav.nav--over-hero .nav__account-chevron { color: var(--on-ink-faint); }
+.nav.nav--over-hero .nav__count {
+  background: var(--on-ink-accent);
+  color: var(--canvas-ink);
+}
+
+/* Ink is the action colour on paper; on ink, paper is. */
+.nav.nav--over-hero .nav__cta {
+  background: var(--on-ink);
+  color: var(--canvas-ink);
+  box-shadow: 0 6px 20px rgba(10, 8, 5, 0.45);
+}
+.nav.nav--over-hero .nav__cta:hover {
+  background: #fff;
+  color: var(--canvas-ink);
+  box-shadow: 0 8px 26px rgba(10, 8, 5, 0.55);
+}
+
+/* ------------------------------------------------------------
+   2. EDITORIAL EMPHASIS — the one move that unifies the page
+   ------------------------------------------------------------
+   Every section headline already carries one <em>. They were three
+   different colours: gold in the hero, emerald in the band heads,
+   terracotta in the "can't decide" title. One gold treatment, used
+   everywhere, is what makes eleven bands read as one magazine.
+   ------------------------------------------------------------ */
+.band-head__title em,
+.band--ink .band-head__title em,
+.decide__title em {
+  font-style: italic;
+  font-weight: var(--weight-medium);
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* background-clip:text has no colour to fall back to, and forced-colours
+   mode discards the background — so the word would vanish. */
+@media (forced-colors: active) {
+  .band-head__title em,
+  .band--ink .band-head__title em,
+  .decide__title em,
+  .hero-c__title em,
+  .nav__brand-mark em,
+  .footer__mark em,
+  .principle__num {
+    background: none;
+    color: CanvasText;
+    -webkit-text-fill-color: CanvasText;
+  }
+}
+
+/* Eyebrows: terracotta text above a gold rule was the one place the
+   two warm families were visibly different hues. Saffron-700 matches
+   the rule and measures 4.8:1 on paper, so it still clears AA at
+   11px bold. */
+.band-head__eyebrow { color: var(--accent-strong); }
+.band-head__eyebrow::before { width: 22px; }
+
+/* Section actions: ink word, gold rule. The reverse on ink. */
+.band-head__action {
+  color: var(--ink);
+  border-bottom-color: var(--accent-line);
+}
+.band-head__action:hover { border-color: var(--accent-strong); }
+.band--ink .band-head__action {
+  color: var(--on-ink);
+  border-bottom-color: rgba(242, 179, 80, 0.45);
+}
+.band--ink .band-head__action:hover { border-color: var(--on-ink-accent); }
+
+/* Buttons are 14px rectangles, chips stay pills — the reasoning is kept
+   with the rule, in primitives.css. Chips continue below. */
+
+/* Match strength: the one remaining emerald on the homepage that was
+   not a verification signal. A match bar answers "how well does this
+   fit you", which is emphasis — so it takes the gold ramp, and its
+   track loses the cool #1f2e26 inset it inherited from the old
+   palette. (`.rcard__pill--open` keeps its green: that one really is
+   a live-status check.) */
+.match-bar { box-shadow: inset 0 1px 2px rgba(28, 23, 16, 0.08); }
+.match-bar__fill { background: var(--grad-gold); }
+
+/* ------------------------------------------------------------
+   3. HERO
+   ------------------------------------------------------------
+   The concept and the functionality are Phase C's. What changes is
+   the composition: the hero used to stack six blocks in the copy
+   column (eyebrow, title, lede, console, chips, stats), which is
+   why it read as a busy landing page rather than a front door. The
+   stats have moved out to a full-width ledger (section 5), leaving
+   the column with a clean four-beat descent into the builder.
+   ------------------------------------------------------------ */
+.hero-c {
+  /* Reclaim the bar's height — see section 1. */
+  padding-top: calc(var(--nav-h) + clamp(2.5rem, 6vw, 4.75rem));
+  padding-bottom: clamp(2.75rem, 6vw, 4.5rem);
+}
+/* Depth. A flat dark rectangle behind a headline reads as a colour
+   swatch; a vignette reads as a room. */
+.hero-c::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(125% 95% at 50% -10%, transparent 42%, rgba(8, 6, 4, 0.55) 100%);
+}
+.hero-c__grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: clamp(2.25rem, 5vw, 5rem);
+}
+
+.hero-c__eyebrow {
+  padding: var(--s1h) var(--s3h) var(--s1h) var(--s3);
+  border-color: rgba(242, 179, 80, 0.32);
+  background: rgba(242, 179, 80, 0.08);
+  color: var(--on-ink-accent);
+  font-size: 0.625rem;
+}
+.hero-c__pulse { background: var(--on-ink-accent); }
+
+.hero-c__title {
+  /* Tighter than Phase C's 0.9 and with the question hugging the
+     name — the two lines are one spoken sentence, not two headings.
+     RESPONSIVE: phase-c.css owns a ≤760 font-size for this
+     selector; re-stated in section 9. */
+  line-height: 0.86;
+  letter-spacing: -0.045em;
+  margin: var(--s6) 0 var(--s5);
+}
+.hero-c__title em { margin-top: 0.02em; }
+
+.hero-c__lede {
+  font-size: clamp(1.02rem, 1.35vw, 1.16rem);
+  line-height: 1.6;
+  max-width: 42ch;
+  margin-bottom: var(--s7);
+  color: var(--on-ink-soft);
+}
+.hero-c__lede strong { color: var(--on-ink); }
+
+/* ---- The mosaic: the product's own data as art ---------------- */
+.hero-c__mosaic {
+  /* RESPONSIVE: phase-c.css owns ≤960 for aspect-ratio/max-height on
+     this selector; re-stated in section 9. */
+  grid-template-columns: 1.22fr 0.78fr;
+  grid-template-rows: 1.1fr 0.9fr;
+  gap: var(--s4);
+  aspect-ratio: 1 / 1.04;
+  max-height: 580px;
+}
+.hero-c__tile {
+  border-radius: var(--r-md);
+  border-color: transparent;
+  box-shadow: 0 24px 60px rgba(8, 6, 4, 0.55);
+}
+.hero-c__tile--lead { border-radius: var(--r-lg); }
+/* A hairline drawn inside the radius rather than a border on it, so
+   the three tiles keep identical edges whatever their size. */
+.hero-c__tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(247, 240, 228, 0.18);
+}
+.hero-c__tile:hover { transform: translateY(-5px); }
+
+.hero-c__tile-cap { gap: var(--s1); }
+.hero-c__tile-cap strong {
+  font-weight: var(--weight-bold);
+  text-shadow: 0 1px 20px rgba(8, 6, 4, 0.7);
+}
+.hero-c__tile-cap span {
+  color: var(--on-ink-accent);
+  letter-spacing: var(--tracking-caps);
+  text-shadow: 0 1px 14px rgba(8, 6, 4, 0.8);
+}
+
+/* ------------------------------------------------------------
+   4. THE DISCOVERY BUILDER — the core product feature
+   ------------------------------------------------------------
+   Same component, same fields, same live counts. It looked like a
+   filter bar because it was styled like one: a flat card, grey
+   pill triggers, an emerald focus ring. Now it is an instrument
+   panel — gold top edge, titled header rule, and the chosen value
+   set in the display serif so the thing you are building reads as
+   editorial output rather than as form state.
+   ------------------------------------------------------------ */
+.hero-c__console {
+  position: relative;
+  padding: 0;
+  border-radius: var(--r-lg);
+  background: var(--paper-50);
+  border: 1px solid rgba(247, 240, 228, 0.34);
+  box-shadow: 0 28px 70px rgba(8, 6, 4, 0.55);
+  overflow: hidden;
+}
+.hero-c__console::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--grad-gold);
+}
+.hero-c__console-label {
+  padding: var(--s4) var(--s5) var(--s3);
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ink);
+  font-size: 0.625rem;
+}
+.hero-c__console-label svg { color: var(--accent-strong); }
+.hero-c__console .builder { padding: var(--s5); }
+
+.builder-field__trigger {
+  min-height: 62px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--paper-100);
+  box-shadow: none;
+  padding: 0.6rem 0.9rem;
+}
+.builder-field__trigger:hover {
+  background: var(--paper-50);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-xs);
+}
+.builder-field__trigger[aria-expanded='true'] {
+  background: var(--paper-50);
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+.builder-field__label {
+  font-size: 0.625rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  color: var(--ink-faint);
+}
+.builder-field__value {
+  margin-top: var(--s1);
+  font-family: var(--font-display);
+  font-size: 1.04rem;
+  font-weight: var(--weight-semi);
+  letter-spacing: var(--tracking-snug);
+  color: var(--ink);
+}
+.builder-field__chevron { color: var(--ink-faint); }
+
+.builder__popover {
+  border-radius: var(--r-md);
+  border-color: var(--border-strong);
+  box-shadow: 0 22px 54px rgba(28, 23, 16, 0.2);
+}
+/* A stated row height rather than vertical padding, which is what makes the
+   rhythm even: padding adds to whatever the font's line box happens to be, so
+   a row with a count and a row without were 1px apart down a 23-item list.
+   40px is the primitive layer's dropdown row (`.kk-select__opt`), and this
+   list is the same object; polish.css section 14 raises it to 46 for the
+   phone sheet, where a row is a touch target rather than a line of a menu. */
+.builder__option {
+  border-radius: var(--r-xs);
+  min-height: 40px;
+  padding: 0 var(--s2h);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-soft);
+}
+.builder__option:hover,
+.builder__option:focus-visible {
+  background: var(--primary-faint);
+  color: var(--ink);
+}
+/* The ring goes inside the row. The global `:focus-visible` offsets 3px
+   outward, and the panel is a scroll container with 6px of padding, so an
+   outward ring on a full-width row was clipped on both sides — and on the
+   first and last rows it was clipped by the panel's own rounded edge. Keyboard
+   focus and hover deliberately paint the same, because with roving focus they
+   are the same thing: the row the list is currently on. */
+.builder__option:focus-visible { outline-offset: -2px; }
+/* The check is the state; the tint is for scanning the list at a glance and
+   the weight for finding your place in it. What the selected row does NOT do
+   any more is go bold and change colour as well — four signals for one fact
+   is how a menu starts to look cheap. */
+.builder__option--selected {
+  background: var(--primary-soft);
+  color: var(--ink);
+  font-weight: var(--weight-semi);
+}
+.builder__option--selected .builder__option-count { color: var(--primary-strong); }
+
+.builder__summary {
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border);
+}
+/* The figure, not the pair — the serif belongs to the number, and left on the
+   wrapper it was the caption's too. 1.15rem, not the 1.5rem this was: the foot
+   is one line now and a figure half again the size of the words beside it is a
+   metric tile with a caption, which is precisely what it read as. Enough larger
+   to be the first thing the eye lands on in the row, not enough to argue with
+   the button. */
+.builder__count-figure {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+}
+/* The words carry the meaning, so they get read at text size rather than at
+   caption size — `--fs-xs` was right under a 1.5rem figure and is not right
+   beside it. */
+.builder__count-note { font-size: var(--fs-sm); }
+.builder__summary-terms { color: var(--ink-soft); }
+
+/* ------------------------------------------------------------
+   5. HERO INTENTS & THE LEDGER
+   ------------------------------------------------------------
+   Both used to belong to whatever page they were borrowed from —
+   the chips carried a paper-300 rule across the ink, and the four
+   statistics sat in the copy column as a fifth stacked block.
+
+   The chips now sit on their own ink rule under the console, and
+   the statistics span the full hero on a gold-tipped rule as its
+   closing line. Neighbourhood count included, unchanged.
+   ------------------------------------------------------------ */
+.hero-c .quick-strip {
+  justify-content: flex-start;
+  gap: var(--s2);
+  margin-top: var(--s6);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--on-ink-line);
+}
+.hero-c .quick-chip {
+  padding: var(--s2) var(--s3h);
+  border: 1px solid var(--on-ink-line-strong);
+  border-radius: var(--r-full);
+  background: var(--on-ink-surface);
+  color: var(--on-ink);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  box-shadow: none;
+}
+.hero-c .quick-chip svg { color: var(--on-ink-accent); }
+.hero-c .quick-chip:hover {
+  background: var(--on-ink-surface-2);
+  border-color: rgba(242, 179, 80, 0.55);
+  color: var(--on-ink);
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+.hero-c .quick-chip--primary {
+  background: var(--on-ink);
+  border-color: transparent;
+  color: var(--canvas-ink);
+  box-shadow: 0 6px 20px rgba(8, 6, 4, 0.5);
+}
+.hero-c .quick-chip--primary svg { color: var(--saffron-700); }
+.hero-c .quick-chip--primary:hover {
+  background: #fff;
+  color: var(--canvas-ink);
+  border-color: transparent;
+}
+
+.hero-c__ledger {
+  position: relative;
+  z-index: 1;
+  max-width: var(--container-wide);
+  margin: clamp(2.25rem, 5vw, 3.75rem) auto 0;
+  padding-top: var(--s6);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s5) 0;
+  border-top: 1px solid var(--on-ink-line);
+}
+/* The gold tick that starts the rule — the same mark the band
+   eyebrows use, at the scale of the hero. */
+.hero-c__ledger::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 88px;
+  height: 2px;
+  background: var(--grad-gold);
+}
+.hero-c__ledger .hero-c__stat { gap: var(--s2); }
+.hero-c__ledger .hero-c__stat + .hero-c__stat {
+  padding-left: clamp(1rem, 3vw, 2.5rem);
+  border-left: 1px solid var(--on-ink-line);
+}
+/* RESPONSIVE: these two beat phase-c.css's ≤560 `.hero-c__stat dt`
+   rule on source order, so section 9 re-states the small sizes. */
+.hero-c__ledger dt {
+  font-family: var(--font-display);
+  font-size: clamp(1.85rem, 3.2vw, 2.85rem);
+  font-weight: var(--weight-bold);
+  line-height: 0.94;
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+  color: var(--on-ink);
+}
+.hero-c__ledger dd {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--on-ink-faint);
+}
+
+/* ------------------------------------------------------------
+   6. EDITORIAL COLLECTIONS — the mosaic
+   ------------------------------------------------------------
+   The magazine composition is Phase C's and it works. What was
+   inconsistent was everything drawn on top of it: three title
+   sizes with no relationship, an index numeral floating unbacked
+   on photography, and a scrim tuned for the tall lead tile that
+   left the small tiles' titles sitting on bright food.
+   ------------------------------------------------------------ */
+.mosaic {
+  gap: var(--s4);
+  /* RESPONSIVE: phase-c.css owns ≤1100 / ≤760 grid-auto-rows here;
+     re-stated in section 9. */
+  grid-auto-rows: 196px;
+}
+.mosaic__card {
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-card);
+}
+.mosaic__card--lead { border-radius: var(--r-lg); }
+.mosaic__card:hover { box-shadow: var(--shadow-card-hover); }
+/* The composition is 2×2 lead + a span-2 wide + singles, which tiles nine
+   cards as 4 / 4 / 1 — leaving the ninth alone in a row with three empty
+   columns beside it. It becomes the closing letterbox instead.
+   Guarded on :nth-child(9):last-child rather than :last-child alone, so if
+   the collections list ever changes length the rule drops out rather than
+   punching a hole in a row that already tiled. */
+.mosaic__card:nth-child(9):last-child { grid-column: 1 / -1; }
+.mosaic__card:nth-child(9):last-child .mosaic__title { font-size: 1.46rem; }
+/* The same inside-the-radius hairline the hero tiles use, so photo
+   cards have one edge treatment across the whole page. */
+.mosaic__card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(247, 240, 228, 0.16);
+}
+/* A 1×1 tile is 196px tall and its title sits at the bottom of it —
+   --grad-media only reaches 0.68 opacity at 84%, which is not enough
+   over a bright dish. The lead keeps the gentler ramp. */
+.mosaic__card:not(.mosaic__card--lead) .mosaic__media::after {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 16, 11, 0.36) 0%,
+    rgba(20, 16, 11, 0.1) 32%,
+    rgba(20, 16, 11, 0.74) 76%,
+    rgba(20, 16, 11, 0.94) 100%
+  );
+}
+.mosaic__body {
+  padding: var(--s5) var(--s4) var(--s4);
+  gap: var(--s1h);
+}
+.mosaic__index {
+  top: var(--s3);
+  left: var(--s3);
+  padding: var(--s1) var(--s2h);
+  border-radius: var(--r-full);
+  border: 1px solid rgba(247, 240, 228, 0.22);
+  background: rgba(20, 16, 11, 0.5);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--on-ink-accent);
+}
+/* Three sizes, one ratio — 1.24 / 1.46 / clamp, so the composition
+   states which card leads instead of leaving it to the photo. */
+.mosaic__title {
+  font-size: 1.24rem;
+  font-weight: var(--weight-bold);
+  color: var(--paper-50);
+  text-shadow: 0 1px 22px rgba(8, 6, 4, 0.6);
+}
+.mosaic__card--wide .mosaic__title { font-size: 1.46rem; }
+.mosaic__card--lead .mosaic__title {
+  font-size: clamp(1.7rem, 2.9vw, 2.3rem);
+  font-weight: var(--weight-semi);
+}
+.mosaic__desc {
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: rgba(247, 240, 228, 0.84);
+}
+.mosaic__count {
+  margin-top: var(--s2);
+  padding: var(--s1) var(--s2h);
+  border-color: rgba(247, 240, 228, 0.26);
+  background: rgba(247, 240, 228, 0.14);
+  font-size: 0.625rem;
+  letter-spacing: var(--tracking-caps);
+  color: var(--paper-50);
+}
+
+/* ------------------------------------------------------------
+   7. THE MANIFESTO — "Not a listing. A reason to go."
+   ------------------------------------------------------------
+   Six commitments in an auto-fit grid of bordered cells read as a
+   comparison table, which is the wrong genre for a promise. This is
+   a manifesto spread instead: the statement holds the left column,
+   the commitments run as two ledger columns on the right, and the
+   numerals are set in gold display serif at a size that makes them
+   part of the typography rather than metadata.
+
+   HomePage.tsx also moved this band from last to third — see the
+   note in its page map.
+   ------------------------------------------------------------ */
+.band--manifesto { padding-block: var(--section-y-lg); }
+.band--manifesto .band__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.45fr);
+  gap: clamp(2rem, 5vw, 4.5rem);
+  align-items: start;
+}
+.band--manifesto .band-head {
+  display: block;
+  margin-bottom: 0;
+}
+.band--manifesto .band-head__title {
+  font-size: clamp(2rem, 3.6vw, 3.05rem);
+  margin-top: var(--s4);
+}
+.band--manifesto .band-head__side {
+  padding-bottom: 0;
+  margin-top: var(--s5);
+}
+.band--manifesto .band-head__lede { max-width: 34ch; }
+
+.principles {
+  /* RESPONSIVE: phase-c.css uses auto-fit here, so this fixed
+     two-column grid needs its own collapse in section 9. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 clamp(1.5rem, 4vw, 3.5rem);
+  border-top: 0;
+}
+.principle {
+  padding: var(--s6) 0;
+  gap: var(--s3);
+  border-right: 0;
+  border-bottom: 1px solid var(--on-ink-line);
+}
+.principle:nth-child(1),
+.principle:nth-child(2) { border-top: 1px solid var(--on-ink-line); }
+.principle__num {
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+  font-variant-numeric: tabular-nums;
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.principle__title {
+  font-size: 1.18rem;
+  font-weight: var(--weight-semi);
+}
+.principle__body {
+  max-width: 46ch;
+  color: var(--on-ink-soft);
+}
+
+/* ------------------------------------------------------------
+   7a. THE STILL LIFE
+   ------------------------------------------------------------
+   The statement column stops after the lede and the ledger keeps
+   going for six commitments, which at 1397px left a measured 366px
+   of empty ink under a 402px column. On a page about craving, that
+   hole was the loudest thing in the band.
+
+   It now holds a karahi of biryani under a plume of smoke shaped
+   like a heart: the heading's claim, made once, without a caption.
+   The still life is sized for the HEART's legibility rather than for
+   the hole, so the two columns only end together at the narrow end of
+   the two-column range — measured at a 1010px viewport, both bottoms
+   land on 711 with `margin-top: auto` distributing 52px above the
+   bowl. Past that the statement becomes the taller column (at 1397px
+   it runs 122px below the ledger's last rule) and the band grows to
+   hold it. That trade is the right way round: a ledger that stops is
+   a natural bottom edge, and 122px of ink under it reads as a margin
+   where 366px under a HEADING read as an omission.
+
+   FOUR LAYERS, TWO FILES. The dish and the smoke are rasters; the
+   light behind them and the shadow beneath them are drawn here.
+   Both of those arrived as rasters too and both were rejected on
+   the same grounds the hero's lamp was built on (hero-scene.css
+   §3): the supplied glow was a hard-edged circle with a red rim and
+   visible banding, and a gradient that ends before its element's
+   edge ends *somewhere* — that somewhere is a ring. The supplied
+   shadow was neutral black, which goes grey and muddy on a warm
+   ground where every other shadow in the product is rgba(28,23,16).
+   Drawn instead, both are smaller, tintable, and have no edge to
+   find.
+
+   Registration is measured, not eyeballed. All four supplied assets
+   were composed on one 1620x2025 canvas, so every percentage below
+   is a real alpha bounding box inside the union of the dish's and
+   the smoke's: the plume descends into the bowl at the offset the
+   art was drawn with, at every width, with each layer still free to
+   be scaled on its own.
+   ------------------------------------------------------------ */
+.manifesto__statement {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s7);
+  /* .band__inner is `align-items: start`, so the column has to ask
+     for the row's full height before anything in it can sit at the
+     bottom of that height. */
+  align-self: stretch;
+}
+.manifesto-art {
+  /* Any leftover height goes ABOVE the still life, so the bowl sits on
+     the column's floor instead of hanging under the lede. `gap` still
+     holds the minimum clearance, because `margin-top: auto` only
+     distributes what is actually left over — and past ~1010px there is
+     none left over, which is why this rule reads as inert at desktop
+     and is load-bearing at 1000. */
+  margin-top: auto;
+  /* The column's own width, capped. At the 1200px container that is
+     402px, so the still life ends exactly where the ledger's gutter
+     begins and the composition is grid-aligned rather than floating
+     in the column. It was tried at 336px first: the plume reads at
+     that size but the HEART does not, and the heart is the whole
+     sentence. The band grows ~126px to hold it, which is 15% of a
+     section that is otherwise a third empty. */
+  width: min(100%, 26rem);
+  pointer-events: none;
+}
+.manifesto-art__stage {
+  position: relative;
+  /* Union of the two measured alpha boxes: x 275→1316, y 470→1664. */
+  aspect-ratio: 1041 / 1194;
+}
+.manifesto-art__glow,
+.manifesto-art__smoke,
+.manifesto-art__cast,
+.manifesto-art__dish {
+  position: absolute;
+  display: block;
+}
+
+/* 1. THE LIGHT. Two fields on one element, both running all the way
+      to transparent at 100%, softened by a real blur rather than by
+      stops — the near field is the warmth gathered behind the bowl,
+      the far one is the room it stands in. Screened, so it adds to
+      the ink canvas the way light does instead of sitting on it as a
+      pale film. It reaches past the stage on all four sides because
+      light has no box. */
+.manifesto-art__glow {
+  inset: -15% -13% -7%;
+  mix-blend-mode: screen;
+  background:
+    radial-gradient(37% 29% at 50% 67%,
+      rgba(255, 198, 120, 0.32) 0%, rgba(226, 145, 52, 0.15) 44%, transparent 100%),
+    radial-gradient(78% 64% at 50% 57%,
+      rgba(196, 122, 44, 0.17) 0%, rgba(150, 88, 30, 0.06) 46%, transparent 100%);
+  filter: blur(24px);
+}
+
+/* 2. THE SMOKE. A GREYSCALE file, not a cutout. Every pixel of the
+      supplied asset was pure white (255,255,255, chroma 0) and its
+      entire image lived in the alpha channel — so the alpha is the
+      photograph, and libwebp stores alpha losslessly (`-q:v` moves a
+      141KB cutout by 110 bytes, and re-merging this file's plume back
+      into an alpha channel costs 109KB), which is why the same shape
+      as luminance costs 39KB.
+
+      Carried as luminance it also becomes tintable, which is the
+      real reason: the gradient tints the plume warm where the bowl's
+      light reaches it and leaves it faintly cool where it thins out,
+      so the smoke belongs to this band's light instead of being white
+      paint on it. `screen` then does the compositing the alpha
+      channel used to — on a dark ground, black adds nothing and white
+      adds everything, which is what smoke does to light.
+
+      It is a MASK and not a multiply-blended background, and that is
+      not a stylistic preference. Painting the tint × the plume as an
+      opaque background printed the layer's own BOX: a hairline
+      rectangle, exactly `getBoundingClientRect()`, around the whole
+      plume on the dark ground. Not the file — decoded in the browser
+      it is min 0 with all-zero corners, and the source PNG's alpha is
+      hard 0 one pixel outside its crop on every side. An opaque box
+      under `mix-blend-mode: screen` has an edge to composite at, and
+      arithmetic that says `screen(ground, black) === ground` does not
+      survive that edge landing on a fractional device pixel. Masked,
+      the layer's own alpha IS the plume, so there is no box anywhere
+      to find. Same pixels, same tint, no rectangle.
+
+      The tail is left running past the bowl's rim; the dish paints
+      over it, so the plume reads as rising out of the food rather
+      than as a decal in front of it. */
+.manifesto-art__smoke {
+  left: 5.67%;
+  top: 0;
+  width: 90.87%;
+  height: 85.17%;
+  opacity: 0.9;
+  --smoke-tint: linear-gradient(to top,
+    rgb(255, 198, 132) 0%,
+    rgb(255, 226, 190) 34%,
+    rgb(248, 244, 236) 72%,
+    rgb(226, 232, 238) 100%);
+  background-image: var(--smoke-tint);
+  mask-image: url('/images/manifesto/smoke-heart.webp');
+  /* The file is fully opaque, so the default `match-source` (alpha)
+     would mask nothing at all. */
+  mask-mode: luminance;
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  mix-blend-mode: screen;
+}
+@supports not (mask-mode: luminance) {
+  /* Where luminance masking is missing, alpha masking would leave the
+     tint unmasked and paint a solid warm block. The old multiply
+     route is the graceful degradation — its hairline box is a far
+     smaller price than losing the plume, and `background-color` must
+     be WHITE because `background-blend-mode` blends the bottom image
+     layer with the background COLOUR too and multiply's identity is
+     white. #000 there multiplies the plume to nothing: the layer
+     renders, measures correctly, and shows absolutely no smoke. */
+  .manifesto-art__smoke {
+    mask-image: none;
+    background-color: #fff;
+    background-image: var(--smoke-tint), url('/images/manifesto/smoke-heart.webp');
+    background-blend-mode: multiply;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+}
+
+/* 3. THE CONTACT. Where the karahi meets the surface it is standing
+      on. Measured from the supplied shadow's dense core (its alpha
+      above 128 spans x 0.30→0.80 of the union box, y 0.93→1.03), so
+      the ellipse sits where the art was lit for — it just carries
+      the product's warm shadow black instead of a neutral one, and
+      it is allowed to fall below the stage because the bowl's foot
+      is the stage's bottom edge. */
+.manifesto-art__cast {
+  left: 28%;
+  right: 19%;
+  top: 90.5%;
+  height: 15%;
+  background: radial-gradient(closest-side,
+    rgba(14, 9, 4, 0.72) 0%, rgba(14, 9, 4, 0.34) 44%, transparent 100%);
+  filter: blur(9px);
+}
+
+/* 4. THE DISH. The anchor, and the one layer with no treatment on it
+      beyond its own shadow: `drop-shadow` follows the alpha, so the
+      brass throws the shape of the brass. 812px of source under a
+      402px box is 2.0x, so nothing is upscaled at any width the
+      1200px container can produce. */
+.manifesto-art__dish {
+  left: 0;
+  top: 40.87%;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 14px 20px rgba(0, 0, 0, 0.5));
+}
+
+/* THE AIR MOVES, THE FOOD DOES NOT.
+   One keyframe for both moving layers, parameterised the way
+   `kk-rise` is (design-system.css) rather than written twice: the
+   smoke lifts and brightens, the light behind it only breathes, and
+   the dish is never touched — a plate of food that drifts is a
+   cheaper effect than a plate of food that sits still.
+
+   Both run near half a minute on `alternate`, which is slow enough
+   that the movement is never the thing you notice; the static
+   `opacity` on each layer is deliberately the MIDPOINT of its swing,
+   so the reduced-motion rest state below is the composition as
+   designed and not one end of an animation. */
+@keyframes kk-waft {
+  from {
+    opacity: var(--waft-o, 0.86);
+    transform: translate3d(0, var(--waft-y, 0), 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.manifesto-art__smoke {
+  --waft-o: 0.82;
+  --waft-y: 1.5%;
+  animation: kk-waft 27s var(--ease-in-out) infinite alternate;
+}
+.manifesto-art__glow {
+  --waft-o: 0.88;
+  opacity: 0.94;
+  animation: kk-waft 19s var(--ease-in-out) infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .manifesto-art__smoke,
+  .manifesto-art__glow { animation: none; }
+}
+
+/* ------------------------------------------------------------
+   8. FOOTER
+   ------------------------------------------------------------
+   The last piece of the old website. It was a bottle-green
+   gradient (#14311f) — a colour that appears nowhere else in the
+   product — under a brand line that spelled the name differently
+   from the header, with link text at rgba(232,226,211,0.55).
+
+   It is now the page's closing ink band: the same --grad-canvas as
+   the hero, the same warm hairline at the seam, the same wordmark
+   lockup as the header, and on-ink text tokens throughout (which
+   also takes the faintest line from ~3.4:1 to ~5.9:1).
+   ------------------------------------------------------------ */
+.footer {
+  position: relative;
+  isolation: isolate;
+  background: var(--grad-canvas);
+  color: var(--on-ink);
+  border-top: 0;
+  padding: clamp(3rem, 6vw, 4.75rem) var(--gutter) 0;
+}
+.footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(242, 179, 80, 0.45), transparent);
+}
+.footer__inner {
+  grid-template-columns: minmax(270px, 1.7fr) repeat(3, minmax(0, 1fr));
+  gap: var(--s10);
+}
+.footer__logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--on-ink-line-strong);
+  background: var(--on-ink-surface-2);
+  color: var(--on-ink-accent);
+}
+/* `.footer__brand strong` and `.footer__brand p` are declared twice in the
+   earlier layers at (0,1,1), so a bare `.footer__mark` at (0,1,0) loses — and
+   the losing declarations are exactly the old footer's: #fff for the wordmark
+   and #a8b0a9, a cool sage grey, for the copy beneath it. That grey is the last
+   trace of the bottle-green footer, so these three need the extra class. */
+.footer__brand .footer__mark {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.035em;
+  line-height: 1;
+  color: var(--on-ink);
+}
+.footer__mark em {
+  font-style: italic;
+  font-weight: var(--weight-medium);
+  background: var(--grad-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.footer__brand .footer__tagline {
+  margin-top: var(--s3);
+  font-size: var(--fs-md);
+  font-weight: var(--weight-semi);
+  color: var(--on-ink-soft);
+  max-width: 34ch;
+}
+.footer__brand .footer__statement {
+  margin-top: var(--s3);
+  color: var(--on-ink-faint);
+  font-size: var(--fs-sm);
+  line-height: 1.65;
+  max-width: 38ch;
+}
+.footer__col { gap: var(--s0h); }
+.footer__col h4 {
+  font-size: 0.625rem;
+  letter-spacing: var(--tracking-caps);
+  color: var(--on-ink-accent);
+  margin-bottom: var(--s3);
+}
+.footer__col a {
+  color: var(--on-ink-soft);
+  font-weight: var(--weight-medium);
+  padding: var(--s1) 0;
+}
+.footer__col a svg { color: var(--on-ink-faint); transition: color var(--tr-settle); }
+.footer__col a:hover { color: var(--on-ink); text-decoration: none; }
+.footer__col a:hover svg { color: var(--on-ink-accent); }
+
+.footer__bottom {
+  margin-top: var(--s12);
+  border-top: 1px solid var(--on-ink-line);
+}
+.footer__bottom p { color: var(--on-ink-faint); }
+.footer__legal a { color: var(--on-ink-soft); }
+.footer__legal a:hover { color: var(--on-ink); text-decoration: none; }
+.footer__social-icon {
+  border-color: var(--on-ink-line-strong);
+  color: var(--on-ink-faint);
+}
+.footer__social-icon:hover {
+  color: var(--on-ink-accent);
+  border-color: rgba(242, 179, 80, 0.5);
+}
+
+/* ------------------------------------------------------------
+   9. RESPONSIVE
+   ------------------------------------------------------------
+   Every block here exists because a rule above is unconditional
+   and this file loads last — see the ordering hazard at the top.
+   Each one names what it is protecting.
+   ------------------------------------------------------------ */
+
+/* Protects phase-c.css ≤1100 `.mosaic { grid-auto-rows }`. */
+@media (max-width: 1100px) {
+  .mosaic { grid-auto-rows: 172px; }
+}
+
+/* Protects editorial.css ≤1020 `.footer__inner { grid-template-columns }`.
+   The footer's designed collapse is 4 → 2 columns with the brand spanning
+   both, and it stays at 2 all the way down — `.footer__brand { grid-column:
+   span 2 }` is declared there too and this file never touches it, so dropping
+   to one column here would strand the brand. */
+@media (max-width: 1020px) {
+  .footer__inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s8) var(--s6);
+  }
+}
+
+/* The manifesto spread collapses before the nav does: below this the
+   left column is too narrow to hold a display headline beside two
+   columns of body copy. */
+@media (max-width: 1000px) {
+  .band--manifesto .band__inner {
+    grid-template-columns: 1fr;
+    gap: var(--s8);
+  }
+  .band--manifesto .band-head__lede { max-width: 56ch; }
+  /* The statement is now full width, so the still life stops sitting
+     UNDER the heading — a 400px-wide composition under a 1000px-wide
+     paragraph is a poster with a caption — and moves beside it. The
+     row keeps `margin-top: auto`, which in a row means the cross axis:
+     the bowl stays on the row's floor while the heading stays at its
+     ceiling, so neither has to be centred against the other. */
+  .manifesto__statement {
+    flex-direction: row;
+    align-items: stretch;
+    gap: clamp(1.5rem, 4vw, 3rem);
+  }
+  .manifesto__statement .band-head {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .manifesto-art {
+    flex: 0 0 auto;
+    width: clamp(13rem, 28vw, 19rem);
+  }
+  /* The row parks the still life against the container's right edge,
+     where the only room left over is the gutter itself. The light's
+     -13% side bleed is 28px at 768 against a 24.6px gutter, and 3.4px
+     of that reached the document: `documentElement.scrollWidth` 756
+     over a 753px `clientWidth`, one horizontal scrollbar for one soft
+     gradient nobody can see. Spend less than the gutter instead of
+     clipping the light, which would hand back the hard edge the whole
+     layer exists to avoid. (Measure overflow against `clientWidth`,
+     never `innerWidth` — `innerWidth` counts the scrollbar and hides
+     exactly this much.) */
+  .manifesto__statement .manifesto-art__glow { inset: -15% -6% -7%; }
+}
+
+/* Protects phase-c.css ≤960 `.hero-c__grid { grid-template-columns: 1fr }` and
+   `.hero-c__mosaic { aspect-ratio; max-height }`. The single-column collapse is
+   the one that matters most: without it the copy and the mosaic stay
+   side-by-side down to 375px, which squeezed the builder to 149px wide and the
+   mosaic to a 93px band. The mosaic's row ratio has to reset too, or the lead
+   tile keeps 55% of a 300px banner. */
+@media (max-width: 960px) {
+  .hero-c__grid {
+    grid-template-columns: 1fr;
+    gap: clamp(1.75rem, 4vw, 2.5rem);
+  }
+  .hero-c__mosaic {
+    grid-template-columns: 1.15fr 0.85fr;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    aspect-ratio: 16 / 9;
+    max-height: 300px;
+    gap: var(--s3);
+  }
+}
+
+/* Protects phase3.css ≤768 `.builder__popover { border-radius }`. Below this
+   width the popover stops being a dropdown and becomes a fixed bottom sheet;
+   only the radius is re-stated because that is the one property this file
+   overrides unconditionally — the positioning is left entirely to the earlier
+   layer. */
+@media (max-width: 768px) {
+  .builder__popover { border-radius: var(--r-lg); }
+}
+
+/* Protects phase-c.css ≤760 `.hero-c__title { font-size }` and
+   `.mosaic { grid-auto-rows }`, and collapses the ledger and the
+   principles to two columns / one column. */
+@media (max-width: 760px) {
+  .hero-c__title {
+    font-size: clamp(2.9rem, 13vw, 4.2rem);
+    margin: var(--s5) 0 var(--s4);
+  }
+  .hero-c__ledger {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s6) 0;
+  }
+  /* With two per row the rule has to fall on the even columns only,
+     or item 3 gets a left border against nothing. */
+  .hero-c__ledger .hero-c__stat + .hero-c__stat {
+    padding-left: var(--s5);
+    border-left: 1px solid var(--on-ink-line);
+  }
+  .hero-c__ledger .hero-c__stat:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .mosaic { grid-auto-rows: 148px; }
+  .principles { grid-template-columns: 1fr; }
+  .principle { padding: var(--s5) 0; }
+  .principle:nth-child(2) { border-top: 0; }
+  .footer__inner { gap: var(--s8); }
+  /* A phone cannot hold both: at 375px the row above leaves the
+     headline 136px of measure, which breaks "Not a listing." across
+     three lines to keep a picture company. So the still life goes
+     back under the copy and gets smaller than the column it sits in
+     — a vignette between the promise and the commitments, not a
+     poster the reader has to scroll past. The width is a percentage
+     first so it tracks the viewport, capped in rem so it cannot
+     become a poster on a tablet-sized phone. */
+  .manifesto__statement {
+    flex-direction: column;
+    gap: var(--s6);
+  }
+  .manifesto-art {
+    margin-top: 0;
+    width: min(80%, 17rem);
+  }
+}
+
+/* Protects the earlier layers' ≤640 tuning — the phone breakpoint they use,
+   which is not the one this file's own tuning was written against. Everything
+   here is a re-statement, not a new decision: the logo shrinks (editorial.css),
+   and the builder's phone sizing (phase3.css) has to come back or the five
+   fields keep their 62px desktop rows on a 2-column grid. The console padding
+   moved up here from ≤560 for the same reason — the fields tighten at 640, so
+   the shell around them should too. */
+@media (max-width: 640px) {
+  .nav__logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+  }
+  .hero-c__console-label { padding: var(--s3) var(--s4); }
+  .hero-c__console .builder { padding: var(--s4); }
+  .builder-field__trigger {
+    min-height: 54px;
+    padding: 0.6rem 0.7rem;
+  }
+  .builder-field__label {
+    font-size: 0.65rem;
+    letter-spacing: 0.07em;
+  }
+  .builder-field__value { font-size: 0.92rem; }
+  /* editorial.css ≤640 sets the whole footer padding shorthand, including the
+     notch inset, and this file's unconditional shorthand drops it. */
+  .footer { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* Protects phase-c.css ≤560 `.hero-c__stat dt { font-size: 1.4rem }`,
+   which the ledger's own dt rule now outranks on source order. */
+@media (max-width: 560px) {
+  .hero-c__ledger {
+    padding-top: var(--s5);
+    gap: var(--s5) 0;
+  }
+  .hero-c__ledger dt { font-size: 1.55rem; }
+  .hero-c__ledger::before { width: 64px; }
+  .mosaic__title { font-size: 1.06rem; }
+  .mosaic__card--wide .mosaic__title { font-size: 1.2rem; }
+  /* 80% of a 328px inner is 262px, and 300px of still life on top of
+     six collapsed rows is the point where the band stops being a
+     promise and starts being a photograph. */
+  .manifesto-art { width: min(74%, 13.5rem); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav__brand:hover .nav__logo { transform: none; }
+  .hero-c__tile:hover { transform: none; }
+  .hero-c .quick-chip:hover { transform: none; }
+}
+
+/* ============================================================
+   THE ENTER — see design-system.css §8b
+   ============================================================
+   Every rule above declares its LEAVE (`var(--tr-settle)`). This is the
+   other half of the pair: the answer, grouped here rather than repeated
+   across the individual state rules, so the two halves stay legible and
+   the whole file retunes from one place.
+   ------------------------------------------------------------ */
+.footer__col a:hover svg {
+  transition-duration: var(--tr-answer);
+}

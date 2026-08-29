@@ -63,31 +63,27 @@ export function useGallery(images: RestaurantImageSource[]): [GalleryState, Gall
     setLightboxIndex((i) => (i - 1 + imageCount) % imageCount);
   }, [imageCount]);
 
-  // Keyboard navigation for lightbox
+  // Arrow-key navigation for the lightbox.
+  //
+  // Escape and the body scroll lock used to live here too. Both are
+  // `Dialog`'s now: the lock in particular *had* to go, because Radix's
+  // `RemoveScroll` sets `body { overflow: hidden }` on open and this effect
+  // would then record `'hidden'` as the value to restore — leaving the page
+  // unscrollable for good once the viewer closed.
   useEffect(() => {
     if (!isLightboxOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        closeLightbox();
-      } else if (e.key === 'ArrowRight') {
+      if (e.key === 'ArrowRight') {
         nextImage();
       } else if (e.key === 'ArrowLeft') {
         prevImage();
       }
     };
 
-    // Prevent body scroll when lightbox is open
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
     window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isLightboxOpen, closeLightbox, nextImage, prevImage]);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLightboxOpen, nextImage, prevImage]);
 
   const state: GalleryState = {
     images,

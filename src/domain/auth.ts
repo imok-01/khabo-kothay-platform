@@ -90,12 +90,33 @@ export interface DemoUser {
   bio?: string;
 }
 
+/** How much heat the diner actually wants. Absent = not answered. */
+export type SpiceLevel = 'mild' | 'medium' | 'hot';
+
+/** How far they are willing to go for a meal. Absent = not answered. */
+export type TravelRange = 'walk' | 'area' | 'city';
+
 export interface UserPreferences {
   cuisines: string[];
   budget?: string;
   diet: 'any' | 'veg' | 'nonveg';
   neighbourhoods: string[];
   diningInterests: string[];
+  /**
+   * The three questions that took the profile from seven fields to ten.
+   *
+   * All three are optional, and that is the whole migration: a profile
+   * written before them stays valid, `transformers/user.ts` keeps
+   * constructing preferences without them, and absence reads as
+   * "not answered" rather than as a stored answer. `diet` shows why that
+   * matters — its `'any'` is simultaneously a real choice and the
+   * unanswered default, so a diner with no dietary preference can never
+   * finish the profile. These three do not repeat that.
+   */
+  spice?: SpiceLevel;
+  /** Meal times they actually go out for, capped by PREFERENCE_LIMITS. */
+  mealTimes?: string[];
+  travel?: TravelRange;
 }
 
 export interface Badge {

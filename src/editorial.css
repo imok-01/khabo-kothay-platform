@@ -29,88 +29,22 @@
    ============================================================ */
 
 /* ------------------------------------------------------------
-   1. TOKENS & BASE
+   1. BASE
+   ------------------------------------------------------------
+   Tokens and the base layer now live in design-system.css, which
+   is loaded first and is the single source of truth. This file no
+   longer declares :root — it previously re-declared the entire
+   token set, which meant a component's final appearance was
+   decided by import order rather than by design.
    ------------------------------------------------------------ */
-:root {
-  --bg: #faf6ef;
-  --surface: #fffdf8;
-  --surface-2: #f3ecdf;
-  --surface-3: #eae0cc;
-  --ink: #221d13;
-  --ink-soft: #5b5242;
-  --ink-faint: #6e6452;
-  --primary: #0a5c3a;
-  --primary-strong: #07452c;
-  --primary-soft: #e1eee5;
-  --accent: #c26a08;
-  --accent-soft: #faf0d9;
-  --terracotta: #b0512f;
-  --terracotta-soft: #f7e7de;
-  --success: #147a3a;
-  --success-soft: #e3f1e7;
-  --warning: #a16207;
-  --danger: #b4231c;
-  --border: #e7deca;
-  --border-strong: #d3c6a8;
-
-  --fs-display: clamp(3.3rem, 8.5vw, 5.9rem);
-  --fs-h1: clamp(2.3rem, 4.8vw, 3.5rem);
-  --fs-h2: clamp(1.85rem, 3.2vw, 2.55rem);
-  --fs-h3: clamp(1.22rem, 1.9vw, 1.55rem);
-  --fs-body: 0.9375rem;
-  --fs-lead: clamp(1.02rem, 1.6vw, 1.16rem);
-
-  --r-sm: 10px;
-  --r-md: 14px;
-  --r-lg: 18px;
-  --r-xl: 24px;
-
-  --shadow-sm: 0 1px 2px rgba(34, 29, 19, 0.05), 0 1px 3px rgba(34, 29, 19, 0.06);
-  --shadow-md: 0 8px 24px rgba(34, 29, 19, 0.08);
-  --shadow-lg: 0 24px 60px rgba(34, 29, 19, 0.16);
-  --shadow-pop: 0 12px 40px rgba(34, 29, 19, 0.14);
-
-  --nav-h: 72px;
-  --bottom-nav-h: 60px;
-  --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-body {
-  background:
-    radial-gradient(1200px 420px at 50% -160px, rgba(194, 106, 8, 0.05), transparent 70%),
-    var(--bg);
-  font-size: var(--fs-body);
-}
-
-h1, h2, h3, h4 {
-  letter-spacing: -0.015em;
-  text-wrap: balance;
-}
-
-h2 { font-size: var(--fs-h2); }
-h3 { font-size: var(--fs-h3); }
-
-a { text-underline-offset: 3px; }
-
-:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
-  border-radius: 3px;
-}
 
 /* ------------------------------------------------------------
    2. TYPOGRAPHY HELPERS
    ------------------------------------------------------------ */
-.t-display { font-size: var(--fs-display); letter-spacing: -0.03em; }
-.t-h1 { font-size: var(--fs-h1); }
-.t-h2 { font-size: var(--fs-h2); }
-.t-h3 { font-size: var(--fs-h3); }
-
 .eyebrow-rule {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--s2h);
 }
 .eyebrow-rule::before {
   content: '';
@@ -122,50 +56,23 @@ a { text-underline-offset: 3px; }
 /* ------------------------------------------------------------
    3. BUTTONS, CHIPS, BADGES
    ------------------------------------------------------------ */
-.btn {
-  border-radius: var(--r-sm);
-  padding: 0.68rem 1.35rem;
-  letter-spacing: 0.01em;
-}
-.btn--primary {
-  background: var(--primary);
-  box-shadow: 0 1px 2px rgba(7, 69, 44, 0.4), 0 6px 18px rgba(7, 69, 44, 0.18);
-}
-.btn--primary:hover {
-  background: var(--primary-strong);
-  box-shadow: 0 2px 4px rgba(7, 69, 44, 0.4), 0 10px 26px rgba(7, 69, 44, 0.22);
-}
-.btn--ghost {
-  background: var(--surface);
-  border-color: var(--border-strong);
-}
-.btn--ghost:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--surface);
-}
-.btn--lg { padding: 0.9rem 1.9rem; font-size: 1.02rem; border-radius: var(--r-md); }
+/* The button system — base, primary, accent, ghost, subtle, lg and the
+   disabled state — moved to primitives.css, which is where the Button
+   component that emits these classes keeps its paint. The values that
+   shipped were this file's, resolved against index.css, refine.css and
+   polish.css; primitives.css is that resolution written once.
 
-.chip {
-  border-radius: var(--r-full);
-  border-color: var(--border);
-  background: var(--surface);
-}
-.chip--select:hover { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
-.chip--active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-  box-shadow: 0 2px 10px rgba(7, 69, 44, 0.25);
-}
-.chip--meal { background: var(--accent-soft); color: #8a5408; border-color: #eeddb4; }
-.chip--vibe { background: #f1ecff; color: #5b3fd4; border-color: #e2dafd; }
-.chip--offer { background: var(--success-soft); color: var(--success); border-color: #c9e8d2; }
+   The chip system followed it in Phase 2b, and the values that shipped
+   were this file's again — index.css declared the same base and the same
+   five variants earlier and lost every one of them. `.chip--vibe` and
+   `.chip--offer` were dropped rather than moved: no markup in the
+   product renders either, and the two tones they described belong to
+   `Badge` now. See primitives.css §3–§5. */
 
 .open-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--s1h);
   font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--ink-soft);
@@ -184,23 +91,28 @@ a { text-underline-offset: 3px; }
    4. HEADER / NAVIGATION
    ------------------------------------------------------------ */
 .nav {
-  background: rgba(250, 246, 239, 0.86);
+  background: color-mix(in srgb, var(--bg) 84%, transparent);
   border-bottom: 1px solid var(--border);
-  backdrop-filter: blur(16px) saturate(1.4);
+  /* The `backdrop-filter: var(--header-blur)` pair that used to sit here is
+     gone — it never applied. polish.css owns the header's glass as a state
+     (`.nav:not(.nav--scrolled):not(.nav--over-hero)` → none,
+     `.nav.nav--scrolled` → --glass-blur) and refine.css clears it over the
+     hero, all at higher specificity than this bare `.nav`. It was also the
+     last live reader of `--header-blur`, so removing it retired the alias. */
 }
 .nav__inner { height: var(--nav-h); gap: var(--s4); }
 
-.nav__brand { gap: 11px; }
+.nav__brand { gap: var(--s3); }
 
 .nav__logo {
   width: 42px;
   height: 42px;
   border-radius: 13px;
   background: linear-gradient(150deg, var(--primary), var(--primary-strong));
-  box-shadow: 0 3px 10px rgba(7, 69, 44, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  box-shadow: 0 3px 10px rgba(28, 23, 16, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.16);
   color: #fff;
   transform: rotate(-4deg);
-  transition: transform var(--dur-med) var(--ease);
+  transition: transform var(--tr-settle);
 }
 .nav__brand:hover .nav__logo { transform: rotate(0deg) scale(1.04); }
 
@@ -220,14 +132,14 @@ a { text-underline-offset: 3px; }
   padding: 0.5rem 1.05rem;
   background: var(--surface);
   box-shadow: var(--shadow-sm);
-  transition: box-shadow var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  transition: box-shadow var(--tr-settle), border-color var(--tr-settle);
 }
 .nav__search:focus-within {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-soft), var(--shadow-sm);
 }
 
-.nav__links { gap: 2px; }
+.nav__links { gap: var(--s0h); }
 
 .nav__link {
   padding: 0.5rem 0.85rem;
@@ -247,7 +159,7 @@ a { text-underline-offset: 3px; }
   background: var(--accent);
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform var(--dur-med) var(--ease);
+  transition: transform var(--tr-settle);
 }
 .nav__link:hover { background: transparent; color: var(--ink); }
 .nav__link:hover::after { transform: scaleX(1); }
@@ -261,18 +173,10 @@ a { text-underline-offset: 3px; }
   font-size: 0.68rem;
 }
 
-.nav__burger {
-  width: 42px;
-  height: 42px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--r-sm);
-  border-color: var(--border);
-  background: var(--surface);
-  margin-left: auto;
-  flex-shrink: 0;
-}
+/* The `.nav__burger` block that sat here — 42px box, inline-flex, `--r-sm`,
+   `--surface` fill — is consolidated into polish.css. Its three live
+   declarations (`justify-content`, `margin-left: auto`, `flex-shrink: 0`) moved
+   with it; the other seven were already losing to polish.css. */
 
 /* Primary links sit centred between the search box and the hamburger. */
 .nav__links {
@@ -287,7 +191,7 @@ a { text-underline-offset: 3px; }
 .nav__account-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--s2);
   padding: 0.35rem 0.7rem 0.35rem 0.4rem;
   border-radius: var(--r-full);
   border: 1px solid transparent;
@@ -296,7 +200,7 @@ a { text-underline-offset: 3px; }
   font-weight: 600;
   font-size: var(--fs-md);
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  transition: background var(--tr-settle), border-color var(--tr-settle);
 }
 .nav__account-trigger:hover { background: var(--surface-2); color: var(--ink); }
 .nav__account-trigger--open { background: var(--surface-2); border-color: var(--border); }
@@ -312,32 +216,29 @@ a { text-underline-offset: 3px; }
   font-weight: 800;
 }
 .nav__account-name { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nav__account-chevron { color: var(--ink-faint); transition: transform var(--dur-fast) var(--ease); }
+.nav__account-chevron { color: var(--ink-faint); transition: transform var(--tr-settle); }
 .nav__account-chevron--open { transform: rotate(180deg); }
 .nav__account-menu {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
   min-width: 220px;
-  padding: 6px;
+  padding: var(--s1h);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-lg);
   z-index: 80;
-  animation: more-in 140ms var(--ease);
-}
-@keyframes more-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  animation: kk-rise 140ms var(--ease);
+  --kk-rise-from: -4px;
 }
 .nav__account-head {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 8px 10px 10px;
+  gap: var(--s0h);
+  padding: var(--s2) var(--s2h) var(--s2h);
   border-bottom: 1px solid var(--border);
-  margin-bottom: 4px;
+  margin-bottom: var(--s1);
 }
 .nav__account-head strong { font-size: var(--fs-md); line-height: 1.3; }
 .nav__account-head span {
@@ -350,7 +251,7 @@ a { text-underline-offset: 3px; }
 .nav__account-link {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s2);
   width: 100%;
   padding: 0.5rem 0.7rem;
   border-radius: var(--r-sm);
@@ -361,27 +262,27 @@ a { text-underline-offset: 3px; }
   border: 0;
   text-align: left;
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  transition: background var(--tr-settle), color var(--tr-settle);
 }
 .nav__account-link:hover { background: var(--primary-soft); color: var(--primary); }
 .nav__account-link--active { background: var(--primary-soft); color: var(--primary); }
 .nav__account-link--danger { color: var(--danger); }
 .nav__account-link--danger:hover { background: #fdecec; color: var(--danger); }
-.nav__account-divider { height: 1px; background: var(--border); margin: 4px 2px; }
+.nav__account-divider { height: 1px; background: var(--border); margin: var(--s1) var(--s0h); }
 
 .nav__mobile-signout {
   display: flex;
   align-items: center;
   gap: var(--s2);
   width: 100%;
-  padding: 10px 8px;
+  padding: var(--s2h) var(--s2);
   border: 0;
   border-radius: var(--r-sm);
   background: none;
   font-weight: 600;
   color: var(--danger);
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease);
+  transition: background var(--tr-settle);
 }
 .nav__mobile-signout:hover { background: #fdecec; }
 
@@ -399,11 +300,7 @@ a { text-underline-offset: 3px; }
   inset: 0;
   z-index: 70;
   background: rgba(33, 29, 21, 0.42);
-  animation: backdrop-in var(--dur-med) var(--ease);
-}
-@keyframes backdrop-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  animation: kk-fade-in var(--dur-med) var(--ease);
 }
 /* The drawer is rendered outside <header> (which has backdrop-filter, which would
    otherwise trap fixed positioning), so it can be a true full-height right panel. */
@@ -446,22 +343,23 @@ a { text-underline-offset: 3px; }
   border-radius: var(--r-sm);
   color: var(--ink);
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  transition: background var(--tr-settle), transform var(--tr-settle);
 }
 .nav__mobile-close:hover { background: var(--surface-3); }
 .nav__mobile-close:active { transform: scale(0.96); }
 /* Unified compact header breakpoint: below 900px the header shows only the
    logo and hamburger — the search box and desktop nav links are hidden. The
-   hamburger itself is visible at every width and opens the same drawer. */
+   hamburger itself is visible at every width and opens the same drawer.
+   The `.nav__links` half of this lives in phase-c.css, which loads last and
+   would otherwise override whatever is written here. */
 @media (max-width: 900px) {
   .nav__search { display: none; }
-  .nav__links { display: none; }
 }
 .nav__mobile a {
   border-radius: var(--r-sm);
   font-weight: 600;
-  padding: 10px 8px;
-  transition: background var(--dur-fast) var(--ease);
+  padding: var(--s2h) var(--s2);
+  transition: background var(--tr-settle);
 }
 .nav__mobile a:hover { background: var(--surface-2); }
 .nav__mobile a.nav__link--active { background: var(--primary-soft); }
@@ -479,7 +377,7 @@ a { text-underline-offset: 3px; }
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--ink-faint);
-  padding: 0 8px;
+  padding: 0 var(--s2);
   margin-bottom: var(--s1);
 }
 
@@ -492,7 +390,12 @@ a { text-underline-offset: 3px; }
   height: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
   background: rgba(255, 253, 248, 0.94);
-  backdrop-filter: blur(16px) saturate(1.4);
+  /* The bottom nav is §4's second permitted glass surface, but the recipe
+     comes from phase-c.css, which re-declares this selector with
+     `--glass-blur` and wins on source order. The `blur(16px) saturate(1.4)`
+     here was a near-identical second opinion that never composited — and it
+     had no `-webkit-` pair, so it would have been a *third* material on
+     Safari had it ever won. Deleted in Phase 3 item 6. */
   border-top: 1px solid var(--border);
   box-shadow: 0 -6px 24px rgba(34, 29, 19, 0.06);
 }
@@ -509,7 +412,7 @@ a { text-underline-offset: 3px; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: var(--s1);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -527,7 +430,7 @@ a { text-underline-offset: 3px; }
   border-radius: 0 0 4px 4px;
   background: var(--primary);
   transform: scaleX(0);
-  transition: transform var(--dur-med) var(--ease);
+  transition: transform var(--tr-settle);
 }
 .mobile-nav__link--active { color: var(--primary); }
 .mobile-nav__link--active::after { transform: scaleX(1); }
@@ -546,7 +449,7 @@ a { text-underline-offset: 3px; }
 .hero__inner { max-width: 1040px; }
 
 .hero__eyebrow {
-  gap: 8px;
+  gap: var(--s2);
   color: var(--terracotta);
   letter-spacing: 0.16em;
 }
@@ -614,7 +517,6 @@ a { text-underline-offset: 3px; }
 .builder__popover {
   border-radius: var(--r-md);
   box-shadow: var(--shadow-pop);
-  padding: var(--s2);
   animation-duration: var(--dur-med);
 }
 .builder__option {
@@ -629,9 +531,11 @@ a { text-underline-offset: 3px; }
   border-top: 1px solid var(--border);
 }
 
+/* The pair, not the figure: the display serif and the size belong to
+   `.builder__count-figure` (refine.css §4), because inherited from here they
+   were also the caption's face — a sentence set in the headline serif at a
+   headline size, which is how the foot came to read as a metric tile. */
 .builder__count {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
   font-weight: 700;
   color: var(--primary);
 }
@@ -664,12 +568,12 @@ a { text-underline-offset: 3px; }
 .quick-chip--primary {
   background: var(--primary);
   color: #fff;
-  box-shadow: 0 2px 10px rgba(7, 69, 44, 0.25);
+  box-shadow: 0 2px 10px rgba(28, 23, 16, 0.26);
 }
 .quick-chip--primary:hover {
   background: var(--primary-strong);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(7, 69, 44, 0.3);
+  box-shadow: 0 4px 14px rgba(28, 23, 16, 0.32);
 }
 
 /* Hero stats — editorial definition row */
@@ -721,7 +625,7 @@ a { text-underline-offset: 3px; }
 .section-heading__title {
   font-size: var(--fs-h2);
   letter-spacing: -0.02em;
-  margin-top: 2px;
+  margin-top: var(--s0h);
 }
 
 .section-heading__lede {
@@ -735,12 +639,12 @@ a { text-underline-offset: 3px; }
 .section-heading__action {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   color: var(--primary);
   font-weight: 700;
-  padding-bottom: 2px;
+  padding-bottom: var(--s0h);
   border-bottom: 1px solid transparent;
-  transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  transition: border-color var(--tr-settle), transform var(--tr-settle);
 }
 .section-heading__action:hover {
   text-decoration: none;
@@ -748,7 +652,7 @@ a { text-underline-offset: 3px; }
 }
 .section-heading__action::after {
   content: '→';
-  transition: transform var(--dur-fast) var(--ease);
+  transition: transform var(--tr-settle);
 }
 .section-heading__action:hover::after { transform: translateX(3px); }
 
@@ -758,7 +662,7 @@ button.section-heading__action {
   border: 0;
   cursor: pointer;
   font-family: inherit;
-  padding: 0 0 2px;
+  padding: 0 0 var(--s0h);
 }
 button.section-heading__action::after { content: none; }
 button.section-heading__action:focus-visible {
@@ -791,8 +695,7 @@ button.section-heading__action:focus-visible {
   border-radius: var(--r-lg);
   border-color: var(--border);
   background: var(--surface);
-  transition: transform var(--dur-med) var(--ease), box-shadow var(--dur-med) var(--ease),
-    border-color var(--dur-med) var(--ease);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle), border-color var(--tr-settle);
 }
 .card:hover {
   transform: translateY(-4px);
@@ -804,9 +707,12 @@ button.section-heading__action:focus-visible {
 .card__media img { transform: scale(1.02); }
 .card__media:hover img { transform: scale(1.05); }
 
+/* Superseded: `.card__badge` has no markup left in src — the card's photo
+   overlays are `.rcard__*` now, and those keep their glass. The blur is gone
+   from this block (it was the cascade winner over index.css's blur(6px), and
+   both were applying to nothing); the rest is left standing as a record. */
 .card__badge {
   background: rgba(34, 29, 19, 0.78);
-  backdrop-filter: blur(8px);
   letter-spacing: 0.1em;
   padding: 0.3rem 0.7rem;
 }
@@ -872,7 +778,7 @@ button.section-heading__action:focus-visible {
 .card--compact .card__media { aspect-ratio: 1 / 1; }
 .card--compact .card__body { padding: var(--s3); }
 .card--compact .card__name { font-size: 1.02rem; }
-.card--compact .card__tagline { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; margin: 2px 0 var(--s2); }
+.card--compact .card__tagline { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; margin: var(--s0h) 0 var(--s2); }
 .card--compact .card__chips { display: none; }
 .card--compact .card__match-zone { display: none; }
 /* Compact cards keep the essentials: rating + price + open state.
@@ -882,59 +788,76 @@ button.section-heading__action:focus-visible {
   display: flex;
   border-top: 0;
   padding-top: 0;
-  margin: 2px 0 0;
+  margin: var(--s0h) 0 0;
   gap: var(--s2);
   font-size: var(--fs-xs);
   flex-wrap: nowrap;
   overflow: hidden;
 }
 .card--compact .card__meta .card__meta-item:first-child { display: none; }
-.card--compact .card__meta-item svg { width: 11px; height: 11px; }
+.card--compact .card__meta-item svg { width: 12px; height: 12px; }
 .card--compact .fav-btn { top: 8px; right: 8px; width: 30px; height: 30px; }
-.card--compact .save-btn { top: 8px; right: calc(8px + 38px); width: 30px; height: 30px; }
 
-/* Favourite / save / compare floating actions */
-.fav-btn, .save-btn, .compare-btn {
+/* Favourite floating action.
+   `.save-btn` and `.compare-btn` used to share this rule, and the block below
+   it gave `.save-btn` a position of its own. Neither class has markup anywhere
+   in src — the bookmark and compare affordances are `.rcard__act` /
+   `.rcard__act--compare-on` now (RestaurantCard.tsx:468) — so they are gone
+   from the group, from the hover, from their own blocks, and from the two
+   responsive blocks that were still nudging them around. `.fav-btn` stays: it
+   is live at RestaurantPage.tsx:358. */
+.fav-btn {
   border-radius: 50%;
   border: 1px solid var(--border);
   background: rgba(255, 253, 248, 0.92);
-  backdrop-filter: blur(6px);
+  /* A control floating on the restaurant's photograph — §4's fourth
+     permitted surface, so it keeps its glass, but on the one recipe rather
+     than a private `blur(6px)`. It also had no `-webkit-` pair, so Safari
+     was seeing plain 92% paper where Chrome saw frosted paper; the token
+     conversion fixes that by construction. */
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   box-shadow: var(--shadow-sm);
   color: var(--ink-soft);
-  transition: transform var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
-    background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  transition: transform var(--tr-settle), color var(--tr-settle), background var(--tr-settle), border-color var(--tr-settle);
 }
-.fav-btn:hover, .save-btn:hover, .compare-btn:hover { transform: scale(1.08); }
+.fav-btn:hover { transform: scale(1.08); }
 .fav-btn--active { color: var(--terracotta); border-color: var(--terracotta); background: var(--terracotta-soft); }
-
-/* Bookmark (Saved) control — sits beside the heart, distinct green active state */
-.save-btn {
-  position: absolute;
-  top: var(--s3);
-  right: calc(var(--s3) + 44px);
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-}
-.save-btn--active { color: var(--primary); border-color: var(--primary); background: var(--primary-soft); }
 
 /* ------------------------------------------------------------
    9. MATCH INDICATOR
    ------------------------------------------------------------ */
-/* Compact decision signal: score · slim bar · hint icon on one row.
-   The popover (real reasons from the engine) is unchanged. */
-.match-indicator__trigger {
+/* The KK paint for the indicator; index.css owns its structure.
+   `flex-direction: row` used to sit on the trigger itself, which was right
+   when the trigger WAS the row. It is now a two-line control — measure on
+   top, the engine's strongest reason underneath — so the row axis moved onto
+   the inner `__row` and the trigger stays the column index.css makes it. */
+.match-indicator__row {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: var(--s3);
 }
 
+/* The control now takes a ground when it is pointed at. This is the whole
+   reported defect: the old trigger was invisible furniture whose only
+   affordance was a 22px `Info` glyph at `opacity: 0.5`, so nobody knew there
+   was anything to click. A ground plus a hairline says "control" without
+   putting a second button in the card's foot. */
+.match-indicator:hover .match-indicator__trigger,
+.match-indicator__trigger:focus-visible {
+  background: var(--primary-faint);
+  box-shadow: inset 0 0 0 1px var(--primary-line);
+}
+.match-indicator:hover .match-indicator__why,
+.match-indicator__trigger:focus-visible .match-indicator__why {
+  color: var(--primary);
+}
+
 .match-indicator__score {
   display: inline-flex;
   align-items: baseline;
-  gap: 5px;
+  gap: var(--s1h);
   white-space: nowrap;
   flex: none;
 }
@@ -959,29 +882,12 @@ button.section-heading__action:focus-visible {
   min-width: 0;
   height: 4px;
 }
+/* The fill was `linear-gradient(90deg, var(--primary), #12805a)` — a
+   hardcoded green from a palette KK does not have, dead since refine.css
+   painted the same element with `--grad-gold`. Both are gone from here; the
+   gold in refine.css is the one KK ships, and it is the only one now. */
 .match-bar__fill {
-  background: linear-gradient(90deg, var(--primary), #12805a);
   box-shadow: none;
-}
-
-/* Tiny info affordance — hints the trigger opens "why this matches". */
-.match-indicator__hint {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--r-full);
-  color: var(--ink-faint);
-  opacity: 0.5;
-  transition: opacity var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
-    background var(--dur-fast) var(--ease);
-}
-.match-indicator:hover .match-indicator__hint,
-.match-indicator__trigger:focus-visible .match-indicator__hint {
-  opacity: 1;
-  color: var(--primary);
-  background: var(--primary-soft);
 }
 
 /* Very low scores are honest signal — present quietly, never as a bold
@@ -993,29 +899,29 @@ button.section-heading__action:focus-visible {
 .match-indicator--low .match-bar__fill {
   background: var(--border-strong);
 }
-.match-indicator--low .match-indicator__hint:hover {
+/* A low match's lead reason is still a real reason, but the accent belongs
+   to strong signal — so the icon drops to ink here rather than shouting in
+   saffron next to a muted number. */
+.match-indicator--low .match-indicator__lead svg {
+  color: var(--ink-faint);
+}
+/* The panel agrees with the trigger. A saffron dial reading 12% next to the
+   heading "The little that lines up" would be the one loud thing on a card
+   KK is deliberately being quiet about, so the ring and its numeral mute
+   with everything else. The arc's length still carries the measure. */
+.match-indicator--low .match-popover__dial {
+  background: conic-gradient(var(--ink-faint) calc(var(--pct) * 1%), var(--border-strong) 0);
+}
+.match-indicator--low .match-popover__dial strong {
   color: var(--ink-soft);
-  background: var(--surface-2);
+}
+.match-indicator--low .match-popover__bar span {
+  background: var(--border-strong);
 }
 
 .match-popover {
-  border-radius: var(--r-md);
   box-shadow: var(--shadow-pop);
 }
-.match-popover__score {
-  background: var(--surface-2);
-  border-color: var(--border);
-}
-.match-popover__reason-label { font-weight: 600; }
-.match-popover {
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow-pop);
-}
-.match-popover__score {
-  background: var(--surface-2);
-  border-color: var(--border);
-}
-.match-popover__reason-label { font-weight: 600; }
 
 /* ------------------------------------------------------------
    10. OFFERS, COLLECTIONS, TILES
@@ -1033,7 +939,7 @@ button.section-heading__action:focus-visible {
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   overflow: hidden;
-  transition: transform var(--dur-med) var(--ease), box-shadow var(--dur-med) var(--ease);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
 }
 .offer-card:hover {
   transform: translateY(-4px);
@@ -1041,9 +947,9 @@ button.section-heading__action:focus-visible {
 }
 .offer-card__media { aspect-ratio: 16 / 9; position: relative; overflow: hidden; }
 .offer-card__media .img-wrap, .offer-card__media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.offer-card__media img { transform: scale(1.02); transition: transform var(--dur-slow) var(--ease); }
+.offer-card__media img { transform: scale(1.02); transition: transform var(--dur-slow) var(--ease-out); }
 .offer-card:hover .offer-card__media img { transform: scale(1.06); }
-.offer-card > div:last-child { padding: var(--s4); display: flex; flex-direction: column; gap: 6px; }
+.offer-card > div:last-child { padding: var(--s4); display: flex; flex-direction: column; gap: var(--s1h); }
 .offer-card__tag {
   align-self: flex-start;
   background: var(--terracotta-soft);
@@ -1078,7 +984,7 @@ button.section-heading__action:focus-visible {
   overflow: hidden;
   border: 1px solid var(--border);
   background: var(--surface);
-  transition: transform var(--dur-med) var(--ease), box-shadow var(--dur-med) var(--ease);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
 }
 .collection-card:hover {
   transform: translateY(-3px);
@@ -1094,7 +1000,7 @@ button.section-heading__action:focus-visible {
 .collection-card:first-child .collection-card__media img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
 }
-.collection-card__media img { transform: scale(1.02); transition: transform var(--dur-slow) var(--ease); }
+.collection-card__media img { transform: scale(1.02); transition: transform var(--dur-slow) var(--ease-out); }
 .collection-card:hover .collection-card__media img { transform: scale(1.06); }
 .collection-card__body { padding: var(--s4); }
 .collection-card:first-child .collection-card__body {
@@ -1111,7 +1017,7 @@ button.section-heading__action:focus-visible {
 .collection-card__count {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--s1h);
   color: var(--primary);
   font-weight: 700;
   font-size: var(--fs-xs);
@@ -1132,7 +1038,7 @@ button.section-heading__action:focus-visible {
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
-  transition: transform var(--dur-med) var(--ease), box-shadow var(--dur-med) var(--ease);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
 }
 .tile:hover {
   transform: translateY(-3px);
@@ -1142,13 +1048,13 @@ button.section-heading__action:focus-visible {
 .tile__media .img-wrap, .tile__media img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
 }
-.tile__media img { transform: scale(1.02); transition: transform var(--dur-slow) var(--ease); }
+.tile__media img { transform: scale(1.02); transition: transform var(--dur-slow) var(--ease-out); }
 .tile:hover .tile__media img { transform: scale(1.08); }
 .tile__body {
   padding: var(--s3);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--s0h);
   align-items: flex-start;
 }
 .tile__body strong { font-family: var(--font-display); font-size: 1.06rem; font-weight: 600; }
@@ -1220,7 +1126,7 @@ button.section-heading__action:focus-visible {
 .surprise__label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   color: var(--terracotta);
   font-weight: 700;
   font-size: var(--fs-xs);
@@ -1236,8 +1142,7 @@ button.section-heading__action:focus-visible {
    12. WHY KHABO KOTHAY
    ------------------------------------------------------------ */
 .why-khabo {
-  background:
-    linear-gradient(160deg, var(--primary-strong) 0%, #0a5c3a 55%, var(--primary) 100%);
+  background: var(--grad-primary);
   color: #fff;
   border-top: 0;
   border-bottom: 0;
@@ -1259,8 +1164,15 @@ button.section-heading__action:focus-visible {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: var(--r-lg);
-  backdrop-filter: blur(6px);
-  transition: transform var(--dur-med) var(--ease), background var(--dur-med) var(--ease);
+  /* `backdrop-filter: blur(6px)` removed in Phase 3 item 6, on three counts.
+     It is a *content* panel, and §4's first line is "glass is chrome; content
+     is never glass". It sat on `.why-khabo`'s `--grad-primary` band, and
+     blurring a smooth gradient returns the same gradient — a compositor pass
+     for no visible difference. And `.why-khabo` has no markup left in src;
+     the section is superseded, kept only as a record like `.card__badge`
+     above. The 6% white wash and hairline stay: they are what actually drew
+     the panel. */
+  transition: transform var(--tr-settle), background var(--tr-settle);
 }
 .why-khabo__block:hover { transform: translateY(-3px); background: rgba(255, 255, 255, 0.09); }
 .why-khabo__block::before {
@@ -1370,24 +1282,591 @@ button.section-heading__action:focus-visible {
   margin-top: var(--s2);
 }
 
-.detail__stats {
+/* ---- Action hierarchy -------------------------------------
+   One primary action. On a discovery page the real, high-intent
+   thing to do is go there, so Directions gets the ink fill, the
+   size and the coloured elevation; every other control steps
+   back a full level. Previously five controls sat at identical
+   weight and the only one styled as primary was the one that
+   didn't work. */
+.detail__actions {
   display: flex;
-  gap: var(--s8);
+  align-items: center;
+  gap: var(--s2);
   flex-wrap: wrap;
-  margin-top: var(--s4);
-  padding-top: var(--s4);
-  border-top: 1px solid var(--border);
+  margin-top: var(--s5);
+  margin-bottom: var(--s3);
+}
+/* 14px like every other button — the 10px step here predated the
+   radius roles and made the detail page the one surface where a
+   button was a different shape. Size and fill carry the hierarchy
+   instead. §2. */
+.detail__actions .btn { border-radius: var(--r-md); }
+.detail__actions .btn--primary {
+  border-radius: var(--r-md);
+  padding: 0.9rem 1.7rem;
+  font-size: 1rem;
+}
+.detail__actions .btn--ghost { padding: 0.8rem 1.2rem; }
+
+/* ---- Reservations: a roadmap promise, not a dead button -----
+   This concept stays visible deliberately. But a disabled
+   primary button was the worst possible presentation: it reads
+   as broken, and it outranked the actions that actually work.
+   As an anticipation strip it keeps the feature present and
+   makes it feel intentional, while being structurally incapable
+   of competing with a real call to action. */
+.soon-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: 0 0 var(--s5);
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--r-md);
+  border: 1px dashed var(--accent-line);
+  background: var(--accent-faint);
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+  line-height: var(--lh-snug);
+}
+.soon-strip__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: var(--r-sm);
+  background: var(--grad-spice);
+  color: #fff;
+  box-shadow: var(--shadow-accent);
+}
+.soon-strip strong {
+  color: var(--ink);
+  font-weight: var(--weight-semi);
+}
+/* `flex-basis: 0` rather than `auto`: with a wrapping flex row an item is
+   wrapped onto a new line when its *base* size doesn't fit, before any
+   shrinking happens — so an auto-basis sentence stranded the icon alone on
+   the first line at mobile widths. A zero basis keeps them together. */
+.soon-strip__body {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.soon-strip__tag {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--accent-strong);
 }
 
-.detail__actions {
-  gap: var(--s3);
+/* ---- Decision bar ----------------------------------------
+   Owns the three facts that decide whether someone goes: what
+   it costs, where it is, whether it's open right now. The
+   reference detail it used to duplicate — full address, the
+   weekly schedule, phone — now lives only in the aside, so
+   every fact on this page has exactly one home. */
+.detail__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  flex-wrap: nowrap;
   margin-top: var(--s5);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
 }
-.detail__actions .btn { border-radius: var(--r-sm); }
+.detail__stats .stat {
+  padding: var(--s4) var(--s5);
+  border-right: 1px solid var(--border-soft);
+  min-width: 0;
+}
+.detail__stats .stat:last-child { border-right: 0; }
+
+.detail__stats .stat__label {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.detail__stats .stat__value {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-snug);
+  line-height: var(--lh-snug);
+  margin: var(--s1) 0 var(--s1);
+  color: var(--ink);
+}
+.detail__stats .stat__sub {
+  font-size: var(--fs-xs);
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+/* Provenance sits on its own line under the value, so the badge
+   never competes with the number it qualifies. */
+.stat__prov { margin-top: var(--s2); }
+
+/* Live open/closed state, as a pip rather than a colour-only
+   signal — the label carries the meaning for colour-blind users. */
+.stat__value--open { color: var(--success); }
+.stat__value--shut { color: var(--danger); }
+.stat__pip {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: var(--s2);
+  vertical-align: 1px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+/* The loading skeleton renders bare bars as the grid children, so it
+   has to supply the cell inset itself and match the real cell height —
+   otherwise the bar visibly grows when the data lands. */
+.detail__stats .skeleton--stat {
+  height: auto;
+  min-height: 108px;
+  margin: var(--s4) var(--s5);
+}
+
+@media (max-width: 760px) {
+  .detail__stats { grid-template-columns: 1fr; }
+  .detail__stats .stat {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .detail__stats .stat:last-child { border-bottom: 0; }
+  .soon-strip { flex-wrap: wrap; align-items: flex-start; }
+  /* The tag drops to its own line rather than squeezing the sentence into a
+     four-line column, and indents to align under the sentence, not the icon. */
+  .soon-strip__tag {
+    flex-basis: 100%;
+    margin-left: calc(30px + var(--s3));
+  }
+}
 
 .detail__section { padding: 0; margin-bottom: var(--s10); }
 .detail__section-head h2 { font-size: var(--fs-h2); letter-spacing: -0.02em; }
 .detail__section-sub { color: var(--ink-soft); max-width: 56ch; font-size: var(--fs-md); }
+
+/* ------------------------------------------------------------
+   14b. PROVENANCE — honesty rendered as confidence
+   ------------------------------------------------------------
+   The product already refuses to invent data. What it lacked was
+   a way to *show* that refusal as a strength: every caveat was
+   grey 11px fine print, so telling the truth looked like
+   apologising. These are graded, colour-coded confidence signals
+   built on the --prov-* tokens, with levels mapped 1:1 onto the
+   source vocabulary in types.ts.
+   ------------------------------------------------------------ */
+.prov {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 0.18rem 0.52rem 0.18rem 0.42rem;
+  border-radius: var(--r-full);
+  border: 1px solid transparent;
+  font-family: var(--font-body);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+.prov svg { flex-shrink: 0; }
+.prov--sm {
+  padding: 0.1rem 0.42rem 0.1rem 0.32rem;
+  letter-spacing: 0.04em;
+}
+
+.prov--verified { color: var(--prov-verified); background: var(--prov-verified-bg); border-color: var(--prov-verified-line); }
+.prov--recorded { color: var(--prov-recorded); background: var(--prov-recorded-bg); border-color: var(--prov-recorded-line); }
+.prov--derived  { color: var(--prov-derived);  background: var(--prov-derived-bg);  border-color: var(--prov-derived-line); }
+.prov--demo     { color: var(--prov-demo);     background: var(--prov-demo-bg);     border-color: var(--prov-demo-line); }
+
+/* The sentence-length counterpart: an evidence note tinted to its
+   own confidence level instead of anonymous grey text. */
+.prov-note {
+  margin: var(--s3) 0 0;
+  padding-left: var(--s3);
+  border-left: 2px solid transparent;
+  font-size: var(--fs-xs);
+  line-height: var(--lh-body);
+  max-width: 64ch;
+}
+.prov-note--verified { color: var(--prov-verified); border-left-color: var(--prov-verified-line); }
+.prov-note--recorded { color: var(--prov-recorded); border-left-color: var(--prov-recorded-line); }
+.prov-note--derived  { color: var(--prov-derived);  border-left-color: var(--prov-derived-line); }
+.prov-note--demo     { color: var(--prov-demo);     border-left-color: var(--prov-demo-line); }
+
+/* Section headers put the badge inline with the summary line. */
+.detail__section-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+/* The aside states each fact's source on its own line under the value. */
+.info-card__prov { display: block; margin-top: var(--s1h); }
+
+/* ------------------------------------------------------------
+   14c. KNOWN FOR — curated signature dishes
+   ------------------------------------------------------------
+   Merged in from the old standalone "Signature dishes" section,
+   which duplicated the menu's own Signature pane and, for most
+   venues, rendered nothing but a promise. These are names with
+   no recorded price, so they are styled as editorial callouts
+   rather than as menu rows — the visual difference is the point.
+   ------------------------------------------------------------ */
+.known-for {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  margin: var(--s4) 0 var(--s5);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  border: 1px solid var(--primary-line);
+  background: var(--primary-faint);
+}
+.known-for__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  flex-shrink: 0;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--primary);
+}
+.known-for__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.known-for__item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s2);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: var(--weight-semi);
+  color: var(--ink);
+  letter-spacing: var(--tracking-snug);
+}
+/* A marker on EVERY name rather than a divider between names. A
+   between-items separator orphans at the start of a wrapped line —
+   on a 375px screen the third dish arrived with a leading rule and
+   nothing to its left. A per-item marker wraps cleanly. */
+.known-for__item::before {
+  content: '';
+  flex-shrink: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+  opacity: 0.5;
+  transform: translateY(-0.3em);
+}
+
+/* ------------------------------------------------------------
+   14d. DID YOU KNOW — the discovery-fact dossier
+   ------------------------------------------------------------
+   The facts are the most expensive content on the page: each one
+   was researched against a named source and approved one at a
+   time, and they are the only sentences here that no listing
+   anywhere else carries. Two rewrites got them here. The first
+   replaced an auto-fit grid of 220px boxes holding 14px semibold
+   body type behind a green tick — the shape of a feature
+   checklist, worn by the page's rarest material — with a cream
+   ledger. This is the second, and it changes three things.
+
+     IT IS SHUT. Five facts open is most of a screen, and this
+     sits above the menu, which is the single most-wanted thing on
+     the page. A gold pill reading `5 notes worth knowing` is
+     small enough to skip and specific enough to take. The panel
+     animates its height rather than toggling `hidden`, so the
+     facts stay in all 219 prerendered documents.
+
+     THE GROUND IS INK. The ledger was cream two steps up the
+     paper ramp, on the argument that a dark panel under a large
+     hero photo bands the top of the page dark-light-dark. Closed
+     by default there is no band until someone asks for one — and
+     cream on cream was too small a difference to read as a
+     different material at all. Ink is also the only ground on
+     which light means anything, and light is what this section is
+     made of now.
+
+     LIGHT REPLACES THE HAIRLINE. `SpotlightDeck` (primitives.css
+     §Spotlight deck) lights each card's border as the cursor
+     approaches, drifts motes across the card under it, tilts it
+     3.5°, and ripples from a click. All of it is a cursor effect,
+     so none of it exists on a phone or under
+     `prefers-reduced-motion` — the surface below has to be
+     finished without any of it, and is.
+
+   Two constraints did not move. Equal-height grid cells were the
+   measured defect under the first rewrite, not a taste call:
+   facts run 14 to 264 characters, so "Occupies the 14th floor of
+   Tower B 11" was given a box stretched to match a four-line
+   neighbour and empty space became the section's dominant
+   feature. Hence one full-width card per row, each its own
+   height. And 87% of venues with any facts have one or two, so
+   `--lead` — the first card, set larger — is the common case
+   rather than a flourish.
+
+   Every rule that touches the disclosure is written
+   `.dyk.kk-disc--inline …` and not `.dyk …`. primitives.css
+   loads last; `.kk-disc--inline .kk-disc__trigger` is also two
+   classes, so at equal specificity the primitive would win on
+   order. The third class settles it without an `!important`.
+
+   The `@media` block for this section lives INSIDE this section,
+   after its own declarations. There is no `@layer` in this product
+   and a media query loses to every later unconditional rule at
+   equal specificity, so a narrow-width override parked in §20
+   would be overruled by anything written here afterwards.
+   ------------------------------------------------------------ */
+
+/* The heading's one emphasised word, in the house treatment. Nothing
+   else contests the `em`, so this only has to state it. */
+.detail__section--dyk .detail__section-head h2 em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+/* ---- the pill you open it with ----------------------------------------
+   Closed it is gold on paper, and the count is the payload: espresso
+   serif figures on a saffron ground, which is the one place on this page
+   a numeral is allowed to be the loudest thing in a control. Open, the
+   pill takes the material of what it opened — it fills with ink — so the
+   control and the panel are visibly one object rather than a button that
+   happens to sit above a dark box. */
+.dyk.kk-disc--inline .kk-disc__trigger {
+  min-height: 40px;
+  padding: 0 var(--s4);
+  border-color: var(--accent-line);
+  background: var(--accent-faint);
+  color: var(--saffron-800);
+}
+
+.dyk.kk-disc--inline .kk-disc__trigger:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--saffron-800);
+  /* §8b's pair: the leave is the settle on the base rule above, the enter
+     is the answer, stated on the state that arrives. */
+  transition-duration: var(--tr-answer);
+}
+
+/* Solid espresso and not `--grad-ink`, which is otherwise this section's
+   dark: a gradient cannot interpolate from a flat saffron, so the pill
+   would snap instead of filling. The deck below is the gradient. */
+.dyk.kk-disc--inline .kk-disc__trigger[aria-expanded='true'] {
+  border-color: transparent;
+  background: var(--primary-strong);
+  color: var(--on-ink);
+}
+
+/* The summary's own gap, tighter than the primitive's --s3: the figure and
+   the phrase it counts are one label, not two items in a row. */
+.dyk.kk-disc--inline .kk-disc__summary {
+  gap: var(--s2);
+}
+
+.dyk__count {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: var(--weight-semi);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--primary-strong);
+  transition: color var(--tr-settle);
+}
+
+/* Gold once the ground is ink — the same figure colour the cards use, which
+   is what carries the pill's colour down into the deck. */
+.dyk.kk-disc--inline .kk-disc__trigger[aria-expanded='true'] .dyk__count {
+  color: var(--on-ink-accent);
+}
+
+/* ---- the panel is a frame for the deck and nothing else --------------
+   The inline variant ships a paper card; the deck brings its own ink, and
+   two nested boxes is the "inconsistent" look this rewrite is answering.
+   The bottom padding is not decoration: `--animated` clips to its measured
+   height, and the deck's shadow reaches ~10px past its own box. */
+.dyk.kk-disc--inline .kk-disc__panel {
+  margin-top: var(--s3);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.dyk.kk-disc--inline .kk-disc__panel--animated .kk-disc__panel-inner {
+  padding: 0 0 var(--s3);
+}
+
+/* ---- the deck -------------------------------------------------------- */
+.dyk__deck {
+  display: grid;
+  gap: var(--s3);
+  margin: 0;
+  padding: var(--s3);
+  list-style: none;
+  border: 1px solid var(--on-ink-line);
+  border-radius: var(--card-radius);
+  /* Warm light from the top-right corner, the same idea as the global
+     --ambient wash at one section's scale, over the house ink gradient.
+     It is also what the spotlight beam has to have something to lift:
+     `mix-blend-mode: screen` over flat black lifts nothing. */
+  background:
+    radial-gradient(680px 320px at 88% -20%, rgba(240, 168, 51, 0.14), transparent 62%),
+    var(--grad-ink);
+  box-shadow: 0 18px 40px -28px rgba(28, 23, 16, 0.6);
+}
+
+.dyk__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2h);
+  padding: var(--s4) var(--s5);
+  border: 1px solid var(--on-ink-line);
+  /* Concentric with the deck: 18px frame less 12px of padding is a 6px
+     corner, and corners that run parallel are most of why a nested box
+     reads as machined rather than assembled. Narrow widths keep the same
+     12px so this relationship never has to be restated. */
+  border-radius: calc(var(--card-radius) - var(--s3));
+  /* The system's two on-ink surface steps, used as the gradient. Glass
+     lifted by light rather than a card outlined by a heavier border —
+     which is the only treatment that survives having a moving beam
+     behind it. */
+  background: linear-gradient(180deg, var(--on-ink-surface-2) 0%, var(--on-ink-surface) 100%);
+  /* `transform` is deliberately absent. gsap writes it inline every frame
+     while the cursor is over this card, and a CSS transition on the same
+     property would fight the tween for it. */
+  transition: border-color var(--tr-settle), background var(--tr-settle);
+}
+
+.dyk__card:hover {
+  border-color: var(--on-ink-line-strong);
+  transition-duration: var(--tr-answer);
+}
+
+/* ---- inside a card --------------------------------------------------- */
+/* Caption left, figure right. Every card is the full width, so the figures
+   stack into a rail down the right edge without a grid column to hold
+   them — which is the whole reason this can be a flow of cards. */
+.dyk__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.dyk__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1h);
+  min-width: 0;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--on-ink-faint);
+}
+
+.dyk__tag svg {
+  flex: none;
+  color: var(--on-ink-accent);
+}
+
+.dyk__num {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: var(--weight-semi);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  /* --on-ink-accent, not --accent: saffron-600 is tuned to hold 4.5:1 on
+     paper and goes muddy on espresso. This is the ink-side gold. */
+  color: var(--on-ink-accent);
+}
+
+.dyk__text {
+  margin: 0;
+  /* Stated in rem, not ch: the measure has to hold for the serif this
+     element declares, and a ch on an inherited face is a different width. */
+  max-width: 42rem;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--on-ink-soft);
+  text-wrap: pretty;
+}
+
+/* The lead. Full-strength ink type and display size, because the first
+   fact is doing the introducing — and on 87% of the venues that have any,
+   it is the only one there is, so this is the common case, not a
+   flourish. */
+.dyk__card--lead {
+  padding: var(--s5);
+}
+
+.dyk__card--lead .dyk__num {
+  font-size: 1.45rem;
+}
+
+.dyk__card--lead .dyk__text {
+  max-width: 34rem;
+  font-size: clamp(1.14rem, 1.5vw, 1.34rem);
+  line-height: 1.44;
+  color: var(--on-ink);
+}
+
+/* Narrow: only the cards' own padding and the type come down. The deck's
+   12px keeps the corner geometry above true at every width. */
+@media (max-width: 640px) {
+  .dyk__card {
+    padding: var(--s3h) var(--s4);
+  }
+
+  .dyk__card--lead {
+    padding: var(--s4);
+  }
+
+  .dyk__text {
+    font-size: 0.98rem;
+    line-height: 1.5;
+  }
+
+  .dyk__num {
+    font-size: 1rem;
+  }
+
+  .dyk__card--lead .dyk__num {
+    font-size: 1.2rem;
+  }
+
+  .dyk__card--lead .dyk__text {
+    font-size: 1.1rem;
+  }
+}
 
 /* ------------------------------------------------------------
    15. PROFILE / REWARDS / LOGIN
@@ -1405,7 +1884,7 @@ button.section-heading__action:focus-visible {
   color: #fff;
   font-family: var(--font-display);
   font-size: 2.2rem;
-  box-shadow: 0 8px 24px rgba(7, 69, 44, 0.28);
+  box-shadow: 0 8px 24px rgba(28, 23, 16, 0.3);
 }
 .profile-head__name { font-size: clamp(1.9rem, 3.6vw, 2.7rem); letter-spacing: -0.025em; }
 
@@ -1418,14 +1897,15 @@ button.section-heading__action:focus-visible {
 }
 .profile-body .panel__head { border-bottom: 1px solid var(--border); }
 
-.food-identity {
-  border-left: 3px solid var(--accent);
-  background: var(--surface-2);
-  border-radius: var(--r-md);
-  padding: var(--s4);
-}
+/* `.food-identity` was a beige callout here — inset surface, 3px gold left rule,
+   s4 of padding. That is the shape this codebase uses for notices, and the
+   sentence is not a notice: it is the panel's lede, a description of the diner
+   assembled from their own preferences. console.css §11 sets it as one, and the
+   box had to go from where it was declared rather than be unpainted downstream. */
 
-.completion-pct { color: var(--primary); }
+/* `.completion-pct` was declared here, in phase3.css and in console.css — three
+   files colouring one figure. The markup now states an answered count instead,
+   because the percentage was already on the page twice; console.css owns it. */
 
 /* Rewards */
 .wallet {
@@ -1434,7 +1914,7 @@ button.section-heading__action:focus-visible {
     linear-gradient(150deg, var(--primary), var(--primary-strong));
   color: #fff;
   border-radius: var(--r-xl);
-  box-shadow: 0 18px 48px rgba(7, 69, 44, 0.3);
+  box-shadow: 0 18px 48px rgba(28, 23, 16, 0.32);
   padding: var(--s6);
   border: 0;
 }
@@ -1449,7 +1929,7 @@ button.section-heading__action:focus-visible {
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   background: var(--surface);
-  transition: transform var(--dur-med) var(--ease), box-shadow var(--dur-med) var(--ease);
+  transition: transform var(--tr-settle), box-shadow var(--tr-settle);
 }
 .reward-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 .reward-card__title { font-family: var(--font-display); font-size: 1.4rem; }
@@ -1473,7 +1953,7 @@ button.section-heading__action:focus-visible {
   box-shadow: var(--shadow-lg);
 }
 .auth-card__head h1 { font-size: var(--fs-h1); }
-.auth-card__role { display: flex; flex-direction: column; gap: 6px; }
+.auth-card__role { display: flex; flex-direction: column; gap: var(--s1h); }
 .auth-card__role-options { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
 .auth-card__role-option {
   display: flex;
@@ -1485,10 +1965,10 @@ button.section-heading__action:focus-visible {
   background: var(--surface);
   text-align: left;
   cursor: pointer;
-  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+  transition: border-color var(--tr-settle), background var(--tr-settle), box-shadow var(--tr-settle);
 }
-.auth-card__role-option > svg { color: var(--ink-faint); flex: none; margin-top: 2px; }
-.auth-card__role-option span { display: flex; flex-direction: column; gap: 2px; }
+.auth-card__role-option > svg { color: var(--ink-faint); flex: none; margin-top: var(--s0h); }
+.auth-card__role-option span { display: flex; flex-direction: column; gap: var(--s0h); }
 .auth-card__role-option strong { font-size: var(--fs-md); }
 .auth-card__role-option small { font-size: var(--fs-xs); color: var(--ink-faint); line-height: 1.4; }
 .auth-card__role-option:hover { border-color: var(--border-strong); }
@@ -1502,7 +1982,7 @@ button.section-heading__action:focus-visible {
   font-size: var(--fs-xs);
   color: var(--ink-faint);
   line-height: 1.5;
-  margin: 2px 0 0;
+  margin: var(--s0h) 0 0;
 }
 .auth-card__forgot {
   font-size: var(--fs-xs);
@@ -1510,7 +1990,7 @@ button.section-heading__action:focus-visible {
   line-height: 1.5;
   margin: -4px 0 0;
 }
-.auth-card__forgot code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; font-size: 0.72rem; }
+.auth-card__forgot code { background: var(--surface-2); padding: var(--s0h) var(--s1h); border-radius: 5px; font-size: 0.72rem; }
 
 @media (max-width: 640px) {
   .auth-card__role-options { grid-template-columns: 1fr; }
@@ -1522,25 +2002,10 @@ button.section-heading__action:focus-visible {
 .admin__head { padding: var(--s8) var(--gutter) var(--s4); }
 .admin__inner { padding: var(--s4) var(--gutter) var(--s16); }
 
-.admin__tabs {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  padding: 4px;
-  gap: 2px;
-}
-.admin__tabs button {
-  border-radius: var(--r-full);
-  padding: 0.5rem 1.1rem;
-  font-weight: 700;
-  font-size: var(--fs-sm);
-  color: var(--ink-soft);
-}
-.admin__tabs button[aria-selected='true'] {
-  background: var(--surface);
-  color: var(--primary);
-  box-shadow: var(--shadow-sm);
-}
+/* The pill tab strip that used to sit here — `.admin__tabs`, its `button`
+   children and `button[aria-selected='true']` — is gone with its counterpart in
+   phase3.css. Neither console has ever emitted the class; the real tab strip is
+   `.admin-shell__link` in console.css. */
 
 .admin-table {
   background: var(--surface);
@@ -1577,7 +2042,7 @@ button.section-heading__action:focus-visible {
   border-radius: var(--r-lg);
   background: var(--surface-2);
 }
-.menu-empty > svg { color: var(--primary); flex: none; margin-top: 2px; }
+.menu-empty > svg { color: var(--primary); flex: none; margin-top: var(--s0h); }
 .menu-empty h3 { font-family: var(--font-display); font-size: 1.1rem; margin-bottom: var(--s1); }
 .menu-empty p { color: var(--ink-soft); font-size: var(--fs-sm); line-height: 1.6; max-width: 52ch; }
 
@@ -1597,8 +2062,21 @@ button.section-heading__action:focus-visible {
   color: var(--ink-soft);
   margin-bottom: var(--s2);
 }
-.admin-draft-detail ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
-.admin-draft-detail li {
+/* Was `.admin-draft-detail ul` and `.admin-draft-detail li` — descendant
+   selectors, so (0,1,1). `.admin-draft-detail` is now shared by two review
+   queues: the restaurant draft diff (this list) and the menu diff, whose rows
+   are `.menu-review-dish` (0,1,0). A single class cannot outrank a loose
+   descendant no matter which file loads later, so every menu dish row was
+   silently taking this list's layout — a 130px fixed first column meant for
+   field labels, which cropped each dish name to 130px and pushed its price
+   change onto a second grid row of the same 130px. Measured live before the
+   fix: `.menu-review-dish` computed `display: grid` with
+   `grid-template-columns: 130px minmax(0, 1fr)`, and its own `border-top`
+   separator never applied. Corrected here rather than by escalating the menu
+   selector, so the narrower rule stays narrow: the draft list now carries a
+   class and claims only its own children. */
+.admin-draft-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.admin-draft-list > li {
   display: grid;
   grid-template-columns: 130px minmax(0, 1fr);
   gap: var(--s3);
@@ -1658,7 +2136,7 @@ button.section-heading__action:focus-visible {
   color: #f5c98a;
   font-weight: 600;
   font-size: 0.95rem;
-  margin-top: 4px;
+  margin-top: var(--s1);
 }
 .footer__statement {
   color: rgba(232, 226, 211, 0.66);
@@ -1679,13 +2157,13 @@ button.section-heading__action:focus-visible {
 .footer__col a {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s2);
   color: rgba(232, 226, 211, 0.82);
   font-size: var(--fs-md);
   font-weight: 500;
-  padding: 3px 0;
+  padding: var(--s1) 0;
   width: fit-content;
-  transition: color var(--dur-fast) var(--ease);
+  transition: color var(--tr-settle);
 }
 .footer__col a:hover { color: #fff; }
 .footer__bottom {
@@ -1711,11 +2189,11 @@ button.section-heading__action:focus-visible {
 .footer__legal a {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   color: rgba(232, 226, 211, 0.6);
   font-size: var(--fs-sm);
   font-weight: 500;
-  transition: color var(--dur-fast) var(--ease);
+  transition: color var(--tr-settle);
 }
 .footer__legal a:hover { color: #fff; }
 .footer__social {
@@ -1732,7 +2210,7 @@ button.section-heading__action:focus-visible {
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: rgba(232, 226, 211, 0.55);
   cursor: default;
-  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+  transition: color var(--tr-settle), border-color var(--tr-settle);
 }
 .footer__social-icon:hover { color: #f5c98a; border-color: rgba(245, 201, 138, 0.5); }
 
@@ -1768,7 +2246,6 @@ button.section-heading__action:focus-visible {
   border-radius: 50%;
   animation: kk-spin 0.8s linear infinite;
 }
-@keyframes kk-spin { to { transform: rotate(360deg); } }
 
 .skeleton {
   border-radius: var(--r-md);
@@ -1776,7 +2253,6 @@ button.section-heading__action:focus-visible {
   background-size: 200% 100%;
   animation: kk-shimmer 1.4s infinite;
 }
-@keyframes kk-shimmer { to { background-position: -200% 0; } }
 
 /* ------------------------------------------------------------
    19. MOTION
@@ -1796,6 +2272,15 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    /* The delays matter as much as the durations, and this blanket was
+       missing them. A staggered entrance keeps its `both` fill through its
+       delay, so Explore's card deck held the from-state — opacity 0, 12px
+       down — for up to 500ms before snapping in. A reader who asked for less
+       motion was getting *later* content instead: half a second of blank
+       cards, then a jump. Nothing in the product needs a delay once
+       everything it was sequencing has become instant. */
+    animation-delay: 0s !important;
+    transition-delay: 0s !important;
   }
 }
 
@@ -1825,8 +2310,9 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
 
 @media (max-width: 820px) {
   .nav__search { display: none; }
-  .nav__links { display: none; }
-  .nav__burger { display: inline-flex; }
+  /* `.nav__links` / `.nav__burger` are owned by the ≤900px compact-header block
+     in phase-c.css — toggling them here as well put the same decision behind
+     three different breakpoints (768 / 820 / 900). */
   .nav__mobile { display: flex; }
 
   .mobile-nav { display: block; }
@@ -1844,7 +2330,6 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
 }
 
 @media (max-width: 640px) {
-  :root { --nav-h: 62px; }
   .nav__inner { height: var(--nav-h); }
   .nav__wordmark small { display: none; }
   .nav__logo { width: 36px; height: 36px; border-radius: 11px; }
@@ -1946,7 +2431,7 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
   .grid .card:not(.card--featured) .card__row {
     flex-direction: column;
     align-items: flex-start;
-    gap: 3px;
+    gap: var(--s1);
   }
   .grid .card:not(.card--featured) .card__rating {
     display: flex;
@@ -1958,8 +2443,6 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
 
   /* Floating actions: comfortable, stacked on the media, badges clear */
   .fav-btn { top: var(--s2); right: var(--s2); width: 40px; height: 40px; }
-  .save-btn { top: var(--s2); right: calc(var(--s2) + 48px); width: 40px; height: 40px; }
-  .compare-btn { top: 52px; right: var(--s2); bottom: auto; width: 40px; height: 40px; }
   .veg-badge--corner { top: var(--s2); left: var(--s2); right: auto; }
   .card__badge { top: var(--s2); left: var(--s2); }
   .grid .card:not(.card--featured) .card__badge { display: none; }
@@ -2013,12 +2496,19 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
 
 /* --- Touch targets & spacing on small screens --- */
 @media (max-width: 640px) {
-  .match-indicator__trigger { min-height: 42px; }
+  /* `.match-indicator__trigger { min-height: 42px }` used to live here as a
+     mobile-only touch-target patch. index.css now gives the trigger 44px at
+     every width, so a 42px floor on small screens is both redundant and
+     backwards — it was the one place the control got smaller. */
   .section-heading__action { padding: var(--s2) 0; }
   .quick-chip { padding: 0.5rem 0.95rem; }
-  .price-history-link { padding: 5px 0; }
-  .menu-rail__item { min-height: 40px; padding: 8px 14px; }
-  .builder__advanced-toggle { padding: 0.6rem 0.9rem; }
+  .price-history-link { padding: var(--s1h) 0; }
+  .menu-rail__item { min-height: 40px; padding: var(--s2) var(--s3h); }
+  /* `.builder__advanced-toggle`'s padding bump was here, and Phase 2d
+     deleted it rather than moved it: the reason it existed was that the
+     pill measured 37px, and `Disclosure`'s `inline` variant now carries
+     a 44px `::after` target on every viewport. Padding was buying a tap
+     target by growing the box; the primitive buys it without. */
   .menu-search input { padding: 0.55rem 0; }
 }
 
@@ -2038,11 +2528,6 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
 }
 @media (max-width: 640px) {
   .explore__toolbar-right { flex-wrap: wrap; }
-  .explore__toolbar-right .geo-chip {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
 }
 
 /* --- Menu rail sits below the fixed header at every width --- */
@@ -2051,9 +2536,11 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
 @media (max-width: 640px) {
   .menu-dish { gap: var(--s3); }
   .menu-dish__price strong { font-size: 1.05rem; }
-  .price-modal__panel { padding: var(--s4); }
-  .price-modal__current { gap: 8px 10px; }
-  .price-timeline__row { flex-wrap: wrap; gap: 4px 10px; }
+  /* `.price-modal__current`'s narrow-screen gap stood here. That block is
+     `.price-hero` now, and its narrow-screen rules had to move to phase3.css
+     with it: this file loads FIRST, so a media query here loses to that
+     file's unconditional `grid-template-columns`. */
+  .price-timeline__row { flex-wrap: wrap; gap: var(--s1) var(--s2h); }
 }
 
 /* --- Footer: tablet → two rows of columns --- */
@@ -2066,7 +2553,7 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
 @media (max-width: 640px) {
   .footer__inner { gap: var(--s6); }
   .footer__brand { grid-column: span 2; }
-  .footer__col a { font-size: var(--fs-sm); padding: 5px 0; }
+  .footer__col a { font-size: var(--fs-sm); padding: var(--s1h) 0; }
   .footer__col h4 { font-size: 0.62rem; letter-spacing: 0.09em; }
   .footer__bottom-inner { justify-content: center; text-align: center; }
   .footer__social { margin-left: 0; }
@@ -2074,17 +2561,13 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
 
 /* --- Compact scroller cards: comfortable touch buttons --- */
 @media (max-width: 640px) {
-  .card--compact .fav-btn,
-  .card--compact .save-btn,
-  .card--compact .compare-btn { width: 36px; height: 36px; }
-  .card--compact .fav-btn { top: 6px; right: 6px; }
-  .card--compact .save-btn { top: 6px; right: calc(6px + 44px); }
+  .card--compact .fav-btn { width: 36px; height: 36px; top: 6px; right: 6px; }
 }
 
 /* --- Auth/profile tabs: wrap instead of overflowing on phones --- */
 @media (max-width: 480px) {
   .auth-card__tabs { flex-wrap: wrap; }
-  .auth-card__tab { padding: 9px 12px; font-size: var(--fs-sm); }
+  .auth-card__tab { padding: var(--s2h) var(--s3); font-size: var(--fs-sm); }
   .auth-card__demo-list { grid-template-columns: 1fr; }
 }
 
@@ -2141,6 +2624,12 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
   margin-bottom: var(--s2);
   line-height: 1.65;
 }
+/* A button at the foot of an info card. `.info-card p`'s 8px bottom margin is
+   the space between two paragraphs, which is too little under prose for a
+   control that ends the card — the button reads as part of the sentence.
+   Declared here rather than inline at the one call site that needs it, because
+   any info card that grows an action wants the same distance. */
+.info-card > .btn { margin-top: var(--s4); }
 .info-list {
   margin: 0;
   padding: 0;
@@ -2167,44 +2656,16 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
 }
 
 /* --- FAQ accordion --- */
+/* Phase 2d: the card, the trigger, the chevron and the animated wrapper
+   are `Disclosure`'s `card` variant now (primitives.css §7), so the rules
+   that used to be here would only be a second, drifting copy — and the
+   copy was the drifting one: a `--primary` focus ring instead of §7's
+   saffron, 1.02rem/650 type instead of the type scale, and no
+   `aria-controls` at all.
+   What is genuinely this page's own is the answer's prose: measure,
+   colour and the padding that lines it up under the question. */
 .faq-list { display: grid; gap: var(--s3); }
-.faq-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  overflow: hidden;
-  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
-}
-.faq-item--open { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
-.faq-item__q {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s3);
-  padding: var(--s4) var(--s5);
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-  font-family: var(--font-body);
-  font-size: 1.02rem;
-  font-weight: 650;
-  color: var(--ink);
-}
-.faq-item__q:hover { background: var(--surface-2); }
-.faq-item__q:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-.faq-item__chevron {
-  flex: none;
-  color: var(--ink-soft);
-  transition: transform var(--dur-med) var(--ease);
-}
-.faq-item--open .faq-item__chevron { transform: rotate(180deg); color: var(--primary); }
-.faq-item__a {
-  overflow: hidden;
-  transition: height var(--dur-med) var(--ease);
-}
-.faq-item__a-inner p {
+.faq-item__a p {
   color: var(--ink-soft);
   line-height: 1.65;
   padding: 0 var(--s5) var(--s4);
@@ -2306,12 +2767,12 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
 .partner-card__link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--s1h);
   margin-top: var(--s3);
   color: var(--primary);
   font-weight: 700;
   font-size: var(--fs-sm);
-  transition: color var(--dur-fast) var(--ease);
+  transition: color var(--tr-settle);
 }
 .partner-card__link:hover { color: var(--primary-strong); text-decoration: underline; }
 .partner-cta {
@@ -2391,37 +2852,25 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
 .admin-shell__brand-text { display: flex; flex-direction: column; line-height: 1.2; }
 .admin-shell__brand-text strong { font-family: var(--font-display); font-size: 1.05rem; }
 .admin-shell__brand-text small { font-size: var(--fs-xs); color: var(--ink-faint); font-weight: 600; }
-.admin-shell__nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.admin-shell__nav { display: flex; flex-direction: column; gap: var(--s0h); flex: 1; }
 .admin-shell__link {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--s2h);
   padding: 0.55rem 0.7rem;
   border-radius: var(--r-sm);
   font-weight: 600;
   font-size: var(--fs-md);
   color: var(--ink-soft);
-  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+  transition: background var(--tr-settle), color var(--tr-settle);
 }
 .admin-shell__link:hover { background: var(--surface-2); color: var(--ink); }
 .admin-shell__link--active { background: var(--primary-soft); color: var(--primary); }
 .admin-shell__foot { padding-top: var(--s3); border-top: 1px solid var(--border); margin-top: var(--s3); }
-.admin-shell__logout {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  padding: 0.55rem 0.7rem;
-  border: 0;
-  border-radius: var(--r-sm);
-  background: none;
-  font-weight: 600;
-  font-size: var(--fs-md);
-  color: var(--danger);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease);
-}
-.admin-shell__logout:hover { background: #fdecec; }
+/* `.admin-shell__logout` was declared here too — borderless, `--danger` red, with
+   a `#fdecec` hover. Both consoles' rail feet have dropped Sign out entirely
+   (console.css §1 says why, and the control that replaced it is
+   `.admin-shell__exit`), so this pair had nothing left to style. */
 .admin-shell__content { flex: 1; min-width: 0; }
 .admin-shell__content .admin__inner { max-width: 1200px; }
 
@@ -2441,11 +2890,44 @@ main { animation: kk-page-in 260ms var(--ease-out) both; }
     overflow: visible;
   }
   .admin-shell__brand { border-bottom: 0; margin-bottom: 0; padding: 0 var(--s2) 0 0; }
-  .admin-shell__nav { flex-direction: row; flex-wrap: wrap; gap: 2px; flex: 1; }
+  .admin-shell__nav { flex-direction: row; flex-wrap: wrap; gap: var(--s0h); flex: 1; }
   .admin-shell__foot { border-top: 0; margin-top: 0; padding-top: 0; }
 }
 
 /* ============================================================
    GOOGLE LIVE-REFRESH UTILITIES
    ============================================================ */
-.spin { animation: spin 0.9s linear infinite; }
+.spin { animation: kk-spin 0.9s linear infinite; }
+
+/* ============================================================
+   THE ENTER — see design-system.css §8b
+   ============================================================
+   Every rule above declares its LEAVE (`var(--tr-settle)`). This is the
+   other half of the pair: the answer, grouped here rather than repeated
+   across the individual state rules, so the two halves stay legible and
+   the whole file retunes from one place.
+   ------------------------------------------------------------ */
+.admin-shell__link:focus-visible,
+.admin-shell__link:hover,
+.footer__col a:hover,
+.footer__legal a:hover,
+.footer__social-icon:hover,
+.nav__account-link:hover,
+.nav__account-trigger:hover,
+.nav__brand:hover .nav__logo,
+.nav__mobile a:focus-visible,
+.nav__mobile a:hover,
+.nav__mobile-close:focus-visible,
+.nav__mobile-close:hover,
+.nav__mobile-signout:focus-visible,
+.nav__mobile-signout:hover,
+.partner-card__link:hover,
+.section-heading__action:hover,
+.section-heading__action:hover::after {
+  transition-duration: var(--tr-answer);
+}
+.auth-card__role-option:focus-visible,
+.auth-card__role-option:hover,
+.reward-card:hover {
+  transition-duration: var(--tr-answer-heavy);
+}

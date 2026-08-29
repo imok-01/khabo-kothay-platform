@@ -2,10 +2,50 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍜</text></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Khabo Kothay BD — discover where to eat in Dhaka. Search restaurants by neighbourhood, budget, cuisine and meal type." />
-    <title>Khabo Kothay BD · Discover where to eat in Dhaka</title>
+
+    <!-- Monogram favicon: the KK mark on the brand emerald. Replaces the
+         previous emoji glyph, which rendered differently on every platform. -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%2306603c'/><path d='M18 15h7v14.5L38.5 15H47L33 31.5 47.5 49H39L25 32.5V49h-7z' fill='%23fdf9f1'/></svg>"
+    />
+
+    <meta name="theme-color" content="#06603c" />
+    <meta
+      name="description"
+      content="Khabo Kothay — discover where to eat in Dhaka. Search restaurants by neighbourhood, budget, cuisine and meal type."
+    />
+    <title>Khabo Kothay · Discover where to eat in Dhaka</title>
+
+    <!--
+      Fonts are loaded here rather than via an @import in CSS: a CSS @import
+      blocks rendering until it resolves, which delayed first paint.
+      preconnect warms the connection before the stylesheet request is made.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;0,6..72,800;1,6..72,400;1,6..72,500;1,6..72,600&family=Manrope:wght@400;500;600;700;800&display=swap"
+    />
+
+    <!--
+      The taka sign (৳, U+09F3) is in neither Newsreader nor Manrope, so every
+      price in the product was falling back to whichever Bengali font the OS
+      happened to have — rendering the currency mark at a mismatched size and
+      baseline right beside the styled digits. For a Dhaka-first product that
+      is the most-repeated glyph on the site, so it gets a real font.
+
+      Requested with `text=` so each download is a single-glyph subset rather
+      than a whole Bengali family, and placed *after* the primaries in the font
+      stacks (see design-system.css) so per-glyph fallback picks these up for
+      the taka sign only and Latin text is untouched.
+    -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400..700&family=Noto+Sans+Bengali:wght@400..700&text=%E0%A7%B3&display=swap"
+    />
   </head>
   <body>
     <div id="root"></div>

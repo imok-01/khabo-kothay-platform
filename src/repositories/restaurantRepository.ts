@@ -20,12 +20,14 @@ assertDevSimulationNotProduction();
  *   UI/hooks → restaurantService → restaurantRepository → data source
  *
  * Two implementations exist:
- *  - `mockRestaurantRepository` — the current static catalogue (206 Dhaka
- *    venues) with simulated latency + cache. This is the ACTIVE source today
- *    and the one the build-time prerenderer uses.
- *  - `SupabaseRestaurantRepository` — reads the approved v1.1 tables via the
- *    typed query layer and maps rows to domain objects through the
- *    transformers. Only selected when Supabase is configured.
+ *  - `mockRestaurantRepository` — the static catalogue (206 Dhaka venues) with
+ *    simulated latency + cache. It serves the no-backend path and, through
+ *    `allSync`, the build-time prerenderer (which cannot query a database).
+ *  - `SupabaseRestaurantRepository` — the ACTIVE source whenever Supabase is
+ *    configured. Reads the approved v1.1 tables via the typed query layer and
+ *    maps rows to domain objects through the transformers, then fills any field
+ *    the import did not carry from the static snapshot (see
+ *    `fillFromSnapshot`) so no previously visible data is lost.
  */
 
 export interface RestaurantRepository {
@@ -109,6 +111,69 @@ function withMenuEstimate(restaurant: Restaurant): Restaurant {
 }
 
 /* ------------------------------------------------------------------ */
+/* Static snapshot gap-filling                                         */
+/* ------------------------------------------------------------------ */
+
+/** The static catalogue indexed by route slug (its `id` already is the slug). */
+const snapshotBySlug = new Map(seedRestaurants.map((r) => [r.id, r]));
+
+/**
+ * Fill fields the live row does not carry from the static snapshot in
+ * `src/data/restaurants.ts`. Both sources came from the same collection pass,
+ * so this recovers data the product has always displayed — it never invents a
+ * value, and the live row always wins where it has one.
+ *
+ * Why it is needed: the import populated `restaurant_attributes` with opening
+ * hours (203/207), signature dishes, menu estimates and meal types — but never
+ * `budget` or `priceForTwo`, and `cuisines` for only 100 of 207 venues. Reading
+ * the backend alone therefore blanked the price tier for 113 venues (each one
+ * collapsing to the transformer's `'Mid-range'` default, which breaks the
+ * budget filter and the ৳ symbols) and dropped cuisines for 8.
+ *
+ * `hasStoredBudget` reports whether the bundle actually carried a `budget`
+ * attribute: the transformer has no way to express "no tier recorded" — it
+ * defaults to `'Mid-range'`, which is indistinguishable from a real Mid-range —
+ * so the caller passes that fact in rather than guessing here.
+ *
+ * Booleans are deliberately only ever filled in the positive direction, and
+ * only for flags the transformer never maps at all (`isFamilyFriendly`,
+ * `hasOutdoorSeating`). `hasDelivery` is left alone because the live value is
+ * derived from the authoritative `service_options` string, where a `false` is a
+ * recorded "no" rather than a gap.
+ */
+function fillFromSnapshot(live: Restaurant, hasStoredBudget: boolean): Restaurant {
+  const snap = snapshotBySlug.get(live.id);
+  if (!snap) return live;
+
+  const filled: Restaurant = { ...live };
+  if (filled.cuisines.length === 0) filled.cuisines = snap.cuisines;
+  if (filled.mealTypes.length === 0) filled.mealTypes = snap.mealTypes;
+  if (filled.vibes.length === 0) filled.vibes = snap.vibes;
+  if (filled.signatureDishes.length === 0) filled.signatureDishes = snap.signatureDishes;
+  if (!filled.tagline) filled.tagline = snap.tagline;
+  if (!filled.description) filled.description = snap.description;
+  if (!filled.openingHours) filled.openingHours = snap.openingHours;
+  if (!filled.location) filled.location = snap.location;
+  if (!filled.address) filled.address = snap.address;
+  if (!filled.lat || !filled.lng) {
+    filled.lat = snap.lat;
+    filled.lng = snap.lng;
+  }
+  if (!hasStoredBudget) filled.budget = snap.budget;
+  if (filled.priceForTwo === 0) filled.priceForTwo = snap.priceForTwo;
+  if (snap.isFamilyFriendly) filled.isFamilyFriendly = true;
+  if (snap.hasOutdoorSeating) filled.hasOutdoorSeating = true;
+  if ((filled.google?.photos?.length ?? 0) === 0 && (snap.google?.photos?.length ?? 0) > 0) {
+    filled.google = filled.google ? { ...filled.google, photos: snap.google!.photos } : snap.google;
+  }
+  return filled;
+}
+
+/** True when the bundle recorded an explicit budget tier (see above). */
+const hasBudgetAttribute = (attributes: Array<{ attribute_key: string }>): boolean =>
+  attributes.some((a) => a.attribute_key === 'budget');
+
+/* ------------------------------------------------------------------ */
 /* Supabase implementation (approved v1.1 schema)                      */
 /* ------------------------------------------------------------------ */
 
@@ -154,18 +219,17 @@ async function fetchBundle(restaurantId: string): Promise<RestaurantDbBundleRows
 }
 
 class SupabaseRestaurantRepository implements RestaurantRepository {
+  // Prerender can't query a live database, so the sync path serves the static
+  // snapshot in src/data/restaurants.ts — the "static snapshot source" this
+  // class previously demanded by throwing. Only the build-time renderer uses
+  // it; in the browser every page goes through the async paths below, so the
+  // live catalogue still reaches the UI on hydration.
   allSync(): Restaurant[] {
-    // Prerender can't query a live database. When Supabase is configured the
-    // build must use a static snapshot source instead (documented risk).
-    throw new Error(
-      'SupabaseRestaurantRepository has no sync path — the build-time prerender needs a static snapshot source.',
-    );
+    return mockRestaurantRepository.allSync();
   }
 
-  byIdSync(_id: string): Restaurant | undefined {
-    throw new Error(
-      'SupabaseRestaurantRepository has no sync path — the build-time prerender needs a static snapshot source.',
-    );
+  byIdSync(id: string): Restaurant | undefined {
+    return mockRestaurantRepository.byIdSync(id);
   }
 
   async fetchAll(): Promise<Restaurant[]> {
@@ -212,24 +276,34 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
     const signalsMap = byRestaurant(reviewSignals);
 
     return rows
-      .map((row) =>
-        toCatalogueView(
+      // The isolated KK Demo Restaurant lives in the same backend as a normal
+      // row, so it is filtered out unless the dev simulation is active. Demo
+      // data must never reach a production read.
+      .filter((row) => isDevSimulation() || slugify(row.name) !== DEV_DEMO_RESTAURANT.id)
+      .map((row) => {
+        const attributes = attributesMap.get(row.id) ?? [];
+        return toCatalogueView(
           attachIntelligence(
-            mapRestaurantRows({
-              restaurant: row,
-              sources: sourcesMap.get(row.id) ?? [],
-              aliases: aliasesMap.get(row.id) ?? [],
-              attributes: attributesMap.get(row.id) ?? [],
-              images: imagesMap.get(row.id) ?? [],
-              reviewSignals: signalsMap.get(row.id) ?? [],
-              // userReviews intentionally omitted — detail-only.
-            }),
+            fillFromSnapshot(
+              mapRestaurantRows({
+                restaurant: row,
+                sources: sourcesMap.get(row.id) ?? [],
+                aliases: aliasesMap.get(row.id) ?? [],
+                attributes,
+                images: imagesMap.get(row.id) ?? [],
+                reviewSignals: signalsMap.get(row.id) ?? [],
+                // userReviews intentionally omitted — detail-only.
+              }),
+              hasBudgetAttribute(attributes),
+            ),
           ),
-        ),
-      );
+        );
+      });
   }
 
   async fetchById(id: string): Promise<Restaurant | undefined> {
+    // Demo venue: only resolvable while the dev simulation is on (see fetchAll).
+    if (!isDevSimulation() && id === DEV_DEMO_RESTAURANT.id) return undefined;
     const uuid = await resolveRestaurantUuid(id);
     if (!uuid) return undefined;
     const restaurant = await queries.selectRestaurantById(uuid);
@@ -238,7 +312,12 @@ class SupabaseRestaurantRepository implements RestaurantRepository {
 
     // menuEstimate is now read from attributes by the transformer.
     // Menus are fetched separately by useRestaurantMenu for the detail page display.
-    return attachIntelligence(mapRestaurantRows({ ...bundle, restaurant }));
+    return attachIntelligence(
+      fillFromSnapshot(
+        mapRestaurantRows({ ...bundle, restaurant }),
+        hasBudgetAttribute(bundle.attributes),
+      ),
+    );
   }
 }
  
@@ -278,12 +357,16 @@ export async function resolveRestaurantSlug(uuid: string): Promise<string | null
 }
 
 /**
- * Active repository. In dev simulation we always use the mock source so the
- * real 206 catalogue (and any configured Supabase backend) is never touched —
- * the KK Demo Restaurant is layered on top via `seedList()`.
+ * Active repository — Supabase whenever it is configured, the static catalogue
+ * otherwise.
+ *
+ * The dev simulation deliberately does NOT switch the source. Its isolated demo
+ * venue is a row in the same backend (`kk-demo-restaurant`), so it is layered by
+ * the queries themselves rather than by swapping the whole catalogue out.
+ * Gating the source on `isDevSimulation()` is what hid the imported data behind
+ * the static snapshot: opening hours (203 venues), multi-photo galleries (206),
+ * signature dishes, menu estimates and every published menu.
  */
-export const restaurantRepository: RestaurantRepository = isDevSimulation()
-  ? mockRestaurantRepository
-  : isSupabaseConfigured()
-    ? new SupabaseRestaurantRepository()
-    : mockRestaurantRepository;
+export const restaurantRepository: RestaurantRepository = isSupabaseConfigured()
+  ? new SupabaseRestaurantRepository()
+  : mockRestaurantRepository;

@@ -1,144 +1,119 @@
-import { NavLink, Outlet, useNavigate, Link } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Store, ClipboardCheck, Flag, MessageSquareQuote, Database,
-  Settings as SettingsIcon, LogOut, Soup, ArrowLeft,
+  LayoutDashboard, Store, ClipboardCheck, MessageSquareQuote, Sparkles,
+  Settings as SettingsIcon, Soup, ArrowLeft, FileCheck, BadgePercent, LineChart, Users,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import ConsoleShell, { type ConsoleNavGroup } from './ConsoleShell';
+import { Button } from './ui';
+import { useRestaurantDrafts, useSuggestions } from '../hooks/useDrafts';
+import { useFlags } from '../hooks/useReviews';
 
 /**
- * Admin layout — a separate shell from the public website navigation so admin
- * tools never mix with the customer/consumer header. Sidebar mirrors the
- * product's admin surface: the Dashboard is the live tool today; the other
- * sections are routed placeholders that will be wired during the database
- * integration (no fake data or tools are shown).
+ * KK admin shell.
+ *
+ * Previously this sidebar listed seven destinations and six of them were prose
+ * placeholders, while the nine working tools sat behind a tab strip on /admin
+ * itself. The sidebar now points at those tools directly (see the route table in
+ * App.tsx and SECTION_META in ExecutiveAdminPage.tsx), grouped by what the work
+ * actually is: things waiting on a person, the catalogue itself, and people.
+ *
+ * The three original placeholder URLs are kept alive so nothing that links to
+ * them 404s — /admin/verification is the menu review queue and /admin/data is
+ * the enrichment queue. Settings is the one section with no tool behind it, so
+ * it stays an honest placeholder.
+ *
+ * Badges are counted from the same stores the sections read. An empty queue
+ * shows no badge rather than a zero.
  */
-const NAV_ITEMS = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/admin/restaurants', label: 'Restaurants', icon: Store, end: false },
-  { to: '/admin/verification', label: 'Verification queue', icon: ClipboardCheck, end: false },
-  { to: '/admin/reports', label: 'User reports', icon: Flag, end: false },
-  { to: '/admin/reviews', label: 'Reviews', icon: MessageSquareQuote, end: false },
-  { to: '/admin/data', label: 'Data management', icon: Database, end: false },
-  { to: '/admin/settings', label: 'Settings', icon: SettingsIcon, end: false },
-];
+
+const SECTION_LABEL: Record<string, string> = {
+  '/admin': 'Overview',
+  '/admin/applications': 'Restaurant applications',
+  '/admin/verification': 'Menu submissions',
+  '/admin/offers': 'Offers',
+  '/admin/reviews': 'Reviews & flags',
+  '/admin/data': 'Enrichment queue',
+  '/admin/restaurants': 'Restaurants',
+  '/admin/prices': 'Price history',
+  '/admin/users': 'People',
+  '/admin/settings': 'Settings',
+};
 
 export default function AdminLayout() {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const drafts = useRestaurantDrafts();
+  const flags = useFlags();
+  const suggestions = useSuggestions();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
+  const pendingDrafts = drafts.filter((d) => d.status === 'pending').length;
+  const pendingFlags = flags.filter((f) => f.status === 'pending').length;
+  const pendingSuggestions = suggestions.filter((s) => s.status === 'pending').length;
+
+  const groups: ConsoleNavGroup[] = [
+    // No heading: "Operations" named one item, and that item is Overview.
+    {
+      key: 'lead',
+      items: [
+        { key: 'overview', label: 'Overview', to: '/admin', end: true, icon: <LayoutDashboard size={16} aria-hidden="true" /> },
+      ],
+    },
+    {
+      label: 'Review queue',
+      items: [
+        { key: 'applications', label: 'Applications', to: '/admin/applications', icon: <FileCheck size={16} aria-hidden="true" /> },
+        { key: 'menus', label: 'Menu submissions', to: '/admin/verification', icon: <ClipboardCheck size={16} aria-hidden="true" /> },
+        { key: 'enrichment', label: 'Enrichment', to: '/admin/data', icon: <Sparkles size={16} aria-hidden="true" />, badge: pendingSuggestions, attention: true },
+        { key: 'offers', label: 'Offers', to: '/admin/offers', icon: <BadgePercent size={16} aria-hidden="true" /> },
+        { key: 'reviews', label: 'Reviews & flags', to: '/admin/reviews', icon: <MessageSquareQuote size={16} aria-hidden="true" />, badge: pendingFlags, attention: true },
+      ],
+    },
+    {
+      label: 'Catalogue',
+      items: [
+        { key: 'restaurants', label: 'Restaurants', to: '/admin/restaurants', icon: <Store size={16} aria-hidden="true" />, badge: pendingDrafts, attention: true },
+        { key: 'prices', label: 'Price history', to: '/admin/prices', icon: <LineChart size={16} aria-hidden="true" /> },
+      ],
+    },
+    {
+      label: 'Platform',
+      items: [
+        { key: 'users', label: 'People', to: '/admin/users', icon: <Users size={16} aria-hidden="true" /> },
+        { key: 'settings', label: 'Settings', to: '/admin/settings', icon: <SettingsIcon size={16} aria-hidden="true" /> },
+      ],
+    },
+  ];
 
   return (
-    <div className="admin-shell">
-      <aside className="admin-shell__side">
-        <div className="admin-shell__brand">
-          <span className="admin-shell__logo" aria-hidden="true"><Soup size={18} /></span>
-          <span className="admin-shell__brand-text">
-            <strong>KK Admin</strong>
-            <small>Khabo Kothay BD</small>
-          </span>
-        </div>
-        <nav className="admin-shell__nav" aria-label="Admin sections">
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => `admin-shell__link ${isActive ? 'admin-shell__link--active' : ''}`}
-            >
-              <item.icon size={16} aria-hidden="true" /> {item.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="admin-shell__foot">
-          <button type="button" className="admin-shell__logout" onClick={handleLogout}>
-            <LogOut size={16} aria-hidden="true" /> Logout
-          </button>
-        </div>
-      </aside>
-      <div className="admin-shell__content">
-        <Outlet />
-      </div>
-    </div>
+    <ConsoleShell
+      brand={{ title: 'KK Admin', subtitle: 'Khabo Kothay', icon: <Soup size={18} />, to: '/admin' }}
+      groups={groups}
+      currentLabel={SECTION_LABEL[pathname] ?? 'KK Admin'}
+      identity={{ name: 'Khabo Kothay team', role: 'Executive' }}
+      backTo={{ to: '/', label: 'Back to Khabo Kothay' }}
+    >
+      <Outlet />
+    </ConsoleShell>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Placeholder sections — routed preparation pages for admin modules   */
-/* that arrive with the backend. Honest copy, no fake tools.           */
+/* Settings is the one admin section with no tool behind it yet, so it  */
+/* stays an honest preparation page rather than a fabricated screen.    */
 /* ------------------------------------------------------------------ */
 
 const ADMIN_PLACEHOLDERS: Record<
   string,
   { eyebrow: string; title: string; description: string; bullets: string[] }
 > = {
-  restaurants: {
-    eyebrow: 'Admin · Restaurants',
-    title: 'Restaurants',
-    description:
-      'A dedicated restaurant management module — full listing records, menu data, photos and ownership. Today the core restaurant tools live in the Dashboard’s Restaurants tab.',
-    bullets: [
-      'Full listing records with provenance and verification level',
-      'Menu and photo management per restaurant',
-      'Restaurant ownership mapping for partner accounts',
-    ],
-  },
-  verification: {
-    eyebrow: 'Admin · Verification',
-    title: 'Verification queue',
-    description:
-      'Review queue for new listings, change requests and restaurant-provided updates before anything is published. Nothing goes live without review.',
-    bullets: [
-      'Restaurant listing drafts awaiting approval',
-      'Change requests from restaurant partners',
-      'Source labelling and verification level per field',
-    ],
-  },
-  reports: {
-    eyebrow: 'Admin · User reports',
-    title: 'User reports',
-    description:
-      'Community-flagged listings — incorrect hours, moved locations, outdated menus — triaged and actioned.',
-    bullets: [
-      'Flags raised through “Feedback on a listing”',
-      'Deduplicated and routed to the right owner',
-      'Resolution notes recorded for transparency',
-    ],
-  },
-  reviews: {
-    eyebrow: 'Admin · Reviews',
-    title: 'Reviews',
-    description:
-      'Moderation and curation of community reviews. The current review tools live in the Dashboard’s Reviews tab.',
-    bullets: [
-      'Moderation queue for new community reviews',
-      'Reported-review handling',
-      'Review source labelling (in-app vs Google)',
-    ],
-  },
-  data: {
-    eyebrow: 'Admin · Data management',
-    title: 'Data management',
-    description:
-      'Data refresh, import and export tooling — Google data refreshes, menu dataset imports and bulk corrections as the database integration lands.',
-    bullets: [
-      'Google data refresh scheduling and status',
-      'Menu dataset import review',
-      'Bulk corrections and data-quality reports',
-    ],
-  },
   settings: {
-    eyebrow: 'Admin · Settings',
+    eyebrow: 'Platform',
     title: 'Settings',
     description:
-      'Platform configuration — market details, feature flags, verification rules and admin account management. Admin accounts are created manually, never by public signup.',
+      'Platform configuration — market details, feature flags, verification rules and admin account management. None of this is editable yet: the values it would edit live in environment configuration, not in the database, so there is nothing here to change safely from a browser.',
     bullets: [
       'Market and brand configuration',
       'Verification and moderation rules',
-      'Manual admin account management',
+      'Manual admin account management — admin accounts are never created by public signup',
     ],
   },
 };
@@ -147,27 +122,37 @@ export function AdminPlaceholderSection({ section }: { section: string }) {
   const data = ADMIN_PLACEHOLDERS[section];
   if (!data) return null;
   return (
-    <main className="section section--narrow">
-      <div className="section__inner">
-        <span className="section-heading__eyebrow">{data.eyebrow}</span>
-        <h1 style={{ marginTop: 'var(--s1)' }}>{data.title}</h1>
-        <div className="info-body" style={{ marginTop: 'var(--s5)' }}>
-          <section className="info-card">
-            <p>{data.description}</p>
-            <ul className="info-list" style={{ margin: 'var(--s3) 0' }}>
-              {data.bullets.map((b) => (
-                <li key={b}>{b}</li>
-              ))}
-            </ul>
-            <p style={{ marginBottom: 'var(--s4)' }}>
-              This module will be connected as part of the Khabo Kothay database integration. The
-              current Dashboard already covers the core day-to-day admin tools.
-            </p>
-            <Link to="/admin" className="btn btn--ghost">
-              <ArrowLeft size={15} aria-hidden="true" /> Return to dashboard
-            </Link>
-          </section>
-        </div>
+    <main className="admin">
+      <div className="admin__inner">
+        <header className="console-head">
+          <div className="console-head__text">
+            <span className="console-head__eyebrow">{data.eyebrow}</span>
+            <h1 className="console-head__title">{data.title}</h1>
+            <p className="console-head__sub">{data.description}</p>
+          </div>
+        </header>
+
+        <section className="panel">
+          <div className="panel__head">
+            <h2 className="panel__title">What this section will hold</h2>
+            <span className="panel__hint">Not yet connected</span>
+          </div>
+          <ul className="records records--bare">
+            {data.bullets.map((b) => (
+              <li key={b} className="record">
+                <div className="record__main">
+                  <p className="record__title">{b}</p>
+                </div>
+                <span className="status-pill">Planned</span>
+              </li>
+            ))}
+          </ul>
+          <div className="panel__foot">
+            <Button variant="ghost" size="sm" to="/admin" icon={ArrowLeft}>
+              Back to overview
+            </Button>
+          </div>
+        </section>
       </div>
     </main>
   );

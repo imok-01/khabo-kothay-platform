@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { UtensilsCrossed, ArrowRight } from 'lucide-react';
 import { useRestaurants } from '../hooks/useRestaurants';
 import { CUISINES } from '../hooks/useTaxonomy';
@@ -8,6 +8,7 @@ import SectionHeading from '../components/SectionHeading';
 import EmptyState from '../components/EmptyState';
 import { SkeletonGrid } from '../components/Skeleton';
 import { usePageTitle } from '../lib/usePageTitle';
+import { Button } from '../components/ui';
 
 export default function CuisinePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -47,8 +48,8 @@ export default function CuisinePage() {
             <SkeletonGrid count={8} />
           ) : restaurants.length === 0 ? (
             <EmptyState
-              title={`No ${cuisine} restaurants listed yet`}
-              message="We don't have live matches for this cuisine right now. Try a broader search."
+              title={`No ${cuisine} kitchens in the guide yet`}
+              message="Dhaka cooks more than our guide covers so far, and this one is still filling in. Try a neighbourhood or a budget instead — the city files its best food under more than one name."
               actionLabel="Search restaurants"
               actionTo="/search"
             />
@@ -66,8 +67,8 @@ export default function CuisinePage() {
         <div className="section__inner">
           <SectionHeading eyebrow="Keep exploring" title="Other ways to discover" lede="Browse guides or areas." />
           <div className="surprise__actions" style={{ justifyContent: 'flex-start' }}>
-            <Link to="/guides" className="btn btn--ghost"><ArrowRight size={15} aria-hidden="true" /> Browse guides</Link>
-            <Link to="/discover" className="btn btn--ghost"><ArrowRight size={15} aria-hidden="true" /> Discover hub</Link>
+            <Button variant="ghost" to="/guides" iconAfter={ArrowRight}>Browse guides</Button>
+            <Button variant="ghost" to="/discover" iconAfter={ArrowRight}>Discover hub</Button>
           </div>
         </div>
       </section>

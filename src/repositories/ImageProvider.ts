@@ -50,3 +50,18 @@ export const imageProvider: ImageProvider = {
 };
 
 export const unsplashPhotoUrl = (photoId: string) => `${UNSPLASH_BASE}${photoId}`;
+
+/**
+ * Sizing for a caller that holds a bare URL rather than a `RestaurantImageSource`
+ * — the owner console reads `restaurant.google.photos` directly.
+ *
+ * Every scraped link in the catalogue carries `=w122-h92-k-no`, a 122×92
+ * thumbnail, and rendering that into a 162px tile (or anything larger) is the
+ * blur you see. Non-Google URLs are returned untouched: an owner upload is
+ * already served at its own size, and appending Unsplash's query string to a
+ * Supabase Storage URL would only add noise.
+ */
+export function googlePhotoUrlAtWidth(url: string, width: number): string {
+  if (!url) return '';
+  return isGooglePhotoUrl(url) ? googlePhotoAtWidth(url, width) : url;
+}

@@ -1,0 +1,2559 @@
+/* ============================================================
+   KK PRIMITIVES — the component layer's own stylesheet
+   ============================================================
+
+   Loaded last, after every other file in `main.tsx`, because this is
+   where the reusable primitives in `src/components/ui/` keep their
+   paint. Anything here is the *system* answer for a control; a page
+   that needs to differ overrides it with its own namespace, and that
+   override is then visible as a deliberate exception rather than as an
+   accident of which file happened to load later.
+
+   Why this file exists at all: `.btn` used to be declared in FOUR
+   files — index.css (base + 6 variants), editorial.css (base again +
+   6 variants), refine.css (radius + weight), polish.css (tap floor +
+   `.btn--sm` padding). Twenty-seven top-level rules. The shipped
+   button was the *resolved* value of all four, so reading any one file
+   told you something untrue: index.css says a button is 10px-radius
+   and 0.6rem/1.15rem, and none of that survives. This block is that
+   resolution, written once. Nothing here is a redesign — the computed
+   output of all ten variant combinations was measured before the move
+   and matches after it.
+
+   Two dead declarations were dropped in the process, both noted at the
+   rule that used to carry them.
+
+   docs/KK_VISUAL_DIRECTION.md §2 (shape), §3 (colour), §8 (icons).
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   1. BUTTON
+   ------------------------------------------------------------ */
+
+/* The base. 44px is a floor, not a height: every variant inherits it
+   and anything larger still wins, which is what keeps the size ladder
+   monotonic (44 / 44 / 52 rather than the 41/44 inversion it had).
+   Density in a touch product is horizontal — `.btn--sm` tightens
+   padding and drops a type step, and stays 44px tall.
+
+   14px rectangles, and chips stay pills. This reverses an earlier
+   999px decision on purpose: with both at 999px, shape carried no
+   information — the eye could not separate "commit to this" from
+   "narrow this list" without reading the label. A pill is also
+   delivery-app language, and it fights a serif headline set at
+   negative tracking. 14px is architectural and calm, and it matches
+   the inputs so a form reads as one fabricated object. §2. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 44px;
+  padding: 0.7rem 1.4rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* Asymmetric timing, and this is the single biggest change to how a KK
+     button *feels*.
+
+     What was here before ran every property at `--dur-fast var(--ease)`.
+     `--ease` is `cubic-bezier(0.25, 0.1, 0.25, 1)`, which is the browser's
+     own default `ease` — so all 123 buttons in the product were animating
+     on the curve you get by writing nothing at all. That is one of the
+     most reliable tells of generated UI, and it was on every control.
+
+     The replacement is not a fancier curve, it is a different *shape of
+     event*. The base rule owns the LEAVE and `:hover` owns the ENTER:
+     90ms in, 260ms out. A control that answers instantly and then settles
+     slowly reads as physical; the same duration in both directions reads
+     as a state toggle. Both use `--ease-out`, which decelerates hard, so
+     the settle spends most of its time nearly still rather than visibly
+     sliding.
+
+     One `transition-duration` on `:hover` covers all five properties, so
+     the pair can never fall out of step the way five hand-written
+     durations would.
+
+     This shape is now the product-wide contract and is named in
+     design-system.css §8b; the tokens below ARE the 260/90 pair. */
+  transition:
+    background var(--tr-settle),
+    border-color var(--tr-settle),
+    box-shadow var(--tr-settle),
+    color var(--tr-settle),
+    transform var(--tr-settle);
+}
+.btn:hover {
+  transition-duration: var(--tr-answer);
+}
+
+/* An icon in a button is a label's companion, never a thing that gets
+   squeezed by it. §8's alignment rule, applied once here instead of
+   hoped for at 128 call sites. Sizing stays on the element so it is
+   readable where the icon is written. */
+.btn > svg {
+  flex: none;
+}
+
+/* A trailing icon is a direction, not an ornament, so it moves in that
+   direction when the button is addressed. `iconAfter` had exactly two
+   call sites product-wide, which meant the cheapest premium detail
+   available — an arrow that leans towards where it is about to take you
+   — existed nowhere.
+
+   It is a class rather than `svg:last-child` because CSS cannot tell a
+   leading icon from a trailing one: text nodes are invisible to
+   `:last-child`, so `<svg/>Label` and `Label<svg/>` both match. The
+   `Button` primitive puts the class on for you; hand-written `.btn`
+   markup opts in by adding it, which is the same class contract the
+   rest of this file runs on.
+
+   3px, and it travels on `:focus-visible` as well — a keyboard user
+   gets the same answer a pointer does. */
+.btn__after {
+  transition: transform var(--tr-settle);
+}
+.btn:hover .btn__after,
+.btn:focus-visible .btn__after {
+  transform: translateX(3px);
+  transition-duration: var(--tr-answer);
+}
+.btn[disabled] .btn__after,
+.btn[aria-disabled='true'] .btn__after {
+  transform: none;
+}
+
+/* A press is a direct answer to input rather than decoration, so it
+   stays on under `prefers-reduced-motion` — unlike the hover lifts
+   below, which polish.css section 10 opts out. */
+.btn:active {
+  transform: translateY(1px);
+}
+
+/* Primary — the real, scarce action. One per view. FLAT ink, not a
+   gradient: a 135° gradient on a 44px control is one of the strongest
+   generated-UI signals in current practice, and at that scale it reads
+   as a style preset rather than as light. The warm --shadow-primary
+   does the lifting instead. The gradients stay in service on large ink
+   surfaces (--grad-canvas, --grad-ink), where the same ramp reads as
+   light in a room. Scale decides. §3.
+
+   The `inset 0 1px 0` is the one piece of light on it: a hairline of
+   white at 7% along the top edge only, which is what a raised object
+   made of dark material actually does under a light above it. It is not
+   a gradient — a single-pixel line cannot read as a preset ramp — and it
+   is the difference between "dark rectangle" and "solid thing".
+
+   Press collapses the outer shadow and replaces it with an inner one.
+   The button stops floating and becomes a recess; that is a stronger and
+   quieter answer than moving it further. */
+.btn--primary {
+  background: var(--primary);
+  color: var(--ink-on-primary);
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), var(--shadow-primary);
+}
+.btn--primary:hover {
+  background: var(--primary-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), var(--shadow-primary-hover);
+  transform: translateY(-1px);
+}
+.btn--primary:active {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Accent — the ONE commercial/value action per view (claim an offer,
+   redeem a reward). Never navigation, never a generic CTA: gold three
+   times on a screen is decoration, gold once is a recommendation.
+   Flat for the same reason as --primary above, and on saffron-700
+   rather than the --grad-spice ramp because white text over
+   saffron-600 measures 3.55:1 and fails AA — saffron-700 is 4.88:1.
+
+   Same top hairline as primary, brighter, because gold carries light
+   better than espresso; same press recess. */
+.btn--accent {
+  background: var(--accent-strong);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), var(--shadow-accent);
+}
+.btn--accent:hover {
+  background: var(--saffron-800);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 10px 28px rgba(200, 115, 9, 0.32);
+  transform: translateY(-1px);
+}
+.btn--accent:active {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(96, 52, 0, 0.34);
+}
+
+/* Ghost — the default for everything that is not the one commit
+   action, and at 58 call sites the most common button in the product.
+   Paper ground and a real border, so a row of them reads as a set of
+   equals rather than as one loud button and some links.
+
+   Ghost deliberately does NOT lift. That was the whole interaction
+   language before this pass: every variant answered a pointer with the
+   same `translateY(-1px)`, so the product had one gesture, and on a row
+   of four ghost buttons — a filter bar, a card's action pair — four
+   things floating at once is noise rather than feedback. Ghost *firms
+   up* instead: the border takes the espresso, and an inset ring doubles
+   its weight to 2px without adding a pixel to the box, so nothing on
+   the row reflows.
+
+   The ring is `currentColor`, not `var(--primary)`. Two surfaces invert
+   this button for dark grounds (`.dsc-handoff__actions`, the hero
+   console's geo hint) by setting `color` — with `currentColor` the ring
+   inverts with them automatically instead of drawing an espresso line
+   on a night-blue panel. */
+.btn--ghost {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--ink-soft);
+  box-shadow: var(--shadow-xs);
+}
+.btn--ghost:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-faint);
+  box-shadow: inset 0 0 0 1px currentColor, var(--shadow-sm);
+}
+.btn--ghost:active {
+  background: var(--primary-soft);
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* Subtle — a text action that still needs a 44px target. No ground at
+   rest, so it carries no weight until touched.
+
+   Its hover was `--surface-2` and nothing else, which is a 2% shift on
+   paper: at 13 call sites the product had a control that gave almost no
+   evidence it had been hit. It now *materialises* — ground, hairline
+   border and full-strength ink arrive together, so a button appears
+   where there was only a label. That is its own language again,
+   distinct from primary's lift and ghost's firming. */
+.btn--subtle {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink-soft);
+}
+.btn--subtle:hover {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--ink);
+}
+.btn--subtle:active {
+  background: var(--primary-faint);
+  border-color: var(--border-strong);
+}
+
+/* Danger — the destructive half of a decision: reject, delete, discard.
+   The executive console had six Reject buttons and all six were
+   `.btn--subtle`, sitting beside a filled Approve. Subtle is the paint of a
+   benign text action, so the irreversible choice in every decision pair was
+   the least marked thing in the row.
+
+   The recipe is `.kk-ib--danger`'s, deliberately, so the console has one
+   destructive language whether the control is an icon or a labelled button:
+   quiet at rest — a review queue with a red button on every row reads as a
+   page full of warnings rather than a page with a rejection available — and
+   the colour arrives on hover, the moment it is about to matter.
+
+   It keeps a resting hairline where the icon tone has none. A labelled
+   button in an Approve/Reject pair has to read as the *same kind of object*
+   as the button beside it, and a border is what makes a pair a pair. */
+.btn--danger {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--ink-soft);
+}
+.btn--danger:hover {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 26%, transparent);
+  color: var(--danger);
+}
+.btn--danger:active {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+}
+
+/* Size. Two steps beside the default, and the height only ever goes
+   up. `.btn--sm` used to declare `border-radius: var(--r-sm)` in
+   index.css, which never applied — refine.css restated `.btn`'s radius
+   from a later file at equal specificity, so every small button has
+   shipped at 14px since. Dropped rather than revived: §2's role table
+   gives buttons --r-md, and a small button is still a button. */
+.btn--sm {
+  padding: 0.35rem 0.95rem;
+  font-size: var(--fs-sm);
+}
+.btn--lg {
+  min-height: 52px;
+  padding: 0.92rem 1.95rem;
+  /* Was a literal 1.02rem — 16.32px, the only off-scale type size in
+     the button system. --fs-lg is that value rounded onto the scale;
+     the 0.32px difference is not visible and the scale is now closed. */
+  font-size: var(--fs-lg);
+}
+.btn--block {
+  width: 100%;
+}
+
+/* Disabled / not-yet-available. Deliberately quiet so an unavailable
+   action can never outrank a real one in the visual hierarchy.
+   `aria-disabled` is the softer of the two and the one the Button
+   primitive prefers: it keeps the control focusable, so a keyboard or
+   screen-reader user can still reach it and be told why it is off,
+   which `disabled` makes impossible. The primitive swallows the click. */
+.btn[disabled],
+.btn[aria-disabled='true'] {
+  background: var(--surface-2);
+  color: var(--ink-faint);
+  border-color: var(--border);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+.btn[disabled]:hover,
+.btn[aria-disabled='true']:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Busy. Ten or so buttons in the product already swap their label
+   while a request is in flight ("Sending code…", "Submitting…"), but
+   the control itself sat perfectly still, so the only evidence of work
+   was a word change. This adds the missing cue and nothing else: the
+   spinner takes the leading icon's slot, so the label keeps its
+   position and the button keeps its width.
+
+   The ring is 14px at 1.75px stroke — the same weight as the Lucide
+   icons beside it (§8), so it belongs to the same drawing rather than
+   looking like a borrowed loader. 760ms is deliberately slow; a fast
+   spinner reads as panic. */
+.btn--busy {
+  cursor: progress;
+}
+.kk-spinner {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.75px solid currentColor;
+  border-top-color: transparent;
+  border-right-color: transparent;
+  animation: kk-spin 760ms linear infinite;
+}
+
+/* Rotation is the one thing a motion-sensitive user should not be
+   given, so the ring stops and breathes instead — still unmistakably
+   "working", with no movement at all. */
+@media (prefers-reduced-motion: reduce) {
+  .kk-spinner {
+    border-color: currentColor;
+    animation: kk-spinner-breathe 1.4s var(--ease-in-out) infinite;
+  }
+  @keyframes kk-spinner-breathe {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}
+
+/* The one control in the product that cannot be a `Button`, and so the
+   one place `.btn` is still written by hand: the photo upload trigger in
+   the restaurant console. A file picker's trigger has to be the
+   `<label>` that wraps its `<input type="file">` — swap in a `<button>`
+   and the picker stops opening.
+
+   It exists because the alternative was worse. What stood here was
+   `style={{ cursor: uploading ? 'progress' : 'pointer' }}` — the busy
+   contract copied inline, at one call site, in JavaScript. A cursor that
+   depends on state is a stylesheet's decision, so it is made here once
+   and the markup says only *which* state it is in.
+
+   `[data-busy]` and not `[data-busy='true']`: the attribute is written
+   as `uploading || undefined`, so React omits it entirely when idle
+   rather than rendering `data-busy="false"` for the selector to argue
+   with. */
+.upload-trigger {
+  cursor: pointer;
+}
+.upload-trigger[data-busy] {
+  cursor: progress;
+}
+
+/* ------------------------------------------------------------
+   2. ICON BUTTON
+   ------------------------------------------------------------
+
+   The product's most-tapped control is the save/favourite/compare
+   cluster on a restaurant card, and it measured 34px on the standard
+   card, 30px in the ≤640 two-column grid and 28px on the compact
+   card — three sizes for one control, all of them under the 44px
+   floor that `.btn` has held since the button ladder was fixed.
+
+   Growing the circle is not available: it sits inside the card's media
+   box, and three 34px buttons in a column already stand 114px tall in
+   a 121px media on mobile. So the *visual* box and the *pointer
+   target* are separated. The circle keeps the size the layout allows;
+   an invisible `::after` carries the target outwards to 44px.
+
+   Reach is a pair of custom properties rather than one number because
+   the two axes have different room. Vertically the cluster is a stack,
+   so a target may only grow into half the gap on each side or two
+   adjacent buttons start overlapping and the wrong one answers a tap.
+   Horizontally there is open photograph. Where a layout cannot afford
+   44 it lowers the property and says why, which is a visible cap
+   rather than a silently missed floor.
+   ------------------------------------------------------------ */
+.kk-ib {
+  --kk-ib-box: 34px;
+  --kk-ib-reach: 44px;
+  --kk-ib-reach-x: var(--kk-ib-reach);
+  --kk-ib-reach-y: var(--kk-ib-reach);
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  /* `place-items: center` centres in the CONTENT box, and a `<button>` with no
+     padding rule of its own is not padding-free — Chrome's UA sheet gives it
+     `1px 6px`. On the 34px box that is invisible: 34 − 2 border − 12 padding
+     leaves a 20px column for an 18px icon. At 28px (`--sm`, and the compact
+     card's cluster) the column is 14px for a 16px icon, the icon overflows,
+     and centred overflow is resolved against the start edge — so the mark sat
+     1px right of the ring it is supposed to be centred in. Measured on the
+     "Because you like…" spread: dx +1, dy 0, at three sizes of the same bug.
+     One `padding: 0` here fixes every call site; nothing in this primitive
+     wants padding, because the box is stated outright. */
+  padding: 0;
+  width: var(--kk-ib-box);
+  height: var(--kk-ib-box);
+  border-radius: 50%;
+  border: 1px solid transparent;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--tr-settle), border-color var(--tr-settle), color var(--tr-settle), box-shadow var(--tr-settle), transform var(--tr-settle);
+}
+.kk-ib > svg {
+  flex: none;
+}
+
+/* The target. `max()` so the reach can never be *smaller* than the
+   circle it belongs to — a layout that sets a low reach shrinks the
+   extension to nothing, it does not clip the button. */
+.kk-ib::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, var(--kk-ib-reach-x));
+  height: max(100%, var(--kk-ib-reach-y));
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+
+.kk-ib:hover {
+  transform: scale(var(--kk-ib-hover-scale, 1.08));
+}
+.kk-ib:active {
+  transform: scale(0.94);
+}
+.kk-ib:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Size. Three steps, all below the 44px `.btn` floor by design —
+   an icon button is a mark, not a labelled control, and the floor is
+   met by the reach above rather than by the circle. */
+.kk-ib--sm {
+  --kk-ib-box: 28px;
+}
+.kk-ib--md {
+  --kk-ib-box: 34px;
+}
+.kk-ib--lg {
+  --kk-ib-box: 40px;
+}
+
+/* Tone: glass — an icon button sitting on photography, where it has to
+   stay legible over an image it cannot predict. This is the recipe that
+   used to be written inline on `.rcard__act`; it lives here now so §4's
+   short list of glass surfaces stays short and countable. */
+.kk-ib--glass {
+  background: var(--glass-paper);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-color: rgba(28, 23, 16, 0.1);
+  box-shadow: var(--shadow-sm);
+}
+
+/* §4 makes a fallback mandatory for every blurred surface, and this is
+   the first one in the codebase. Without it, a browser with no
+   `backdrop-filter` gets --glass-paper's 0.86 alpha as plain
+   translucency: a dark photograph shows straight through and a
+   near-black icon lands on it. Opaque paper is the honest substitute —
+   it loses the depth, not the legibility. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .kk-ib--glass {
+    background: var(--paper-50, #fffdf9);
+  }
+}
+
+/* Tone: paper — the same mark on a surface rather than on an image.
+   No ground at rest so a cluster of them does not read as a row of
+   buttons; the ground arrives on hover, which is when it is useful. */
+.kk-ib--paper {
+  background: transparent;
+  color: var(--ink-soft);
+}
+.kk-ib--paper:hover {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--ink);
+}
+
+/* Tone: danger — a delete. Quiet at rest, because a row of records with a
+   red mark on every one of them reads as a page full of warnings rather
+   than as a page with a delete available; the colour arrives on hover,
+   which is the moment it is about to matter. The soft red ground is the
+   recipe that used to be written inline on console.css's `.icon-action--danger`. */
+.kk-ib--danger {
+  background: transparent;
+  color: var(--ink-faint);
+}
+.kk-ib--danger:hover {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 26%, transparent);
+  color: var(--danger);
+}
+
+/* Pressed. A toggle's "on" colour is the caller's to name — a heart is
+   terracotta, a save is espresso, a compare is the vibe accent, and
+   those meanings live at the call site, not in a primitive. The
+   mechanics are here; the properties carry the meaning in.
+
+   The edge defaults to the fill, which is right for a solid terracotta
+   heart and wrong for the console's pale `--primary-soft`: a fill that
+   close to paper needs a line to read as a pressed thing rather than as
+   a lighter patch of the surface. Hence the third property. */
+.kk-ib[aria-pressed='true'] {
+  background: var(--kk-ib-on-bg, var(--primary));
+  border-color: var(--kk-ib-on-line, var(--kk-ib-on-bg, var(--primary)));
+  color: var(--kk-ib-on-fg, #fff);
+}
+
+/* The beat. Saving something is the one act on a restaurant card that the
+   reader chose to perform, and until now the whole of the product's answer
+   was a colour swap — the same answer a hover gives. One ring, in the
+   button's own "on" colour, expanding once and gone in 620ms.
+
+   Three decisions worth keeping:
+
+   The ring is on a `::before`, not on the button. `box-shadow` is a single
+   property, so animating it on `.kk-ib` would replace `--glass-paper`'s
+   `--shadow-sm` for the length of the ring and the glass buttons on every
+   card's media would visibly flatten and pop back. The pseudo-element hugs
+   the circle exactly (`inset: 0`, inherited radius) and owns nothing else.
+   `::after` was not available — it is the 44px pointer target, and a ring
+   emanating from the target's edge would start 5px clear of the button.
+
+   The tint is mixed from `--kk-ib-on-bg`, so a terracotta heart throws a
+   terracotta ring and the console's pale primary throws a pale one. Nothing
+   here decides that a save is gold.
+
+   And it fires on the *act*, never on arrival. `[data-kk-beat]` is set by
+   IconButton only when `pressed` goes false → true while mounted, so a page
+   of already-saved cards — 633 of these render on /explore — paints once and
+   sits still. §5 rule 1. */
+.kk-ib::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.kk-ib[data-kk-beat]::before {
+  animation: kk-pulse 620ms var(--ease-out) 1;
+  --kk-pulse-tint: color-mix(in srgb, var(--kk-ib-on-bg, var(--primary)) 55%, transparent);
+  --kk-pulse-reach: 7px;
+}
+
+/* A primitive that moves owns its opt-out. The global blanket would leave
+   0.01ms of ring, which on a box-shadow is a single-frame flash rather than
+   an absence. The colour swap above is the whole of the feedback here, and a
+   colour is not motion — §5 rule 2 is satisfied without this. */
+@media (prefers-reduced-motion: reduce) {
+  .kk-ib[data-kk-beat]::before {
+    animation: none;
+  }
+}
+
+/* Shape: square. Every icon button in the product is a circle except the
+   console's row actions, where up to seven stand 2px apart inside a 64px
+   record: at that density circles read as a string of beads and the
+   rounded square is what makes each one look like a discrete target.
+
+   Two of the base's assumptions do not survive that density. The reach
+   cannot be 44px horizontally — siblings sit 2px apart, so a target that
+   wide would sit under its neighbour and the wrong action would answer a
+   tap; 36px is the honest cap (a 34px box plus the gap), and this is the
+   "layout cannot afford 44" case §2 above describes. And the hover scale
+   has to go: a square growing 8% inside a dense row makes the whole row
+   look like it is twitching, which the old `.icon-action` avoided by
+   having no transform at all. The vertical reach keeps the full 44px —
+   a 64px record has the room. */
+.kk-ib--square {
+  --kk-ib-reach-x: 36px;
+  --kk-ib-hover-scale: 1;
+  border-radius: var(--r-sm);
+}
+.kk-ib--square::after {
+  border-radius: var(--r-sm);
+}
+
+.kk-ib[disabled],
+.kk-ib[aria-disabled='true'] {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ------------------------------------------------------------
+   3. CHIP — the pill you press
+   ------------------------------------------------------------
+
+   `.chip` had `.btn`'s disease and a second one of its own. The base was
+   declared in two files (index.css, editorial.css) and five of its
+   variants twice each at different values, so index.css's six hardcoded
+   hexes — #8a5408, #eed9b0, #f1ecff, #5b3fd4, #e2dafd, #c9e8d2 — never
+   painted a pixel: editorial.css loads later and takes all six. They are
+   gone; §5 below is that resolution written once.
+
+   The second disease is that one class did two jobs. `.chip--link`
+   renders on an `<a>` you press. `.chip--meal` renders on a `<span>` you
+   cannot. Identical geometry, identical stylesheet, opposite contracts —
+   so a label was being given a hover state and a control was not being
+   given a target, and nothing in the markup or the CSS could tell you
+   which was which. Splitting them is the point of this section and the
+   next: `.kk-chip` is the one you press, `.kk-badge` is the one you read.
+
+   Eight heights shipped for the pressable role — 24, 29, 32, 33, 34, 35,
+   35, 36 — across four type sizes, seven padding pairs and five gaps.
+   This is two: 36px/13px and 32px/12px.
+
+   36 is not a round number picked for looks. Both wrapping chip rows in
+   the product (`.rf__opts`, `.disc__moods`) are `flex-wrap: wrap` with
+   `gap: 8px`, so 36 + 8 tiles to exactly 44: the reach below can take
+   the full target floor without two rows' targets overlapping and the
+   wrong option answering a tap. 32 + 8 gives 40, which is the honest cap
+   for the small step rather than a floor quietly missed.
+   ------------------------------------------------------------ */
+.kk-chip {
+  --kk-chip-h: 36px;
+  --kk-chip-reach-y: 44px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: var(--kk-chip-h);
+  padding: 0 var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  letter-spacing: var(--tracking-snug);
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--tr-settle), border-color var(--tr-settle), color var(--tr-settle), box-shadow var(--tr-settle), transform var(--tr-settle);
+}
+
+/* The target, on the same principle as §2's icon button: the pill's
+   visual box is what the row affords, the pointer target is a separate
+   thing. Only the vertical axis needs help — a chip is its label, so it
+   is already 70px+ wide — which is why `width: 100%` steals nothing from
+   the chip beside it while the height reaches the floor. */
+.kk-chip::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: max(100%, var(--kk-chip-reach-y));
+  transform: translateY(-50%);
+  border-radius: inherit;
+}
+
+.kk-chip--sm {
+  --kk-chip-h: 32px;
+  --kk-chip-reach-y: 40px;
+  font-size: var(--fs-xs);
+}
+
+/* Hover is the primary ramp's faintest step, not a colour change. A row
+   of a hundred options that each turn maroon under the cursor is a
+   fairground; a row that warms very slightly is a product. */
+.kk-chip:hover {
+  border-color: var(--primary-line);
+  background: var(--primary-faint);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+.kk-chip:active {
+  transform: translateY(0);
+}
+.kk-chip:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Selected. Flat espresso — decision 2 — where four of these states used
+   to paint `--grad-primary` or `--grad-primary-bright`. At 36px tall a
+   ramp is not read as a ramp, it is read as a smudge, and the gradient
+   was doing work that a fill and a shadow do better.
+
+   `[aria-pressed]` rather than a modifier class, and (0,2,0) on purpose:
+   a surface that wants a different "on" colour passes `--kk-chip-on-bg`
+   instead of writing a `background` that this rule would silently beat.
+   That is the trap the icon button's three toggles fell into.
+
+   `[aria-current='page']` rides along because a chip that navigates —
+   a neighbourhood, a cuisine link — is selected by virtue of where you
+   already are, and a link cannot be `aria-pressed`. */
+.kk-chip[aria-pressed='true'],
+.kk-chip[aria-current='page'] {
+  background: var(--kk-chip-on-bg, var(--primary));
+  border-color: transparent;
+  color: var(--kk-chip-on-fg, var(--ink-on-primary));
+  box-shadow: var(--shadow-primary);
+}
+.kk-chip[aria-pressed='true']:hover,
+.kk-chip[aria-current='page']:hover {
+  background: var(--kk-chip-on-bg, var(--primary-strong));
+  color: var(--kk-chip-on-fg, var(--ink-on-primary));
+}
+
+/* The mark. Faint at rest, saffron when the chip is on or under the
+   cursor — the one place gold is allowed to appear more than once in a
+   view, because here it is not a recommendation, it is the selected
+   state's own accent against espresso. Shipped behaviour on the mood
+   rail; it belongs to every chip now. */
+.kk-chip__icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--ink-faint);
+  transition: color var(--tr-settle);
+}
+.kk-chip:hover .kk-chip__icon,
+.kk-chip[aria-pressed='true'] .kk-chip__icon,
+.kk-chip[aria-current='page'] .kk-chip__icon {
+  color: var(--accent);
+}
+
+/* The count, for the chips that carry one. Tabular so a column of them
+   does not shimmy as the numbers change under a keystroke. */
+.kk-chip__count {
+  flex: none;
+  padding: 0 var(--s1);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  color: var(--ink-faint);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+.kk-chip[aria-pressed='true'] .kk-chip__count {
+  background: rgba(247, 240, 228, 0.16);
+  color: var(--accent);
+}
+
+/* Reaches nothing *here*. Dimmed and dashed rather than hidden, because
+   a filter that matches nothing alongside the current search is
+   information — and it is still pressable, so the count can be believed
+   rather than taken on trust. */
+.kk-chip--empty {
+  opacity: 0.45;
+  border-style: dashed;
+}
+
+.kk-chip[disabled],
+.kk-chip[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ------------------------------------------------------------
+   4. BADGE — the mark you read
+   ------------------------------------------------------------
+
+   The other half of the split. A badge states a fact about a thing —
+   Dinner, Rooftop, 20% off — and there is nothing to press, so it has no
+   cursor, no hover, no target and no pressed state. Those absences are
+   the component: they are what stop a label from advertising an action
+   it does not have.
+
+   It is also the one place the radius token table gets obeyed rather
+   than quoted. §2 assigns `--r-full` to "chips, filters, toggles" and
+   `--r-xs` to "badges, tags, inline marks (typographic, not tappable)",
+   and the shipped `.chip--meal` / `--vibe` / `--offer` marks took the
+   pill anyway — which is exactly why they were indistinguishable from
+   the controls beside them. A badge is a 6px rectangle here. Shape now
+   tells you what you can press before colour or cursor gets a chance to,
+   the same distinction the button ladder made when it left 999px.
+
+   Tones are only the semantic families the product already ships, and
+   each one is a soft fill with matching ink and line from the same ramp.
+   No new colours were invented for this.
+   ------------------------------------------------------------ */
+.kk-badge {
+  --kk-badge-h: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-height: var(--kk-badge-h);
+  padding: 0 var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-semi);
+  letter-spacing: var(--tracking-snug);
+  line-height: 1;
+  white-space: nowrap;
+}
+.kk-badge > svg {
+  flex: none;
+}
+.kk-badge--md {
+  --kk-badge-h: 28px;
+  padding: 0 var(--s3);
+  font-size: var(--fs-xs);
+}
+
+/* Tones are ramps, not domains. The shipped classes were named for one
+   use each — `--meal`, `--vibe`, `--offer` — which is why a Google
+   attribution mark ended up wearing `.chip--meal` to get saffron. A
+   badge states which *ramp* its fact belongs to; what the fact is stays
+   the caller's business. */
+.kk-badge--accent {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent-strong);
+}
+.kk-badge--vibe {
+  background: var(--vibe-soft);
+  border-color: #ddd5f9;
+  color: var(--vibe-strong);
+}
+.kk-badge--success {
+  background: var(--success-soft);
+  border-color: var(--primary-line);
+  color: var(--success);
+}
+.kk-badge--warn {
+  background: var(--warning-soft);
+  border-color: var(--accent-line);
+  color: var(--warning);
+}
+
+/* ------------------------------------------------------------
+   5. `.chip` — the legacy pill, resolved
+   ------------------------------------------------------------
+
+   Not a redesign: this is the *shipped* chip, which was the resolved
+   value of two base declarations and five doubly-declared variants, and
+   is now written once. Every value below is the one that was already
+   painting; the computed signature of thirty chip cases was measured
+   before the move and matches after it.
+
+   What was dropped, all of it provably dead:
+
+     - index.css's second base and its `--select:hover` / `--active` /
+       `--meal` / `--vibe` / `--offer`, every one of them beaten by
+       editorial.css's copy on source order. Six hardcoded hexes went
+       with them.
+     - `.chip--dismiss`, `.chip--vibe`, `.chip--offer` — no markup in the
+       product renders any of the three.
+     - `.chip--toggle` / `.chip--on` from phase3.css, whose only two call
+       sites now use the `Chip` primitive. That pair had been shipping
+       white text on paper: `.chip--on` set `background: var(--primary)`
+       with `color: #fff !important`, and editorial.css's later, equally
+       specific `.chip { background: var(--surface) }` took the
+       background while the `!important` kept the ink. 1.01:1 — the
+       `!important` guaranteed the failure rather than preventing it.
+
+   The remaining variants stay because markup still renders them, and
+   they migrate to `Chip` / `Badge` as Phase 3 reaches their pages.
+   ------------------------------------------------------------ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 0.28rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background var(--tr-settle), border-color var(--tr-settle), color var(--tr-settle), box-shadow var(--tr-settle), transform var(--tr-settle);
+}
+
+.chip--select {
+  cursor: pointer;
+}
+.chip--select:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-faint);
+  transform: translateY(-1px);
+}
+
+.chip--active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: var(--shadow-primary);
+}
+
+.chip--link:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* A label, not a control — the case `Badge` now exists for. */
+.chip--meal {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent-strong);
+}
+
+/* A chip that holds its own dismissal: the profile's preference pills.
+   Moved here from phase3.css, where its paint was dead — `.chip` above is the
+   same (0,1,0) and loads later, so the soft maroon had been losing to the
+   plain chip's `--surface` / `--border` / `--ink-soft` since this file landed.
+
+   The remove mark is an `IconButton`, so the three `.chip--remove button`
+   rules that used to accompany this one were deleted rather than moved: at
+   (0,1,1) they beat `.kk-ib` from anywhere and would have restored the 16px
+   box, the `border: none` and a second, maroon focus ring — the three things
+   the primitive replaces. `padding-right` drops to 4px because the mark now
+   carries its own box; see ProfilePage's `PREF_REMOVE_STYLE` for the reach
+   arithmetic, which is bounded by `.pref-block__values`'s 6px row gap. */
+.chip--remove {
+  gap: var(--s0h);
+  padding-right: var(--s1);
+  background: var(--primary-soft);
+  border-color: var(--primary-soft);
+  color: var(--primary-strong);
+}
+.chip--remove .kk-ib {
+  color: inherit;
+}
+
+/* A chip that *is* its own dismissal — the hero builder's chosen terms.
+   Distinct from `--remove` above, which pairs a label with a separate 28px
+   mark: here the whole pill is the button, because the chip reports one
+   decision and clearing that decision is the only thing anyone wants to do to
+   it. One 32px target instead of a label plus a small mark inside it.
+
+   The cross stays quiet until the pill is pointed at. It is a hint about what
+   the chip does, not a second control, and five bright crosses in a summary
+   row would read as five errors. */
+.chip--dismiss {
+  gap: var(--s1);
+  padding-right: 0.6rem;
+  cursor: pointer;
+}
+.chip--dismiss svg {
+  flex: none;
+  opacity: 0.5;
+  transition: opacity var(--tr-settle);
+}
+.chip--dismiss:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+.chip--dismiss:hover svg { opacity: 1; }
+.chip--dismiss:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------
+   6. FIELD — the label, the control, and what it says about itself
+   ------------------------------------------------------------
+
+   One rule list, two class names. `.kk-field` is what the `Field`
+   component emits; `.field` is the 34 hand-assembled blocks already in
+   the product, and they are styled together on purpose — the unification
+   below is the whole point of the phase, and it would be worth very
+   little if it only reached the call sites that had been rewritten.
+
+   What was wrong, measured:
+
+   - **The same class rendered two designs.** With `.admin`,
+     `.admin-shell`, `.profile-body` or `.auth-card` anywhere above it, a
+     field got 14px radius / 13px type / `--border` / a borderless 3px
+     ring; without one it got 10px / 14px / `--border-strong` / a 2px
+     espresso outline. Console's rules were compound (`.admin .field
+     input` is (0,2,1)) so they beat anything a later single-class file
+     could say — which is why they are deleted rather than overridden.
+   - **A select and an input in the same form were different heights**:
+     43px vs 44.67px on the public site, 44px vs 45.05px in the console.
+     Nothing hit a round number. `min-height: var(--kk-field-h)` makes
+     all three controls 44px, which is also the target floor §11 asks of
+     anything pressable, and a select is pressable.
+   - **Neither focus treatment was §7's.** Both used espresso; §7 settled
+     that the saffron outline is the system precisely because it works on
+     paper *and* ink grounds. `:focus` and not `:focus-visible` here: the
+     question `:focus-visible` exists to answer — was this keyboard? — has
+     no bearing on a text input, because a clicked input is about to take
+     typing and showing where the caret landed is always right.
+   - **`--error` is not a token.** See §6's error rule and the four
+     one-word fixes in phase3.css.
+
+   Type size is the one place this deliberately differs by viewport.
+   14px is the designed size; iOS Safari zooms the page when a focused
+   input is under 16px, so ≤640px gets 16px. That is a correctness fix,
+   not a preference, and it costs nothing on desktop.
+   ------------------------------------------------------------ */
+.kk-field,
+.field {
+  --kk-field-h: 44px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.kk-field__label,
+.field__label {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  letter-spacing: var(--tracking-snug);
+  color: var(--ink-soft);
+}
+
+/* Quiet, and lowercase, so it reads as an aside to the question rather
+   than part of it. Three call sites typed "(optional)" into the label
+   itself, where it carried the label's own weight and colour. */
+.kk-field__optional {
+  font-weight: var(--weight-medium);
+  color: var(--ink-faint);
+}
+
+.kk-field input,
+.kk-field textarea,
+.kk-field select,
+.field input,
+.field textarea,
+.field select,
+.admin-inline-form input {
+  width: 100%;
+  min-height: var(--kk-field-h, 44px);
+  padding: 0 var(--s3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  transition: border-color var(--tr-settle), outline-color var(--tr-settle);
+}
+
+/* A textarea is the one control here that is not a single line, so it is
+   the one control that needs vertical padding of its own. */
+.kk-field textarea,
+.field textarea {
+  padding: var(--s2) var(--s3);
+  resize: vertical;
+}
+
+.kk-field select,
+.field select {
+  cursor: pointer;
+}
+
+.kk-field input::placeholder,
+.kk-field textarea::placeholder,
+.field input::placeholder,
+.field textarea::placeholder,
+.admin-inline-form input::placeholder {
+  color: var(--ink-faint);
+}
+
+.kk-field input:hover,
+.kk-field textarea:hover,
+.kk-field select:hover,
+.field input:hover,
+.field textarea:hover,
+.field select:hover {
+  border-color: var(--border-strong);
+}
+
+.kk-field input:focus,
+.kk-field textarea:focus,
+.kk-field select:focus,
+.field input:focus,
+.field textarea:focus,
+.field select:focus,
+.admin-inline-form input:focus {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--primary);
+}
+
+.kk-field input[disabled],
+.kk-field textarea[disabled],
+.kk-field select[disabled],
+.field input[disabled],
+.field textarea[disabled],
+.field select[disabled] {
+  opacity: 0.55;
+  background: var(--surface-2);
+  cursor: not-allowed;
+}
+
+.kk-field__hint,
+.field__hint {
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+
+/* `--danger`, not `--error`. `--error` was never defined, so this
+   declaration used to be dropped at computed-value time and the message
+   inherited body ink — an error that was not red. */
+.kk-field__error,
+.field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s1);
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-medium);
+  color: var(--danger);
+}
+
+/* The invalid state is on the wrapper, not the control, so one flag paints
+   the edge and the message together. */
+.kk-field--invalid input,
+.kk-field--invalid textarea,
+.kk-field--invalid select {
+  border-color: var(--danger);
+}
+
+.form-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-medium);
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .kk-field input,
+  .kk-field textarea,
+  .kk-field select,
+  .field input,
+  .field textarea,
+  .field select,
+  .admin-inline-form input {
+    font-size: 16px;
+  }
+}
+
+/* ------------------------------------------------------------
+   7. DISCLOSURE — a question you can put away
+   ------------------------------------------------------------
+
+   Four of them shipped, at four trigger heights: 37.05px (the hero
+   console's Advanced pill), 46px (`/discover`'s "show all cuisines"),
+   54px (the FAQ question) and 61.98px (the homepage's principle rows).
+   Three radii, four type treatments, three focus treatments — and the
+   37px one was the only disclosure trigger in the product under the 44px
+   floor.
+
+   What this section deliberately does NOT do is give them one look. A
+   bordered card on a paper page, a ruled row on an ink band and a pill
+   in a glass console are three correct answers to three different
+   grounds; collapsing them would be forcing one style where it harms the
+   surface. So the variants below carry the appearance and everything
+   above them carries the pair — target, focus, marker, panel mechanics.
+
+   Two things are fixed here rather than restyled:
+
+    - `.kk-disc__trigger` states `aria-controls` from the component, so
+      the marker rotation can hang off `[aria-expanded='true']` instead of
+      a separate `--open` class. A modifier class can disagree with the
+      attribute; a selector on the attribute cannot. polish.css already
+      worked this out for `.dsc-cuisines__more` and the reasoning is
+      copied from its comment.
+    - The focus ring is §7's saffron on both grounds. The FAQ had
+      `2px solid var(--primary)` inset and the principle rows
+      `2px solid var(--on-ink-accent)`; neither was the system, and the
+      espresso one is the same mistake §7 was written to end.
+
+   `outline-offset` is negative on the card variant only, and that is not
+   a taste call either: the card sets `overflow: hidden` to clip its
+   animated panel, which clips an outline drawn outside the border box
+   too. Inset is the only offset that survives it.
+   ------------------------------------------------------------ */
+.kk-disc {
+  min-width: 0;
+}
+
+/* The trigger IS the heading on surfaces where the summary is the
+   section title, so the wrapper must add nothing of its own. */
+.kk-disc__heading {
+  margin: 0;
+  font: inherit;
+}
+
+/* Only rendered when a call site passes `aside` — a closed panel showing
+   what it is holding. Mirrors the row the hero console already had. */
+.kk-disc__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.kk-disc__trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-lg);
+  font-weight: var(--weight-semi);
+  /* `--lh-snug`, not `--lh-body`. A summary is a short label that may wrap
+     to two lines, so it needs *some* leading — but prose leading inside a
+     control reads as slack, and at 16px it also added 6px to every trigger
+     for nothing. 1.24 keeps a wrapped question readable and keeps the FAQ
+     card at the 54px it was measured at. */
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-snug);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--tr-settle), border-color var(--tr-settle), color var(--tr-settle);
+}
+
+.kk-disc__trigger:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.kk-disc__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-width: 0;
+}
+
+.kk-disc__marker {
+  flex: none;
+  color: var(--ink-faint);
+  transition: transform var(--tr-settle), color var(--tr-settle);
+}
+
+.kk-disc__trigger[aria-expanded='true'] .kk-disc__marker {
+  color: var(--accent);
+}
+.kk-disc__trigger[aria-expanded='true'] .kk-disc__marker--chevron {
+  transform: rotate(180deg);
+}
+/* One glyph for both states: the plus turns into a close mark. */
+.kk-disc__trigger[aria-expanded='true'] .kk-disc__marker--plus {
+  transform: rotate(45deg);
+}
+
+.kk-disc__panel {
+  min-width: 0;
+}
+
+/* The animated panel is the only one still in the DOM while closed, which
+   is why the component marks it `inert` rather than `aria-hidden`. */
+.kk-disc__panel--animated {
+  overflow: hidden;
+  /* Height is a reveal, not a state answer: it arrives at a measured value, so
+     it takes the settle in both directions rather than joining the §8b pair. */
+  transition: height var(--tr-settle);
+}
+
+/* --- card: a bordered surface on paper --- */
+.kk-disc--card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition: border-color var(--tr-settle), box-shadow var(--tr-settle);
+}
+.kk-disc--card.kk-disc--open {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+.kk-disc--card .kk-disc__trigger {
+  padding: var(--s4) var(--s5);
+}
+.kk-disc--card .kk-disc__trigger:hover {
+  background: var(--surface-2);
+}
+.kk-disc--card .kk-disc__trigger:focus-visible {
+  outline-offset: -2px;
+}
+
+/* --- row: a ruled row, the pattern an accordion of them wants --- */
+.kk-disc--row {
+  border-bottom: 1px solid var(--border);
+}
+.kk-disc--row .kk-disc__trigger {
+  padding: var(--s5) 0;
+}
+
+/* --- inline: a chip-shaped trigger, for dense control surfaces --- */
+/* Geometry is §3's chip exactly — 36px box, 44px target, `--r-full` —
+   because that is what this control is: a pill in a row of pills. The
+   arithmetic is the chip's too: the row it sits in is `gap: 8px`, and
+   36 + 8 = 44, so the target takes its full floor without overlapping
+   the summary chips beside it. */
+.kk-disc--inline .kk-disc__trigger {
+  position: relative;
+  width: auto;
+  display: inline-flex;
+  justify-content: flex-start;
+  min-height: 36px;
+  gap: var(--s2);
+  padding: 0 var(--s3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-full);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semi);
+  line-height: 1;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.kk-disc--inline .kk-disc__trigger::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: max(100%, 44px);
+  transform: translateY(-50%);
+  border-radius: inherit;
+}
+.kk-disc--inline .kk-disc__trigger:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--ink);
+}
+.kk-disc--inline .kk-disc__trigger[aria-expanded='true'] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+/* The marker inherits here and only here. On a card or a row it is a
+   faint mark beside a heading and takes its own colour; inside a pill it
+   is part of the pill, and the pill has one colour that its hover, its
+   open state and any ground override all move together. Giving it
+   `--ink-faint` would put a paper grey inside the hero console's glass. */
+.kk-disc--inline .kk-disc__marker,
+.kk-disc--inline .kk-disc__trigger[aria-expanded='true'] .kk-disc__marker {
+  color: inherit;
+}
+.kk-disc--inline .kk-disc__panel {
+  margin-top: var(--s3);
+  padding: var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+/* `animate` measures the INNER element and writes that number onto the
+   panel, which is `border-box` — so every pixel of padding the panel
+   carries is taken out of the content box the measurement came from. An
+   inline panel with `animate` clipped 32px off its own bottom, and only
+   with `animate`, which is why it survived four call sites. The padding
+   moves inside, where the measurement can see it.
+
+   Equal specificity to the rule above (two classes each), so this has to
+   stay below it. */
+.kk-disc--inline .kk-disc__panel--animated {
+  padding: 0;
+}
+.kk-disc--inline .kk-disc__panel--animated .kk-disc__panel-inner {
+  padding: var(--s4);
+}
+
+/* --- ink ground --- */
+/* §3: on ink, the rule and the type change but the saffron focus does
+   not — that is the whole reason §7 chose saffron over the espresso ring
+   it replaced. Only the accent's on-ink variant differs. */
+.kk-disc--ink.kk-disc--row {
+  border-bottom-color: var(--on-ink-line);
+}
+.kk-disc--ink .kk-disc__trigger {
+  color: var(--on-ink);
+}
+.kk-disc--ink .kk-disc__marker {
+  color: var(--on-ink-faint);
+}
+.kk-disc--ink .kk-disc__trigger[aria-expanded='true'] .kk-disc__marker {
+  color: var(--on-ink-accent);
+}
+
+/* ------------------------------------------------------------
+   8. DIALOG
+   ------------------------------------------------------------
+
+   Before this section the product had three scrims — `.lightbox`
+   (rgba(20,17,12,.94), z 80), `.compare-modal` (rgba(20,17,12,.5), z 75)
+   and `.modal-scrim` (rgba(33,29,21,.45), z 200) — and four panel widths
+   (420 / 440 / 520 / 960). Two of the three scrims were *photo-viewer*
+   dark, and the price-history and preference panels, which are reading
+   surfaces rather than photo viewers, were sitting on the 94% one because
+   they had borrowed `.lightbox` for its centring. The compare dialog at
+   z 75 also sat *below* the navbar account menu at z 80.
+
+   So: one scrim, one z-index, one width ladder, one radius. The only
+   deliberate second treatment is `--media`, which is the near-opaque
+   ground a photograph needs, and it is now the only thing that uses it.
+
+   Centring is `inset: 0; margin: auto` with a non-`auto` height, never
+   `translate(-50%, -50%)`. A transform would make the panel the
+   containing block for every `position: fixed` descendant, and the photo
+   viewer's chrome is positioned against the viewport. The entry animation
+   may still use a transform because it ends at `none`.
+   ------------------------------------------------------------ */
+
+.kk-dialog__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(33, 29, 21, 0.45);
+  animation: kk-fade-in var(--dur-med) var(--ease);
+}
+
+/* The one place a near-opaque ground is right: a photograph needs the room
+   dark, not tinted. */
+.kk-dialog__scrim--media {
+  background: rgba(20, 17, 12, 0.94);
+}
+
+.kk-dialog__panel {
+  --kk-dialog-gut: var(--s4);
+  --kk-dialog-pad: var(--s4);
+  position: fixed;
+  inset: 0;
+  /* `margin: auto` against a filled `inset` is what centres this. It only
+     works while the height is not `auto`, which is why `max-content` is
+     stated rather than left off. */
+  margin: auto;
+  z-index: 90;
+  width: min(var(--kk-dialog-w, 560px), calc(100vw - 2 * var(--kk-dialog-gut)));
+  height: max-content;
+  max-height: min(88dvh, calc(100dvh - 2 * var(--kk-dialog-gut)));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  animation: kk-rise var(--dur-med) var(--ease-out);
+  --kk-rise-from: 6px;
+}
+
+/* The ladder. 420 → 440 (preference), 520 → 560 (price history), 440
+   (redeem) and 960 (compare) unchanged. */
+.kk-dialog__panel--sm { --kk-dialog-w: 440px; }
+.kk-dialog__panel--md { --kk-dialog-w: 560px; }
+.kk-dialog__panel--lg { --kk-dialog-w: 960px; }
+
+@media (max-width: 640px) {
+  .kk-dialog__panel {
+    --kk-dialog-gut: var(--s3);
+    --kk-dialog-pad: var(--s3);
+  }
+}
+
+/* --- media: a transparent viewport-sized box ---
+   The photo viewer's close / prev / next / caption are `position: absolute`
+   against this box, so it has to keep the viewport's geometry exactly. It
+   also has to stay transform-free at rest for the same reason, so its entry
+   is opacity alone. */
+.kk-dialog__panel--media {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  background: none;
+  border-radius: 0;
+  box-shadow: none;
+  animation: kk-fade-in var(--dur-med) var(--ease);
+}
+
+/* --- head / toolbar / body / foot ---
+   The head and foot are pinned and the body is the only thing that
+   scrolls. Before this, the price-history and compare dialogs scrolled the
+   whole panel, so their titles left the screen and there was nothing to
+   tell you which dialog you were still inside. */
+.kk-dialog__head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--kk-dialog-pad) var(--kk-dialog-pad) var(--s3);
+}
+
+.kk-dialog__heading { min-width: 0; }
+
+.kk-dialog__eyebrow {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--terracotta);
+  margin-bottom: var(--s1);
+}
+
+/* One title size for every dialog, and it is a *dialog* size. Two of the
+   four were bare `<h2>`, which inherits `--fs-h2` — clamp(1.7rem, 3.1vw,
+   2.5rem), up to 40px of page-title lettering inside a 520px box. The
+   redeem dialog used `--fs-h3` and the preference picker a hand-written
+   1.15rem. `--fs-h4` is the step that was already right at one of them. */
+.kk-dialog__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: 700;
+  line-height: var(--lh-snug);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.kk-dialog__desc {
+  margin-top: var(--s1);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--ink-soft);
+}
+
+.kk-dialog__close { flex: none; }
+
+.kk-dialog__toolbar {
+  flex: none;
+  padding: 0 var(--kk-dialog-pad) var(--s3);
+}
+
+.kk-dialog__body {
+  flex: 1 1 auto;
+  /* Without this the body refuses to shrink below its content and the
+     panel's `max-height` is what overflows instead. */
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--kk-dialog-pad) var(--kk-dialog-pad);
+}
+
+.kk-dialog__foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  border-top: 1px solid var(--border);
+  padding: var(--s3) var(--kk-dialog-pad);
+}
+
+/* ------------------------------------------------------------
+   9. REDUCED MOTION
+   ------------------------------------------------------------
+
+   This block has to be here, and it is worth saying why, because getting
+   it wrong is silent. There is no `@layer` in this codebase: at equal
+   specificity a later file's *unconditional* rule beats an earlier file's
+   *media query*. primitives.css is the last file. So the opt-outs that
+   explore-scene.css and phase-c.css already hold for `.disc__mood`,
+   `.rf__opt` and `.rcard__act` cannot reach `.kk-chip:hover` or
+   `.kk-ib:hover` — a primitive that moves has to stop itself.
+
+   The press is deliberately left alone. A press is a direct answer to
+   input rather than decoration, and the same exception is already written
+   into polish.css for the chip and button families.
+
+   So is the disclosure marker's rotation. Only the *transition* goes:
+   the chevron still ends up at 180° and the plus still becomes a close
+   mark, instantly, because that angle is the state of the control and not
+   an ornament on top of it. Taking the rotation away would leave a person
+   who asked for less motion with less information as well — which is a
+   different request from the one they made.
+
+   The dialog is the one place an *animation* is cancelled outright rather
+   than shortened. The global blanket in editorial.css only zeroes
+   `animation-duration`, which still runs the panel's 6px rise — at zero
+   duration that is a jump, not a movement, and a jump is worse than no
+   entrance at all. The scrim and panel simply appear.
+   ------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .kk-chip,
+  .kk-ib,
+  .kk-chip__icon,
+  .kk-disc,
+  .kk-disc__trigger,
+  .kk-disc__marker,
+  .kk-disc__panel--animated,
+  .btn__after {
+    transition: none;
+  }
+  .kk-chip:hover,
+  .kk-ib:hover {
+    transform: none;
+  }
+  /* `.btn` belongs in this block and was missing from it.
+     polish.css's own reduced-motion section says `.btn` "carries both
+     rules itself in primitives.css" — it carries the `:active` press,
+     but the hover lift's opt-out never made the move, and polish.css
+     could not have supplied it anyway: it is an earlier file, and at
+     equal specificity a media query there loses to the unconditional
+     rule here.
+
+     Left as it was, the blanket in editorial.css (`transition-duration:
+     0.01ms !important`) turned the lift into an instant 1px jump — the
+     same defect the dialog block below is written to avoid. A jump is
+     more motion than none, not less. The arrow's travel goes for the
+     same reason; the press stays, because a press is a direct answer to
+     input. */
+  .btn--primary:hover,
+  .btn--accent:hover {
+    transform: none;
+  }
+  .btn:hover .btn__after,
+  .btn:focus-visible .btn__after {
+    transform: none;
+  }
+  .kk-dialog__scrim,
+  .kk-dialog__panel {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------
+   10. CELEBRATION
+   ------------------------------------------------------------
+
+   The struck coin. Paint for `components/ui/Celebration.tsx`, and the only
+   section in this file whose subject is not a control — it is a *moment*, the
+   one the product was missing: claiming the profile reward and redeeming a
+   reward both resolved into grey confirmation text, which is the same visual
+   event as saving a form.
+
+   It is built to be unlike every other animation in the codebase, and the
+   difference is structural rather than loud. Everything else here moves on
+   input, by a pixel or two, for 160ms: hover lifts, chevron leans, width
+   transitions, `[data-reveal]` entrances. This plays once, unasked, from the
+   centre of the screen, and then deletes itself. Nothing is dimmed, nothing
+   blocks the pointer, nothing has to be dismissed, and focus never moves — so
+   despite being centred it is not a modal and does not interrupt.
+
+   Decision 4 retired spring and pop from new usage, and that constraint is
+   what keeps this from reading as a cheap game reward: there is no overshoot
+   anywhere. The coin scales up and stops. What carries the celebration instead
+   is layered timing — mark, then ring, then shards, then the numeral rising —
+   which is how a real event feels, rather than one element wobbling.
+   ------------------------------------------------------------ */
+
+.kk-celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 240; /* Above the toast at 210: a redemption raises both. */
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--s5);
+  /* Never a barrier. The page underneath stays clickable throughout. */
+  pointer-events: none;
+  /* The whole overlay fades on the way out, so the component's unmount at
+     1500ms is invisible rather than a disappearance. */
+  animation: kk-celebrate-out 260ms var(--ease-out) 1240ms both;
+}
+
+/* One cell, everything stacked in it. The stage is sized rather than hugging
+   its contents because the shards and the numeral travel outside the coin, and
+   a grid cell that grew with them would shift the coin off centre. */
+.kk-celebrate__stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 220px;
+  height: 184px;
+}
+
+.kk-celebrate__stage > * { position: absolute; }
+
+/* The warm wash. Not a scrim — a bloom, the same saffron the product lights
+   the hero lamp with, breathing once behind the mark so the coin has somewhere
+   to be struck rather than floating on whatever page is underneath. */
+.kk-celebrate__bloom {
+  width: 300px;
+  height: 300px;
+  border-radius: var(--r-full);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--accent) 26%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 9%, transparent) 42%,
+    transparent 70%);
+  animation: kk-bloom 1400ms var(--ease-out) both;
+}
+
+/* The shockwave. Exactly one ring: two is a ripple effect, and a ripple is
+   what Material does on every button press. This travels out of the coin's own
+   edge and is gone before the numeral finishes rising. */
+.kk-celebrate__ring {
+  width: 64px;
+  height: 64px;
+  border: 2px solid var(--accent);
+  border-radius: var(--r-full);
+  animation: kk-shock 820ms var(--ease-out) 90ms both;
+}
+
+/* The mark. The same gold disc as the token plaque and the badge tiles — the
+   product's one "you earned this" object — at 64px with a real shadow, because
+   this one has to read against an arbitrary page rather than against paper.
+   64px around a 20px glyph, so the mark is a display object without inventing
+   a ninth icon size: §8's ladder still holds. */
+.kk-celebrate__coin {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-full);
+  background: var(--grad-gold);
+  color: #fff;
+  box-shadow:
+    0 22px 44px -20px color-mix(in srgb, var(--primary) 55%, transparent),
+    0 0 0 8px color-mix(in srgb, var(--accent) 12%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.45);
+  animation: kk-strike 520ms var(--ease-out) both;
+}
+
+/* The token case. `CoinMark` is gold and self-coloured, so the gold field the
+   caller-supplied white glyphs need turns the whole medallion into one brown
+   object — the coin and its ground within a tone of each other. Paper instead,
+   with the gold moved to a hairline and kept in the halo and the shards, so what
+   lands in the middle of the screen is a gold coin rather than a gold circle. */
+.kk-celebrate__coin--token {
+  background: var(--surface);
+  box-shadow:
+    0 22px 44px -20px color-mix(in srgb, var(--primary) 55%, transparent),
+    0 0 0 8px color-mix(in srgb, var(--accent) 12%, transparent),
+    inset 0 0 0 1px var(--accent-line);
+}
+
+/* Eight shards, fixed angles, thrown outward along each. `--angle` comes from
+   the component; the rotate happens before the translate, so one keyframe
+   throws all eight in their own directions. They are thin bars rather than dots
+   because a dot at this size is a particle and particles read as confetti. */
+.kk-celebrate__shard {
+  width: 3px;
+  height: 16px;
+  border-radius: var(--r-full);
+  background: linear-gradient(var(--accent), color-mix(in srgb, var(--accent) 20%, transparent));
+  animation: kk-shard 900ms var(--ease-out) 140ms both;
+}
+
+/* The figure. Display serif, gold, tabular — it rises off the coin and holds
+   above it, which is the part that makes the moment feel like a deposit rather
+   than a notification. */
+.kk-celebrate__amount {
+  font-family: var(--font-display);
+  font-size: 2.3rem;
+  font-weight: var(--weight-semi);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 10px color-mix(in srgb, var(--surface) 80%, transparent);
+  animation: kk-amount 900ms var(--ease-out) 260ms both;
+}
+
+/* The sentence, on its own paper. The overlay sits over whatever page the
+   diner was on — a dark wallet band, a photograph — so the line carries a
+   surface with it rather than trusting the contrast underneath. */
+.kk-celebrate__text {
+  display: grid;
+  gap: var(--s0h);
+  justify-items: center;
+  margin: 0;
+  padding: var(--s3) var(--s6);
+  max-width: 32ch;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  box-shadow: 0 18px 44px -26px color-mix(in srgb, var(--primary) 60%, transparent);
+  text-align: center;
+  animation: kk-rise 460ms var(--ease-out) 320ms both;
+  --kk-rise-from: 8px;
+}
+
+.kk-celebrate__text strong {
+  font-family: var(--font-display);
+  font-size: var(--fs-h4);
+  font-weight: var(--weight-semi);
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+}
+
+.kk-celebrate__text span {
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+/* --- the strike, in order: mark 0–520, ring 90–910, shards 140–1040,
+       numeral 260–1160, sentence 320–780, overlay out 1240–1500 --- */
+
+@keyframes kk-strike {
+  from { opacity: 0; transform: translateY(12px) scale(0.68); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes kk-shock {
+  from { opacity: 0.6; transform: scale(1); }
+  to   { opacity: 0; transform: scale(3.1); }
+}
+
+@keyframes kk-bloom {
+  0%   { opacity: 0; transform: scale(0.82); }
+  30%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.14); }
+}
+
+@keyframes kk-shard {
+  0%   { opacity: 0; transform: rotate(var(--angle)) translateY(-30px) scaleY(0.35); }
+  22%  { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--angle)) translateY(-92px) scaleY(1); }
+}
+
+@keyframes kk-amount {
+  0%   { opacity: 0; transform: translateY(-12px); }
+  35%  { opacity: 1; }
+  100% { opacity: 1; transform: translateY(-62px); }
+}
+
+@keyframes kk-celebrate-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* --- reduced motion ---
+
+   This opt-out lives here rather than in §9 because a primitive that moves
+   owns its own opt-out, and because it has to be `animation: none` rather than
+   a duration override. The global blanket in editorial.css:1981-1988 zeroes
+   *duration* only, which for a keyframe animation means it completes on the
+   first frame and holds its end state — so left to the blanket this
+   celebration would flash a 3× scaled ring and a numeral parked 62px above the
+   coin, then sit there. That is worse than no animation, and it is the one
+   failure mode a moment like this cannot afford.
+
+   What remains under `reduce` is the composed still: coin, numeral in place,
+   sentence. The bloom, the ring and the shards are the *motion* — a static
+   shockwave frozen mid-flight is meaningless — so they are removed outright
+   rather than stilled. The numeral's resting offset has to be restated here,
+   since it was living in the keyframe's end state. */
+@media (prefers-reduced-motion: reduce) {
+  .kk-celebrate,
+  .kk-celebrate__coin,
+  .kk-celebrate__amount,
+  .kk-celebrate__text {
+    animation: none;
+  }
+
+  .kk-celebrate__bloom,
+  .kk-celebrate__ring,
+  .kk-celebrate__shard {
+    display: none;
+  }
+
+  .kk-celebrate__amount { transform: translateY(-62px); }
+}
+
+/* ------------------------------------------------------------
+   11. COPY CODE
+   ------------------------------------------------------------
+
+   Paint for `components/ui/CopyCode.tsx`. Three codes shipped as plain
+   text — a redeemed reward's code in a card foot, the coupon stub's code,
+   and a diner's referral code — and each one had to be drag-selected out
+   of 13px type to be used anywhere.
+
+   `plate` is the ground: mono, tracked, on a soft accent wash. The wash is
+   the point rather than decoration. All three sites sit on paper among
+   sentences, and a code set in body type among sentences reads as a word;
+   the wash and the letter-spacing are what make it read as a token to be
+   taken. `--accent` rather than `--primary` because the two of the three
+   that matter are earned — a redemption and a referral — and gold is the
+   product's one "you earned this" colour (§10, the badge tiles, the token
+   plaque).
+
+   `inline` adds no ground, for the coupon stub: that stub is already a
+   dashed ticket with its own mono type and `--primary-strong` ink, so a
+   plate there would be a box inside a box and a second colour temperature
+   inside one card.
+
+   The button is an `IconButton`, so the 44px reach, the focus ring and the
+   hover ground all arrive from §2 rather than being written again here.
+   Only two things are stated: the mark is faint at rest so a card foot is
+   not a row of competing marks, and it turns `--success` on confirmation
+   — the one place in this file green appears, because "copied" is the only
+   state here that is a completed action rather than a mode.
+   ------------------------------------------------------------ */
+.kk-code {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.kk-code__value {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  /* A code is one token: it breaks anywhere before it overflows a 164px
+     card column, and it never wraps mid-word into two lines that read as
+     two codes. */
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* --- plate: the code brings its own ground --- */
+.kk-code--plate {
+  padding: var(--s0h) var(--s0h) var(--s0h) var(--s2);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  transition: border-color var(--tr-settle), background var(--tr-settle);
+}
+
+.kk-code--plate .kk-code__value {
+  color: var(--primary-strong);
+}
+
+/* Confirmed. The plate answers as well as the mark, because in a wrapping
+   card foot the 14px glyph is not where the eye is. */
+.kk-code--plate[data-state='copied'] {
+  border-color: color-mix(in srgb, var(--success) 42%, transparent);
+  background: color-mix(in srgb, var(--success) 7%, var(--surface));
+}
+
+/* --- inline: no ground, inherited type --- */
+.kk-code--inline .kk-code__value {
+  /* Inherits family, size, weight and colour from whatever owns the row —
+     the coupon stub's own mono declaration in console.css. Only the
+     tracking comes from `.kk-code__value` above, and the stub sets the
+     same 0.08em, so there is nothing to reconcile. This is also why the
+     size axis below is compound with `--plate`: an `inherit` at (0,2,0)
+     would lose to `.kk-code--md .kk-code__value` on source order. */
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+/* --- size: the type, not the button. The button walks §2's own ladder. --- */
+.kk-code--plate.kk-code--sm .kk-code__value {
+  font-size: var(--fs-xs);
+}
+.kk-code--plate.kk-code--md .kk-code__value {
+  font-size: var(--fs-sm);
+}
+
+.kk-code--sm.kk-code--plate {
+  padding-left: var(--s1h);
+}
+
+/* The mark: quiet until it is useful, then unmistakable. */
+.kk-code__btn {
+  color: var(--ink-faint);
+}
+.kk-code:hover .kk-code__btn {
+  color: var(--ink);
+}
+.kk-code[data-state='copied'] .kk-code__btn,
+.kk-code[data-state='copied']:hover .kk-code__btn {
+  color: var(--success);
+}
+
+/* The plate's ground is a state change rather than a movement, so it is
+   not in this file's `reduce` blanket — a colour arriving in 160ms is not
+   motion. The button's own hover scale is already opted out in §9. */
+
+/* ------------------------------------------------------------
+   12. MARKS
+   ------------------------------------------------------------
+
+   Paint for `components/ui/marks.tsx` — one rule, because the whole point
+   of that file is that a mark is decided once.
+
+   `CoinMark` is drawn as a filled blank in `currentColor` with its milling,
+   its rim and the bowl knocked out in white. That makes it the one drawing
+   in the product that inherited colour can destroy rather than merely
+   re-tint: on a pale `color` the knockouts vanish into the blank and the
+   coin becomes a plain disc. Two of its four sites were exactly that —
+   `.profile-head__tokens-mark` and `.kk-celebrate__coin` both set
+   `color: #fff` for the stroke glyph they used to hold.
+
+   So the coin states its own ink here, at (0,1,0) from the last stylesheet
+   loaded, and is inherited by nothing. `--accent-strong` rather than
+   `--accent`: the darker gold is what keeps the white knockouts legible at
+   the 15px the record row draws it at, and gold rather than ink because
+   this is the product's earned colour (§11, the badge tiles, the plaque).
+
+   No rule for the badge marks. Those are Lucide glyphs like every other
+   glyph in the product and take their disc's colour, which is the reason
+   `badgeMark()` returns a component rather than a drawing. */
+.kk-coin {
+  color: var(--accent-strong);
+}
+
+/* The celebration medallion holds the coin on paper (§10's `--token` ground), so
+   the coin keeps its own gold there and needs no override. This selector exists
+   only to say that out loud: the one gold *field* a coin could have sat on was
+   moved out from under it rather than the coin being darkened to survive it. */
+.kk-celebrate__coin--token .kk-coin {
+  color: var(--accent-strong);
+}
+
+/* ------------------------------------------------------------
+   13. SELECT — the list we draw ourselves
+   ------------------------------------------------------------
+
+   Paint for `components/ui/Select.tsx`. The control it replaces was a native
+   `<select>` in a hairline pill: `appearance: none` on the box, our chevron
+   beside it — and then the *open list* drawn by the operating system, where
+   none of this file's paper, espresso, saffron, 14px radius or Manrope exists.
+   `option` takes almost no CSS and the popup has no pseudo-element, so that
+   half of the control was never reachable from here. This section is that half.
+
+   The trigger keeps the pill it already was, to the pixel it can: `--r-full`,
+   one hairline, paper ground, the small-caps prefix in `--fs-2xs` and the value
+   in `--fs-xs` bold. Nothing in the results bar moves. What is new is the
+   panel, the chosen row's mark, and the fact that the open state now has a
+   drawing at all.
+
+   Two decisions worth naming, because both look like details and are not:
+
+   1. **The chosen row and the row you are on are different things.** A native
+      menu conflates them — one blue bar means both — and that is why arrowing
+      through a native select feels like it is changing your answer. Here the
+      selection is a saffron check in a fixed 16px column, and the highlight is
+      a `--primary-faint` ground that follows the keyboard or the pointer. You
+      can look for what you picked while standing somewhere else.
+
+   2. **The panel is wider than its trigger and hangs from one edge.** The pill
+      is sized by the shortest label ("Best match"); the list holds "Gentlest on
+      the wallet". A panel clamped to the trigger's width would wrap six rows to
+      two lines each, so it takes `max-content` with a 20rem ceiling and
+      `--panel--end` anchors it to the right edge for a control that already
+      sits at the end of its row.
+   ------------------------------------------------------------ */
+
+/* The positioning anchor, and nothing else. `inline-flex` so the control keeps
+   the inline-level footing the `<label>` it replaces had — it is a flex item in
+   the results bar, but it is also droppable into a text run. */
+.kk-select {
+  position: relative;
+  display: inline-flex;
+}
+
+.kk-select__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  /* 36px, which is §3's chip box rather than the 44px button floor: this is a
+     control in a caption line, and the row it sits in is `gap: 8px`, so
+     36 + 8 = 44 and the target still reaches the floor without overlapping the
+     control beside it. The same arithmetic as `.kk-disc--inline`. */
+  min-height: 36px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--surface);
+  font-family: var(--font-body);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--tr-settle), background var(--tr-settle);
+}
+.kk-select__trigger:hover {
+  border-color: var(--primary-line);
+}
+.kk-select__trigger:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 3px;
+}
+/* Open is a state of the control, not a hover: the pill holds the faintest
+   ground in the palette for as long as its list is out, so the eye can find
+   the thing the panel belongs to. */
+.kk-select--open .kk-select__trigger {
+  border-color: var(--primary-line);
+  background: var(--primary-faint);
+}
+.kk-select__trigger:disabled {
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+.kk-select__prefix {
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.kk-select__value {
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-bold);
+  color: var(--ink);
+}
+
+/* The chevron turns because the angle IS the state, the same rule the
+   disclosure marker follows — and like it, only the *transition* is given up
+   under reduced motion. */
+.kk-select__chevron {
+  flex: none;
+  color: var(--ink-faint);
+  transition: transform var(--tr-settle);
+}
+.kk-select--open .kk-select__chevron {
+  transform: rotate(180deg);
+}
+
+/* The panel, in two parts. This is the frame — ground, hairline, shadow,
+   placement — and `.kk-select__panel-list` below is the listbox inside it,
+   which is what scrolls. They have to be separate elements: the fade at the
+   list's edges is a `mask-image`, and a mask clips away the box-shadow of
+   whatever carries it and makes that element's own background transparent
+   wherever it fades, so a one-element panel would trade its shadow for the
+   fade and show the page through its top and bottom edges.
+
+   No `display` is declared anywhere on it, deliberately: the menu stays in the
+   DOM and closes with the `hidden` attribute, and an author `display` here
+   would beat the UA sheet's `[hidden] { display: none }` and leave an open menu
+   on every page. `overflow: hidden` so the rows clip to the frame's radius
+   instead of squaring off its corners. */
+.kk-select__panel {
+  --kk-select-from: -4px;
+  position: absolute;
+  top: calc(100% + var(--s2));
+  /* Above the cards, under the header. `.disc` and `.disc__stage` are both
+     stacking contexts (one by `isolation`, one by a filling animation), so this
+     number only ever competes inside the results column — and the fixed `.nav`
+     at 50 sits outside it, which is what keeps a dropdown from covering the
+     product's own chrome. */
+  z-index: 30;
+  min-width: 100%;
+  width: max-content;
+  max-width: min(20rem, calc(100vw - 2 * var(--gutter)));
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+  animation: kk-rise var(--dur-fast) var(--ease-out);
+  --kk-rise-from: var(--kk-select-from);
+  /* Both scrollbar properties on the frame. `scrollbar-color` is inherited, so
+     a themed panel can keep tinting the thumb by naming the frame the way
+     hero-scene.css does for the builder's menus; `scrollbar-width` is not
+     inherited, so the list restates it. */
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* The list. Six orders fit; a longer one scrolls rather than growing past the
+   fold. `overscroll-behavior` keeps the wheel from handing the page its
+   momentum at the end of the list, which is the difference between a menu and
+   a hole.
+
+   The third term of the ceiling is the room the component measured on
+   whichever side it chose (see Select.tsx). Without it, a short window flips
+   the panel above the trigger and it hangs off the top edge, first rows
+   unreachable, because an absolutely positioned panel travels with the trigger
+   when the page scrolls. `100vh` is the fallback for the first paint, before
+   the measure.
+
+   The mask is the same one the builder's menus use — `useScrollFade` writes
+   `--fade-t` and `--fade-b` here as the list travels, both ramping in over the
+   first 26px so a list at rest keeps a genuinely sharp edge and a list too
+   short to scroll is not veiled at all. `scroll-padding-block` mirrors the
+   band so a row the keyboard brings into view never lands under the fade that
+   was meant to be revealing it. */
+.kk-select__panel-list {
+  margin: 0;
+  padding: var(--s1h);
+  list-style: none;
+  max-height: min(19rem, 60vh, var(--kk-select-room, 100vh));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 26px;
+  scrollbar-width: thin;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--fade-t, 0px),
+    #000 calc(100% - var(--fade-b, 0px)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--fade-t, 0px),
+    #000 calc(100% - var(--fade-b, 0px)),
+    transparent 100%
+  );
+}
+.kk-select__panel--start { left: 0; }
+.kk-select__panel--end { right: 0; }
+/* Flipped above the trigger, it rises from below instead of dropping from
+   above: the entrance points at where the panel came from. */
+.kk-select__panel[data-placement='top'] {
+  --kk-select-from: 4px;
+  top: auto;
+  bottom: calc(100% + var(--s2));
+}
+
+/* A row. 6px inside a 14px panel keeps §2's nesting rule (a child's radius is
+   never larger than its parent's) and leaves the ground floating on paper
+   rather than butting into the border. */
+.kk-select__opt {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 40px;
+  padding: 0 var(--s2h);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background var(--tr-settle), color var(--tr-settle);
+  /* The rows arrive just behind the frame, one after the next, so the menu
+     reads as being drawn rather than switched on. 5px because a row is 40px
+     and anything further is a row visibly in the wrong place; 20ms apart and
+     capped at the eighth, so a long list does not keep assembling half a
+     second after the panel landed and the rows past the cap all settle
+     together. `--kk-rise-from` is restated because it inherits — the frame
+     above sets its own -4px and every row would otherwise take it. No scale
+     (the house rule is to scale photographs, never text) and nothing here
+     watches scroll position, because re-animating a row each time it
+     re-enters view is flicker, not motion. `both` so a delayed row is
+     invisible rather than briefly solid in the wrong place. */
+  animation: kk-rise var(--dur-fast) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 7) * 20ms);
+  --kk-rise-from: 5px;
+}
+
+/* Flipped above the trigger, the cascade has to run the other way too, or it
+   runs *into* the control the panel just came out of. */
+.kk-select__panel[data-placement='top'] .kk-select__opt {
+  animation-delay: calc(min((var(--n, 1) - 1 - var(--i, 0)), 7) * 20ms);
+  --kk-rise-from: -5px;
+}
+
+/* Where the keyboard or the pointer is. One attribute for both, so a menu
+   cannot show two highlights at once — which is what happens when hover paint
+   and keyboard paint are written as separate rules.
+
+   `--primary-soft`, not `--primary-faint`: measured on paper in the pane, faint
+   (#fcf7ec) against `--surface` (#fffdf9) is a 3-value difference per channel —
+   invisible at a glance, which is fatal for the one mark telling a keyboard user
+   where they are. Soft (#f6eddc) is the same ground `.kk-disc--inline` already
+   hovers with, so the highlight is not a new colour, just the right one. The
+   pill's open state keeps faint, because that mark has the chevron and the panel
+   itself corroborating it. */
+.kk-select__opt[data-active] {
+  background: var(--primary-soft);
+  color: var(--ink);
+}
+
+/* What you chose. Weight and ink carry it as much as the mark does, so the row
+   still reads as chosen while the highlight is somewhere else. */
+.kk-select__opt[aria-selected='true'] {
+  font-weight: var(--weight-semi);
+  color: var(--ink);
+}
+
+/* The check holds its 16px column whether or not it is drawn, so no label ever
+   shifts sideways as the selection moves. */
+.kk-select__check {
+  flex: none;
+  color: var(--accent);
+  opacity: 0;
+}
+.kk-select__opt[aria-selected='true'] .kk-select__check {
+  opacity: 1;
+}
+
+.kk-select__opt-label {
+  min-width: 0;
+}
+
+.kk-select__opt[aria-disabled='true'] {
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+.kk-select__opt[aria-disabled='true'][data-active] {
+  background: none;
+}
+
+/* Touch takes the product's floor. A menu row is not a control standing alone
+   in a row of controls — 40px keeps six of them readable in one glance on a
+   pointer that can hit 40px exactly — but a thumb cannot, so where the pointer
+   is coarse the rows go to 44 and the panel gets the room to do it. */
+@media (pointer: coarse) {
+  .kk-select__opt {
+    min-height: 44px;
+  }
+  .kk-select__panel-list {
+    max-height: min(60vh, 22rem, var(--kk-select-room, 100vh));
+  }
+}
+
+/* Reduced motion, and it has to live HERE rather than in §9. There is no
+   `@layer` in this codebase: at equal specificity a later rule wins, media
+   query or not, so §9 sits ~600 lines above the declarations it would need to
+   cancel and would lose to every one of them. Same reason §11's opt-out is
+   local.
+
+   The panel's animation is cancelled outright, not shortened — §5's global
+   blanket in editorial.css only zeroes `animation-duration`, which still runs
+   the 4px rise as an instant jump, and a jump is more motion than none. The
+   rows go with it for the same reason, and because twenty of them jumping at
+   once is the version of that defect you would actually notice. The chevron
+   keeps its 180°: that angle is the state of the control, and taking it away
+   would answer a request for less motion with less information. */
+@media (prefers-reduced-motion: reduce) {
+  .kk-select__panel,
+  .kk-select__opt {
+    animation: none;
+  }
+  .kk-select__trigger,
+  .kk-select__chevron,
+  .kk-select__opt {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   SPOTLIGHT DECK — the mechanics only
+   ============================================================
+   `SpotlightDeck` owns a beam, a proximity glow, drifting motes and a
+   click ripple. What is here is the machinery those four need and
+   nothing else: no ground, no fill, no type. The one surface built on
+   it so far is editorial.css §14d, and it is that section — not this
+   file — that decides the deck is ink and the cards are glass.
+
+   Three of these declarations are load-bearing rather than cosmetic:
+
+     `isolation: isolate` on the deck. The beam blends with `screen`,
+     and a blend mode composites against the nearest stacking context
+     that isolates. Without this the beam reaches past the deck and
+     lifts the cream page behind it — which is exactly what the
+     original component does from `document.body`, and why it cannot
+     be used unchanged on paper.
+
+     `overflow: hidden` on the deck. The beam is 2.2× the spotlight
+     radius, so most of it is outside the deck at any moment.
+
+     `overflow: hidden` on the card. Motes are positioned from the
+     card's own box and drift up to 27px, and the ripple starts wider
+     than the card by construction.
+
+   And one pair, which is the whole reason motes are readable over
+   prose: `isolation: isolate` on the CARD, with `z-index: -1` on the
+   mote and the ripple. Negative z-index paints after the element's own
+   background and *before* its in-flow content, so gold dust drifts
+   between the card's fill and its text rather than across the words.
+   The original leaves particles at `z-index: 1`, which is above
+   in-flow content — fine over a landing-page card holding two lines of
+   sans, and dirt over a paragraph of serif. The isolation is what
+   scopes the negative index to the card instead of resolving it
+   against the deck, where the card's own fill would hide it.
+
+   `--kk-glow-i` defaults to 0, so with no JS — prerender, reduced
+   motion, a touch device, a script that failed — the ring renders
+   fully transparent rather than at full strength.
+   ------------------------------------------------------------ */
+.kk-spotdeck {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.kk-spot {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.kk-spot-beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  /* Screen keeps the beam additive: it can only lighten the ink under it,
+     so there is no state in which it prints a grey disc over the ground. */
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    circle,
+    rgba(var(--kk-glow-rgb), 0.16) 0%,
+    rgba(var(--kk-glow-rgb), 0.09) 16%,
+    rgba(var(--kk-glow-rgb), 0.045) 28%,
+    rgba(var(--kk-glow-rgb), 0.018) 44%,
+    transparent 70%
+  );
+  /* Opacity and transform are the only two things JS touches here. */
+  will-change: transform, opacity;
+  z-index: 0;
+}
+
+/* The hairline of light along the card's edge. A ring and not a fill:
+   `mask-composite` punches the content box out of a padding-box-sized
+   gradient, leaving only the border band lit. The original uses a 6px
+   band, which on a text card reads as a neon outline; 2px reads as an
+   edge catching the light. */
+.kk-spotdeck--glow .kk-spot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: radial-gradient(
+    var(--kk-glow-r, 320px) circle at var(--kk-glow-x, 50%) var(--kk-glow-y, 50%),
+    rgba(var(--kk-glow-rgb), calc(var(--kk-glow-i, 0) * 0.9)) 0%,
+    rgba(var(--kk-glow-rgb), calc(var(--kk-glow-i, 0) * 0.32)) 34%,
+    transparent 62%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.kk-spot-mote {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(var(--kk-glow-rgb), 1);
+  box-shadow: 0 0 7px rgba(var(--kk-glow-rgb), 0.55);
+  pointer-events: none;
+  will-change: transform, opacity;
+  /* Behind the card's text, above its fill. See the note on the card's
+     `isolation: isolate` at the top of this section. */
+  z-index: -1;
+}
+
+.kk-spot-ripple {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    rgba(var(--kk-glow-rgb), 0.26) 0%,
+    rgba(var(--kk-glow-rgb), 0.1) 34%,
+    transparent 70%
+  );
+  will-change: transform, opacity;
+  z-index: -1;
+}
+
+/* The component already refuses to run under reduced motion, so nothing
+   below is ever animated. This is the second lock: if a future call site
+   passes `disableAnimations={false}` and forces the effect on, the ring
+   still cannot appear, because a light that follows a cursor is motion
+   whatever is driving it. */
+@media (prefers-reduced-motion: reduce) {
+  .kk-spotdeck--glow .kk-spot::after {
+    display: none;
+  }
+}
+
+/* ============================================================
+   THE ENTER — see design-system.css §8b
+   ============================================================
+   Every rule above declares its LEAVE (`var(--tr-settle)`). This is the
+   other half of the pair: the answer, grouped here rather than repeated
+   across the individual state rules, so the two halves stay legible and
+   the whole file retunes from one place.
+   ------------------------------------------------------------ */
+.chip--dismiss:hover svg,
+.field input:hover,
+.field select:hover,
+.field textarea:hover,
+.kk-chip:focus-visible,
+.kk-chip:hover,
+.kk-chip:hover .kk-chip__icon,
+.kk-disc--card .kk-disc__trigger:hover,
+.kk-disc--inline .kk-disc__trigger:hover,
+.kk-disc__trigger:focus-visible,
+.kk-field input:hover,
+.kk-field select:hover,
+.kk-field textarea:hover,
+.kk-ib:focus-visible,
+.kk-ib:hover,
+.kk-select__opt[data-active],
+.kk-select__trigger:hover {
+  transition-duration: var(--tr-answer);
+}

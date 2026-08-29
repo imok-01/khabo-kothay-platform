@@ -25,15 +25,18 @@ function toMinutes(h: string, min: string, meridiem: string): number {
   return hour * 60 + Number(min);
 }
 
+/** Whether `minutes` falls inside a window, which may cross midnight. */
+function withinRange(start: number, end: number, minutes: number): boolean {
+  if (end > start) return minutes >= start && minutes < end;
+  // Crosses midnight (e.g. 6 PM – 12 AM): open late and early.
+  return minutes >= start || minutes < end;
+}
+
 /** Whether the venue is open at the given instant (defaults to now). */
 export function isOpenNow(hours: string, now: Date = new Date()): boolean {
   const parsed = parseOpenHours(hours);
   if (!parsed) return false;
-  const minutes = now.getHours() * 60 + now.getMinutes();
-  const { start, end } = parsed;
-  if (end > start) return minutes >= start && minutes < end;
-  // Crosses midnight (e.g. 6 PM – 12 AM): open late and early.
-  return minutes >= start || minutes < end;
+  return withinRange(parsed.start, parsed.end, now.getHours() * 60 + now.getMinutes());
 }
 
 /** "Open now" label for the current time, or undefined if hours can't be parsed. */
@@ -239,4 +242,90 @@ export function formatOpeningHours(hours: string): WeekHourRow[] | null {
   if (single) return [{ day: 'Hours', label: formatRange(single.start, single.end) }];
 
   return null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Open-state evaluation                                               */
+/* ------------------------------------------------------------------ */
+
+/** `Date.getDay()` order — 0 is Sunday. Not the BD display order above. */
+const JS_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * "Open now" / "Closed now" derived from a recorded hours string, or null when
+ * the string does not actually support the claim.
+ *
+ * This exists because `openNowLabel` cannot be trusted on a weekly schedule:
+ * `HOURS_RE` is unanchored, so on
+ * "Saturday: 11:00 AM – 3:00 PM; Sunday: 6:00 PM – 11:00 PM" it matches the
+ * FIRST range it finds and applies Saturday's window to every day of the week.
+ * No catalogue row is weekly today, so nothing is visibly wrong — it is wrong
+ * the moment one is, and silently.
+ *
+ * What it answers, in order:
+ *  - "Open 24 hours"                       → always open;
+ *  - a weekly map                          → *today's* row, and yesterday's
+ *    first when yesterday's window crossed midnight and still covers now (a
+ *    6 PM – 2 AM Saturday belongs to Saturday, so 1 AM Sunday must ask
+ *    Saturday before it believes Sunday);
+ *  - a weekly-shaped string that failed to parse → null, never a rescue by the
+ *    single-range parser;
+ *  - a single range                        → that window;
+ *  - anything else, including every Google scrape fragment → null.
+ *
+ * Returning null is the important case: a fragment like
+ * "Closed Opens 12 pm Sat" carries a state word that was true *at scrape time*
+ * and says nothing about now. The page must present the schedule fact instead
+ * of a stale live claim — see `recordedHoursHeadline`.
+ */
+export function openStateNow(hours: string, now: Date = new Date()): 'Open now' | 'Closed now' | null {
+  if (!hours) return null;
+  const s = hours.trim();
+  if (/^open\s+24\s*hours/i.test(s)) return 'Open now';
+
+  const minutes = now.getHours() * 60 + now.getMinutes();
+
+  const weekly = parseWeeklyHours(s);
+  if (weekly) {
+    const byDay = new Map(weekly.map((w) => [w.day, w]));
+    const yesterday = byDay.get(JS_DAY_NAMES[(now.getDay() + 6) % 7]);
+    if (
+      yesterday &&
+      !('closed' in yesterday) &&
+      yesterday.end <= yesterday.start &&
+      minutes < yesterday.end
+    ) {
+      return 'Open now';
+    }
+    const today = byDay.get(JS_DAY_NAMES[now.getDay()]);
+    if (!today) return null; // the source never covered today
+    if ('closed' in today) return 'Closed now';
+    return withinRange(today.start, today.end, minutes) ? 'Open now' : 'Closed now';
+  }
+
+  // Weekly-shaped but unparseable: same rule as `formatOpeningHours`.
+  if (/^[A-Za-z]+\s*[:-]\s*/.test(s)) return null;
+
+  const single = parseOpenHours(s);
+  if (!single) return null;
+  return withinRange(single.start, single.end, minutes) ? 'Open now' : 'Closed now';
+}
+
+/**
+ * The schedule half of a scraped hours row, with the stale moment-word dropped.
+ *
+ * `formatScrapedHours` renders Google's fragment faithfully, leading
+ * "Open"/"Closed" included, because in the reference card it is labelled as a
+ * recorded snapshot. The decision bar at the top of the page cannot use that
+ * word: there it would read as a live status. "Closed · Opens 12:00 PM
+ * Saturday" becomes "Opens 12:00 PM Saturday" — the part that is still true.
+ * Returns null when the word was all there was.
+ */
+export function recordedHoursHeadline(row: WeekHourRow | null | undefined): string | null {
+  if (!row) return null;
+  const kept = row.label
+    .split('·')
+    .map((part) => part.trim())
+    .filter((part) => part && !/^(open|closed)$/i.test(part));
+  return kept.length > 0 ? kept.join(' · ') : null;
 }

@@ -67,7 +67,7 @@ export default function RestaurantSignals({ restaurant }: { restaurant: Restaura
         const Icon = SIGNAL_ICONS[s.type] ?? Sparkles;
         return (
           <li key={s.id} className="signal">
-            <Icon size={15} className="signal__icon" aria-hidden="true" />
+            <Icon size={16} className="signal__icon" aria-hidden="true" />
             <span className="signal__label">{s.label}</span>
             <span
               className="signal__strength"
